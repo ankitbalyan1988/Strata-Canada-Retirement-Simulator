@@ -39,7 +39,7 @@ Your task is to take a user's natural language persona description (e.g. "A 28yo
 Rules:
 1. Ensure province is a valid 2-letter Canadian code: 'ON', 'BC', 'AB', 'QC', 'MB', 'SK', 'NS', 'NB', 'NL', or 'PE'.
 2. Account balances & contributions must reflect realistic Canadian norms and CRA limits ($7k TFSA, $8k FHSA up to $40k max, RRSP 18% of income up to $32.5k).
-3. If the prompt describes a married couple or spouse, set maritalStatus to "married" and populate the spouse object. Otherwise set maritalStatus to "single" or "divorced".
+3. If the prompt describes a married couple or spouse, set maritalStatus to "married" and populate the spouse object. Otherwise set maritalStatus to "single" (which represents single/divorced individuals).
 4. If the prompt describes possible layoffs or wage drops, configure the careerDisruption object.
 5. Return ONLY valid JSON adhering to the requested format.`;
 
@@ -78,9 +78,7 @@ function sanitizePersona(raw: any, prompt: string) {
 
   const validProvinces = ['ON', 'BC', 'AB', 'QC', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE'];
   const province = validProvinces.includes(raw.province) ? raw.province : fallback.province;
-  const maritalStatus = (raw.maritalStatus === 'married' || raw.maritalStatus === 'divorced' || raw.maritalStatus === 'single') 
-    ? raw.maritalStatus 
-    : fallback.maritalStatus;
+  const maritalStatus = raw.maritalStatus === 'married' ? 'married' : 'single';
 
   const currentAge = typeof raw.currentAge === 'number' && raw.currentAge >= 18 && raw.currentAge <= 75 ? Math.round(raw.currentAge) : fallback.currentAge;
   const retirementAge = typeof raw.retirementAge === 'number' && raw.retirementAge > currentAge && raw.retirementAge <= 80 ? Math.round(raw.retirementAge) : fallback.retirementAge;
@@ -248,6 +246,7 @@ function generateRuleBasedFallbackPersona(prompt: string) {
     tfsaAnnualContribution: 7000,
     fhsaAnnualContribution: 6000,
     nonRegAnnualContribution: 3000,
+    fhsaOpenYear: 2023,
     fhsaIntent: 'rollover_to_rrsp',
     fhsaHomePurchaseAge: 40,
     cppStartAge: 65,
@@ -296,6 +295,7 @@ function generateRuleBasedFallbackPersona(prompt: string) {
         tfsaAnnualContribution: 7000,
         fhsaBalance: 8000,
         fhsaAnnualContribution: 6000,
+        fhsaOpenYear: 2023,
         fhsaIntent: 'rollover_to_rrsp',
         fhsaHomePurchaseAge: 40,
         nonRegBalance: 15000,

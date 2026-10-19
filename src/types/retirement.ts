@@ -32,6 +32,15 @@ export interface CareerDisruption {
   recoveryYears: number; // years before income recovers
 }
 
+export interface MonthlyExpenseEstimates {
+  rentOrMortgage: number; // monthly rent or mortgage payment
+  utilities: number; // electricity, heat, water, internet, phone
+  creditCard: number; // groceries, dining, transport, subscriptions, retail
+  otherExpenses: number; // insurance, healthcare, miscellaneous catch-all
+  postRetirementAdjustmentPercent: number; // slider: e.g. -50% to +50% change post-retirement
+  autoSyncMortgage?: boolean; // whether rentOrMortgage is auto-filled from real estate mortgage
+}
+
 export interface SpouseInputs {
   name: string;
   currentAge: number;
@@ -47,6 +56,7 @@ export interface SpouseInputs {
   tfsaAnnualContribution: number;
   fhsaBalance: number;
   fhsaAnnualContribution: number;
+  fhsaOpenYear?: number; // Year FHSA was opened (determines 15-year participation period)
   fhsaIntent: 'home_purchase' | 'rollover_to_rrsp';
   fhsaHomePurchaseAge: number;
   nonRegBalance: number;
@@ -77,8 +87,21 @@ export interface RealEstateInputs {
   sellingCostPercent: number; // Realtor, legal, and closing fees (%)
 }
 
+export type NonRegAccountCategory = 'savings' | 'investment' | 'gic';
+
+export interface CustomNonRegAccount {
+  id: string;
+  name: string;
+  category: NonRegAccountCategory; // 'savings' | 'investment' | 'gic'
+  balance: number;
+  annualContribution: number;
+  expectedReturn: number; // % annual expected return
+  gicCloseDate?: string; // Optional close date string e.g. "2028-11-30"
+  gicCloseYear?: number; // Calendar year of maturity e.g. 2028
+}
+
 export interface AccountReturnRates {
-  useCustomReturns: boolean;
+  useCustomReturns?: boolean;
   rrspReturn: number; // % annual expected return for RRSP
   tfsaReturn: number; // % annual expected return for TFSA
   fhsaReturn: number; // % annual expected return for FHSA
@@ -98,6 +121,7 @@ export interface RetirementInputs {
   currentAnnualIncome: number;
   incomeGrowthRate: number; // percentage e.g. -5.0% to +8.0%
   careerDisruption?: CareerDisruption;
+  monthlyExpenses?: MonthlyExpenseEstimates;
   targetRetirementSpendingToday: number; // in today's dollars (household budget)
 
   // Spouse Details (only applicable when maritalStatus === 'married')
@@ -121,7 +145,11 @@ export interface RetirementInputs {
   fhsaAnnualContribution: number;
   nonRegAnnualContribution: number;
 
+  // Custom Non-Registered Sub-Accounts (Savings, Investment, GIC)
+  nonRegCustomAccounts?: CustomNonRegAccount[];
+
   // FHSA Settings (Primary)
+  fhsaOpenYear?: number; // Year FHSA account was opened (e.g. 2023-2026). Determines 15-year CRA participation limit
   fhsaIntent: 'home_purchase' | 'rollover_to_rrsp';
   fhsaHomePurchaseAge: number; // if home purchase, funds withdrawn tax-free at this age
 
@@ -132,8 +160,8 @@ export interface RetirementInputs {
   oasEligibleYearsInCanada: number; // 40 years for full OAS
 
   // Investment & Economic Assumptions
-  preRetirementReturn: number; // % annual return
-  postRetirementReturn: number; // % annual return
+  preRetirementReturn?: number; // Deprecated: replaced by per-account accountReturns
+  postRetirementReturn?: number; // Deprecated: replaced by per-account accountReturns
   inflationRate: number; // % annual inflation
   nonRegYieldTaxRate: number; // effective tax drag on taxable account dividends/capital gains (e.g. 1.2%)
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Calendar, 
   Hourglass, 
@@ -8,7 +8,9 @@ import {
   Award, 
   ChevronLeft, 
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 
@@ -23,6 +25,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
   summary,
   onChangeRetirementAge
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   const { currentAge, retirementAge, lifeExpectancy } = inputs;
   const yearsToRetire = Math.max(0, retirementAge - currentAge);
   const yearsInRetirement = Math.max(0, lifeExpectancy - retirementAge);
@@ -40,7 +43,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
   ];
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 text-white shadow-xl relative overflow-hidden">
+    <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 text-white shadow-xl relative overflow-hidden transition-all duration-200">
       
       {/* Decorative background glow */}
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-rose-600/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -62,9 +65,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
               }`}>
                 {inputs.maritalStatus === 'married'
                   ? `Couple Plan (Spouse: ${inputs.spouse?.name || 'Spouse'} @ ${inputs.spouse?.retirementAge || '63'})`
-                  : inputs.maritalStatus === 'divorced'
-                  ? 'Individual Plan (Divorced)'
-                  : 'Individual Plan (Single)'}
+                  : 'Individual Plan (Single / Divorced)'}
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mt-0.5">
@@ -76,8 +77,8 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
             </h2>
           </div>
 
-          {/* Funded Status Pill */}
-          <div className="flex items-center self-start sm:self-auto">
+          {/* Funded Status Pill & Collapse/Expand Button */}
+          <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
             {summary.isFullyFunded ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 shadow-sm text-xs sm:text-sm font-semibold">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -89,10 +90,24 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
                 <span>Depletes at Age {summary.portfolioDepletionAge} ({summary.yearsFunded} yrs funded)</span>
               </div>
             )}
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 transition border border-slate-700/80 font-medium"
+              title={isExpanded ? 'Collapse Target Retirement Age Simulator' : 'Expand Target Retirement Age Simulator'}
+              aria-expanded={isExpanded}
+            >
+              <span>{isExpanded ? 'Collapse' : 'Expand Simulator'}</span>
+              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
           </div>
         </div>
 
-        {/* The Slider Control */}
+        {/* Collapsible Simulator Body */}
+        {isExpanded && (
+          <>
+            {/* The Slider Control */}
         <div className="bg-slate-800/60 rounded-xl p-4 sm:p-5 border border-slate-700/60 flex flex-col gap-3">
           
           <div className="flex items-center justify-between">
@@ -219,6 +234,8 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
           </div>
 
         </div>
+          </>
+        )}
 
       </div>
     </div>

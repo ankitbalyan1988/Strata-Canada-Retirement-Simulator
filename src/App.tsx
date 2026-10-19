@@ -178,7 +178,13 @@ export default function App() {
           activeProvince={inputs.province}
         />
 
-        {/* Hero Interactive Retirement Age Slider */}
+        {/* User Inputs & Controls Panel (Household Planning Structure) */}
+        <InputPanel
+          inputs={inputs}
+          onChange={setInputs}
+        />
+
+        {/* Hero Interactive Retirement Age Simulator */}
         <HeroRetirementSlider
           inputs={inputs}
           summary={summary}
@@ -252,12 +258,6 @@ export default function App() {
             />
           )}
         </div>
-
-        {/* User Inputs & Controls Panel */}
-        <InputPanel
-          inputs={inputs}
-          onChange={setInputs}
-        />
 
         {/* Annual Simulation Ledger Table */}
         <MilestoneTable

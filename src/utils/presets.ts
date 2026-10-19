@@ -1,4 +1,4 @@
-import { ScenarioPreset, SpouseInputs, RealEstateInputs, AccountReturnRates, RetirementInputs } from '../types/retirement';
+import { ScenarioPreset, SpouseInputs, RealEstateInputs, AccountReturnRates, RetirementInputs, MonthlyExpenseEstimates } from '../types/retirement';
 
 export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   ownsHome: true,
@@ -15,8 +15,17 @@ export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   sellingCostPercent: 4.5 // Realtor commissions, legal & closing friction
 };
 
+export const DEFAULT_MONTHLY_EXPENSES: MonthlyExpenseEstimates = {
+  rentOrMortgage: 2980, // Matches $520k Canadian loan @ 4.79% 25-yr amortization
+  utilities: 450,
+  creditCard: 1800,
+  otherExpenses: 550,
+  postRetirementAdjustmentPercent: -20,
+  autoSyncMortgage: true
+};
+
 export const DEFAULT_ACCOUNT_RETURNS: AccountReturnRates = {
-  useCustomReturns: false,
+  useCustomReturns: true,
   rrspReturn: 6.5,
   tfsaReturn: 7.0,
   fhsaReturn: 6.0,
@@ -45,6 +54,7 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   province: 'ON',
   currentAnnualIncome: 68400,
   incomeGrowthRate: 2.1,
+  monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
   targetRetirementSpendingToday: 46500, // ~68% income replacement (FCAC benchmark)
   realEstate: { ...DEFAULT_REAL_ESTATE_INPUTS },
   accountReturns: { ...DEFAULT_ACCOUNT_RETURNS },
@@ -56,6 +66,7 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   tfsaAnnualContribution: 5800,
   fhsaAnnualContribution: 6000,
   nonRegAnnualContribution: 3000,
+  fhsaOpenYear: 2023,
   fhsaIntent: 'rollover_to_rrsp',
   fhsaHomePurchaseAge: 45,
   cppStartAge: 65,
@@ -278,11 +289,11 @@ export const PRESETS: ScenarioPreset[] = [
   },
   {
     id: 'calgary_exec',
-    name: 'Alberta Energy Exec (Divorced)',
+    name: 'Alberta Energy Exec (Single/Divorced)',
     tagline: 'Wealth Preservation & Clawback Defense (AB)',
     description: '49-year-old executive in Calgary planning solo retirement at 65 with substantial non-registered capital.',
     inputs: {
-      maritalStatus: 'divorced',
+      maritalStatus: 'single',
       currentAge: 49,
       retirementAge: 65,
       lifeExpectancy: 95,
@@ -408,6 +419,7 @@ export const DEFAULT_SPOUSE_INPUTS: SpouseInputs = {
   tfsaAnnualContribution: 5500,
   fhsaBalance: 10000,
   fhsaAnnualContribution: 5000,
+  fhsaOpenYear: 2023,
   fhsaIntent: 'rollover_to_rrsp',
   fhsaHomePurchaseAge: 45,
   nonRegBalance: 25000,

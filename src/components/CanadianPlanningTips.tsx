@@ -13,6 +13,7 @@ import {
 
 export const CanadianPlanningTips: React.FC = () => {
   const [openSection, setOpenSection] = useState<number | null>(0);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const tips = [
     {
@@ -105,45 +106,65 @@ export const CanadianPlanningTips: React.FC = () => {
   ];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col gap-3">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-        <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
-          <Lightbulb className="w-4 h-4" />
-        </span>
-        <div>
-          <h3 className="font-bold text-slate-900 text-sm">
-            Canadian Retirement Rules & Wealth Guide
-          </h3>
-          <p className="text-xs text-slate-500">Essential CRA tax principles every Canadian professional should know</p>
-        </div>
-      </div>
-
-      <div className="divide-y divide-slate-100">
-        {tips.map((tip, idx) => {
-          const isOpen = openSection === idx;
-          return (
-            <div key={tip.title} className="py-2.5">
-              <button
-                type="button"
-                onClick={() => setOpenSection(isOpen ? null : idx)}
-                className="w-full flex items-center justify-between text-left text-xs font-bold text-slate-800 hover:text-rose-600 transition"
-              >
-                <div className="flex items-center gap-2">
-                  {tip.icon}
-                  <span>{tip.title}</span>
-                </div>
-                {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-              </button>
-
-              {isOpen && (
-                <div className="mt-2.5 pl-6 pr-2 pb-1">
-                  {tip.content}
-                </div>
-              )}
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col gap-3 transition duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="flex items-center gap-2">
+          <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
+            <Lightbulb className="w-4 h-4" />
+          </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-slate-900 text-sm">
+                Canadian Retirement Rules & Wealth Guide
+              </h3>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                5 CRA Strategies
+              </span>
             </div>
-          );
-        })}
+            <p className="text-xs text-slate-500">Essential CRA tax principles every Canadian professional should know</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 transition border border-slate-200 font-medium self-start sm:self-auto"
+          title={isExpanded ? 'Collapse Wealth Guide' : 'Expand Wealth Guide'}
+          aria-expanded={isExpanded}
+        >
+          <span>{isExpanded ? 'Collapse' : 'Expand Guide'}</span>
+          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
       </div>
+
+      {isExpanded && (
+        <div className="divide-y divide-slate-100">
+          {tips.map((tip, idx) => {
+            const isOpen = openSection === idx;
+            return (
+              <div key={tip.title} className="py-2.5">
+                <button
+                  type="button"
+                  onClick={() => setOpenSection(isOpen ? null : idx)}
+                  className="w-full flex items-center justify-between text-left text-xs font-bold text-slate-800 hover:text-rose-600 transition"
+                >
+                  <div className="flex items-center gap-2">
+                    {tip.icon}
+                    <span>{tip.title}</span>
+                  </div>
+                  {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                </button>
+
+                {isOpen && (
+                  <div className="mt-2.5 pl-6 pr-2 pb-1">
+                    {tip.content}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

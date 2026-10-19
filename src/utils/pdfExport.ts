@@ -107,7 +107,7 @@ export function generateRetirementPdfReport(
   const paramRows = [
     [
       'Marital Status',
-      inputs.maritalStatus === 'married' ? 'Married (Couple Plan)' : inputs.maritalStatus === 'divorced' ? 'Divorced (Individual Plan)' : 'Single (Individual Plan)',
+      inputs.maritalStatus === 'married' ? 'Married (Couple Plan)' : 'Single / Divorced (Individual Plan)',
       'Spouse Details',
       inputs.maritalStatus === 'married' && inputs.spouse
         ? `${inputs.spouse.name || 'Spouse'} (Age ${inputs.spouse.currentAge}, Retire @ ${inputs.spouse.retirementAge})`
@@ -120,22 +120,22 @@ export function generateRetirementPdfReport(
     ],
     [
       'Province of Residence', provinceName,
-      'Inflation Rate / Pre-Ret Return', `${inputs.inflationRate}% / ${inputs.preRetirementReturn}%`
+      'Inflation Rate / Tax Drag', `${inputs.inflationRate}% / ${inputs.nonRegYieldTaxRate}%`
     ],
     [
       'RRSP Current / Annual Contrib', `${formatCur(inputs.rrspBalance)} / ${formatCur(inputs.rrspAnnualContribution)}`,
-      'Post-Ret Return / Life Expectancy', `${inputs.postRetirementReturn}% / Age ${inputs.lifeExpectancy}`
+      'Account Returns (RRSP / TFSA)', `${inputs.accountReturns?.rrspReturn ?? 6.5}% / ${inputs.accountReturns?.tfsaReturn ?? 7.0}%`
     ],
     [
       'TFSA Current / Annual Contrib', `${formatCur(inputs.tfsaBalance)} / ${formatCur(inputs.tfsaAnnualContribution)}`,
       'CPP Start Age / % of Max', `Age ${inputs.cppStartAge} / ${inputs.cppEstimatedPercentOfMax}%`
     ],
     [
-      'FHSA Current / Annual Contrib', `${formatCur(inputs.fhsaBalance)} / ${formatCur(inputs.fhsaAnnualContribution)}`,
+      'FHSA Balance / 15-Yr Rollover', `${formatCur(inputs.fhsaBalance)} (Opened ${inputs.fhsaOpenYear || 2023} → Rolls @ Age ${Math.min(71, inputs.currentAge + ((inputs.fhsaOpenYear || 2023) + 15 - 2026))})`,
       'OAS Start Age / Canada Years', `Age ${inputs.oasStartAge} / ${inputs.oasEligibleYearsInCanada} yrs`
     ],
     [
-      'Non-Reg (SA) Balance / Contrib', `${formatCur(inputs.nonRegBalance)} / ${formatCur(inputs.nonRegAnnualContribution)}`,
+      'Non-Reg (SA) Balance / Contrib', `${formatCur(inputs.nonRegBalance)} / ${formatCur(inputs.nonRegAnnualContribution)}${inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0 ? ` [${inputs.nonRegCustomAccounts.length} custom sub-accts]` : ''}`,
       'Drawdown Strategy', strategyNames[inputs.drawdownStrategy] || inputs.drawdownStrategy
     ],
     [

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Activity, 
   ArrowRight, 
@@ -11,7 +11,9 @@ import {
   PiggyBank, 
   Sparkles,
   ShieldCheck,
-  Zap
+  Zap,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 import { calculateSavingsPulse, SavingsPulseResult } from '../utils/simulator';
@@ -27,6 +29,7 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = ({
   summary,
   onApplyMonthlyBoost
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
   const pulse: SavingsPulseResult = calculateSavingsPulse(inputs, summary);
 
   const formatCur = (val: number) => `$${Math.round(val).toLocaleString()}`;
@@ -72,7 +75,7 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = ({
   }[pulse.status];
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition duration-200">
       
       {/* Top Banner with Pulse Indicator */}
       <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 via-white to-slate-50">
@@ -106,25 +109,39 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = ({
           </div>
         </div>
 
-        {/* Quick pacing metric chip */}
-        <div className="flex items-center gap-3 self-start sm:self-auto bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
-          <div className="flex flex-col text-right">
-            <span className="text-[10px] uppercase font-bold text-slate-500">Pacing Ratio</span>
-            <span className={`font-mono font-bold ${
-              pacingPercentage >= 100 ? 'text-emerald-700' : 'text-rose-700'
-            }`}>
-              {pacingPercentage}% of requirement
-            </span>
+        {/* Quick pacing metric chip & Collapse/Expand Button */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          <div className="flex items-center gap-3 bg-slate-100/80 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+            <div className="flex flex-col text-right">
+              <span className="text-[10px] uppercase font-bold text-slate-500">Pacing Ratio</span>
+              <span className={`font-mono font-bold ${
+                pacingPercentage >= 100 ? 'text-emerald-700' : 'text-rose-700'
+              }`}>
+                {pacingPercentage}% of requirement
+              </span>
+            </div>
+            <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-2xs">
+              {statusConfig.icon}
+            </div>
           </div>
-          <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-2xs">
-            {statusConfig.icon}
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 transition border border-slate-200 font-medium"
+            title={isExpanded ? 'Collapse Savings Pulse' : 'Expand Savings Pulse'}
+            aria-expanded={isExpanded}
+          >
+            <span>{isExpanded ? 'Collapse' : 'Expand Pulse'}</span>
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
         </div>
 
       </div>
 
       {/* Main Pulse Comparison Body */}
-      <div className="p-5 sm:p-6 flex flex-col gap-5">
+      {isExpanded && (
+        <div className="p-5 sm:p-6 flex flex-col gap-5">
         
         {/* Comparison Grid: Current vs Required */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -310,6 +327,7 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = ({
         </div>
 
       </div>
+    )}
 
     </div>
   );

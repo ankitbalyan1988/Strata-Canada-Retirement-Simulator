@@ -20,7 +20,12 @@ import {
   DollarSign,
   Key,
   Calculator,
-  Percent
+  Percent,
+  Receipt,
+  ArrowRight,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -29,10 +34,15 @@ import {
   RetirementInputs, 
   SpouseInputs,
   RealEstateInputs,
-  AccountReturnRates
+  AccountReturnRates,
+  CustomNonRegAccount,
+  MonthlyExpenseEstimates
 } from '../types/retirement';
 import { DEFAULT_SPOUSE_INPUTS, DEFAULT_REAL_ESTATE_INPUTS, DEFAULT_ACCOUNT_RETURNS } from '../utils/presets';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
+import { CurrencyInput } from './CurrencyInput';
+import { NonRegAccountsManager } from './NonRegAccountsManager';
+import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 
 interface InputPanelProps {
   inputs: RetirementInputs;
@@ -41,7 +51,8 @@ interface InputPanelProps {
 
 export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
   const isMarried = inputs.maritalStatus === 'married';
-  const [activeTab, setActiveTab] = useState<'personal' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy'>('personal');
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const updateField = <K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
     onChange({
@@ -67,7 +78,6 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
       ...inputs,
       accountReturns: {
         ...current,
-        useCustomReturns: true,
         [field]: value
       }
     });
@@ -141,50 +151,86 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           </div>
         </div>
 
-        {/* Marital Status Segmented Toggle */}
-        <div className="flex items-center bg-slate-800/90 rounded-xl p-1 border border-slate-700/80 text-xs font-semibold self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={() => handleMaritalStatusChange('single')}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              inputs.maritalStatus === 'single'
-                ? 'bg-rose-600 text-white shadow-xs font-bold'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            Single
-          </button>
+        {/* Controls: Marital Status Segmented Toggle & Collapse/Expand Button */}
+        <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
+          {/* Marital Status Segmented Toggle */}
+          <div className="flex items-center bg-slate-800/90 rounded-xl p-1 border border-slate-700/80 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => handleMaritalStatusChange('single')}
+              className={`px-3.5 py-1.5 rounded-lg transition ${
+                inputs.maritalStatus !== 'married'
+                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              Single / Divorced
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleMaritalStatusChange('married')}
-            className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-              inputs.maritalStatus === 'married'
-                ? 'bg-rose-600 text-white shadow-xs font-bold'
-                : 'text-slate-300 hover:text-white'
-            }`}
-          >
-            <Heart className="w-3.5 h-3.5 fill-current" />
-            <span>Married / Common-Law</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleMaritalStatusChange('married')}
+              className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                inputs.maritalStatus === 'married'
+                  ? 'bg-rose-600 text-white shadow-xs font-bold'
+                  : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5 fill-current" />
+              <span>Married / Common-Law</span>
+            </button>
+          </div>
 
+          {/* Collapse / Expand Toggle Button */}
           <button
             type="button"
-            onClick={() => handleMaritalStatusChange('divorced')}
-            className={`px-3 py-1.5 rounded-lg transition ${
-              inputs.maritalStatus === 'divorced'
-                ? 'bg-rose-600 text-white shadow-xs font-bold'
-                : 'text-slate-300 hover:text-white'
-            }`}
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 transition border border-slate-700/80 font-medium"
+            title={isExpanded ? 'Collapse Household Planning Structure' : 'Expand Household Planning Structure'}
+            aria-expanded={isExpanded}
           >
-            Divorced
+            <span>{isExpanded ? 'Collapse' : 'Expand Planning'}</span>
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* Tabs Header */}
-      <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
-        <button
+      {/* Collapsed Summary Bar */}
+      {!isExpanded && (
+        <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap text-xs">
+            <span className="font-bold text-slate-800">Current Inputs:</span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Age <strong className="text-slate-900">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600">{inputs.retirementAge}</strong>)
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Income: <strong className="text-slate-900">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Target Spending: <strong className="text-slate-900">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Province: <strong className="text-slate-900">{inputs.province}</strong>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsExpanded(true)}
+            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"
+          >
+            <span>Show Full Planning Tabs</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Expanded Tabs & Content */}
+      {isExpanded && (
+        <>
+          {/* Tabs Header */}
+          <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
+            <button
           type="button"
           onClick={() => setActiveTab('personal')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
@@ -195,6 +241,19 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
         >
           <User className="w-4 h-4 text-blue-600" />
           <span>Primary Profile</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('expenses')}
+          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+            activeTab === 'expenses'
+              ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
+              : 'text-rose-700 hover:text-rose-900 hover:bg-rose-50/60 font-semibold'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-rose-600" />
+          <span>Living Expenses</span>
         </button>
 
         <button
@@ -292,11 +351,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Primary Career & Household Target Budget</h4>
+                <h4 className="text-sm font-bold text-slate-900">Primary Profile & Career Baseline</h4>
                 <p className="text-xs text-slate-500">
                   {isMarried
-                    ? 'Your personal earnings and the combined household retirement spending goal'
-                    : 'Personal earnings and individual retirement spending goal'}
+                    ? 'Your personal timeline, employment earnings trajectory, and career disruption scenarios'
+                    : 'Personal timeline, employment earnings trajectory, and career disruption scenarios'}
                 </p>
               </div>
             </div>
@@ -344,24 +403,20 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
 
               <div className="flex flex-col gap-4 bg-slate-50/60 p-4 rounded-xl border border-slate-200/80">
                 <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                  {isMarried ? 'Your Earnings & Combined Household Budget' : 'Earnings & Desired Retirement Budget'}
+                  {isMarried ? 'Your Earnings & Career Trajectory' : 'Earnings & Career Trajectory'}
                 </h5>
 
                 <div>
                   <label className="text-xs font-semibold text-slate-700 block mb-1">
                     Your Annual Employment Income
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-mono">$</span>
-                    <input
-                      type="number"
-                      min={10000}
-                      step={5000}
-                      value={inputs.currentAnnualIncome}
-                      onChange={(e) => updateField('currentAnnualIncome', Number(e.target.value))}
-                      className="w-full pl-7 pr-3 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                    />
-                  </div>
+                  <CurrencyInput
+                    value={inputs.currentAnnualIncome}
+                    onChange={(val) => updateField('currentAnnualIncome', val)}
+                    min={10000}
+                    step={5000}
+                    aria-label="Your Annual Employment Income"
+                  />
 
                   {/* Wage Trend Slider (supports negative wage decrease / deflation as well as positive growth) */}
                   <div className="mt-3 p-2.5 rounded-lg bg-white border border-slate-200 flex flex-col gap-1.5">
@@ -536,28 +591,114 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                     )}
                   </div>
                 </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    {isMarried ? 'Combined Household Target Spending (Today’s Dollars)' : 'Target Annual Spending (Today’s Dollars)'}
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-mono">$</span>
-                    <input
-                      type="number"
-                      min={20000}
-                      step={2500}
-                      value={inputs.targetRetirementSpendingToday}
-                      onChange={(e) => updateField('targetRetirementSpendingToday', Number(e.target.value))}
-                      className="w-full pl-7 pr-3 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none"
-                    />
-                  </div>
-                  <span className="text-[11px] text-slate-500 mt-1 block">
-                    Equivalent to ${Math.round(inputs.targetRetirementSpendingToday / 12).toLocaleString()}/month after-tax spend.
-                  </span>
-                </div>
               </div>
 
+            </div>
+
+            {/* Next Step Guidance to Living Expenses */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900">Next Step: Estimate Living Expenses</div>
+                  <div className="text-[11px] text-slate-500">
+                    Enter your monthly household expenses in today's dollars (rent/mortgage, utilities, credit cards) and adjust post-retirement lifestyle needs.
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('expenses')}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 self-stretch sm:self-auto justify-center"
+              >
+                <span>Continue to Living Expenses</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: LIVING EXPENSES & RETIREMENT BUDGET */}
+        {activeTab === 'expenses' && (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  {isMarried ? 'Household Living Expenses & Retirement Budget' : 'Living Expenses & Retirement Budget'}
+                </h4>
+                <p className="text-xs text-slate-500">
+                  {isMarried
+                    ? 'Estimate combined household monthly living costs in today\'s dollars to determine realistic retirement replacement spending.'
+                    : 'Estimate your monthly living costs in today\'s dollars to determine realistic retirement replacement spending.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Monthly Living Expenses Estimator Component */}
+            <MonthlyExpenseEstimator
+              expenses={inputs.monthlyExpenses}
+              currentAnnualIncome={inputs.currentAnnualIncome}
+              spouseAnnualIncome={inputs.spouse?.annualIncome || 0}
+              realEstate={inputs.realEstate}
+              targetRetirementSpendingToday={inputs.targetRetirementSpendingToday}
+              onUpdateExpenses={(newExpenses) => {
+                onChange({
+                  ...inputs,
+                  monthlyExpenses: newExpenses
+                });
+              }}
+              onUpdateTargetSpending={(newSpending) => {
+                onChange({
+                  ...inputs,
+                  targetRetirementSpendingToday: newSpending
+                });
+              }}
+            />
+
+            {/* Target Retirement Spending Summary / Direct Override */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 rounded-xl border border-slate-200 text-xs">
+              <div>
+                <label className="font-bold text-slate-800 block text-xs">
+                  {isMarried
+                    ? 'Combined Household Retirement Annual Target (Today\'s Dollars)'
+                    : 'Personal Retirement Annual Spending Target (Today\'s Dollars)'}
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  Auto-calculated from your monthly living expenses with post-retirement shift applied (or customize manually)
+                </span>
+              </div>
+              <div className="w-full sm:w-48">
+                <CurrencyInput
+                  value={inputs.targetRetirementSpendingToday}
+                  onChange={(val) => updateField('targetRetirementSpendingToday', val)}
+                  min={10000}
+                  step={2500}
+                  aria-label="Target Annual Spending"
+                />
+              </div>
+            </div>
+
+            {/* Navigation Buttons: Previous and Next */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setActiveTab('personal')}
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Primary Profile</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('accounts')}
+                className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <span>Continue to Primary Accounts</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
@@ -591,32 +732,24 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1000}
-                        value={inputs.rrspBalance}
-                        onChange={(e) => updateField('rrspBalance', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.rrspBalance}
+                      onChange={(val) => updateField('rrspBalance', val)}
+                      min={0}
+                      step={1000}
+                      aria-label="RRSP Current Balance"
+                    />
                   </div>
 
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={500}
-                        value={inputs.rrspAnnualContribution}
-                        onChange={(e) => updateField('rrspAnnualContribution', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.rrspAnnualContribution}
+                      onChange={(val) => updateField('rrspAnnualContribution', val)}
+                      min={0}
+                      step={500}
+                      aria-label="RRSP Annual Savings"
+                    />
                   </div>
 
                   <div>
@@ -652,33 +785,25 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1000}
-                        value={inputs.tfsaBalance}
-                        onChange={(e) => updateField('tfsaBalance', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.tfsaBalance}
+                      onChange={(val) => updateField('tfsaBalance', val)}
+                      min={0}
+                      step={1000}
+                      aria-label="TFSA Current Balance"
+                    />
                   </div>
 
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={15000}
-                        step={500}
-                        value={inputs.tfsaAnnualContribution}
-                        onChange={(e) => updateField('tfsaAnnualContribution', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.tfsaAnnualContribution}
+                      onChange={(val) => updateField('tfsaAnnualContribution', val)}
+                      min={0}
+                      max={15000}
+                      step={500}
+                      aria-label="TFSA Annual Savings"
+                    />
                   </div>
 
                   <div>
@@ -700,11 +825,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
               </div>
 
               {/* FHSA */}
-              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/30 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/30 flex flex-col gap-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span className="text-sm font-bold text-slate-900">FHSA</span>
+                    <span className="text-sm font-bold text-slate-900">FHSA (First Home Savings Account)</span>
                   </div>
                   <span className="text-[11px] font-medium text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
                     Deductible + Tax-Free
@@ -714,33 +839,25 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1000}
-                        value={inputs.fhsaBalance}
-                        onChange={(e) => updateField('fhsaBalance', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.fhsaBalance}
+                      onChange={(val) => updateField('fhsaBalance', val)}
+                      min={0}
+                      step={1000}
+                      aria-label="FHSA Current Balance"
+                    />
                   </div>
 
                   <div>
                     <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        max={8000}
-                        step={500}
-                        value={inputs.fhsaAnnualContribution}
-                        onChange={(e) => updateField('fhsaAnnualContribution', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
+                    <CurrencyInput
+                      value={inputs.fhsaAnnualContribution}
+                      onChange={(val) => updateField('fhsaAnnualContribution', val)}
+                      min={0}
+                      max={8000}
+                      step={500}
+                      aria-label="FHSA Annual Savings"
+                    />
                   </div>
 
                   <div>
@@ -759,68 +876,147 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Year FHSA Opened & CRA 15-Year Rollover Rules */}
+                <div className="pt-2.5 border-t border-amber-200/70 flex flex-col gap-2.5 bg-white p-3 rounded-xl border border-amber-200/90 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-xs font-bold text-slate-900 block">
+                        Year FHSA Account Was Opened
+                      </label>
+                      <span className="text-[11px] text-slate-500">
+                        CRA rules state an FHSA must close after 15 years (or at age 71).
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                      {[2023, 2024, 2025, 2026].map((yr) => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => updateField('fhsaOpenYear', yr)}
+                          className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg border transition ${
+                            (inputs.fhsaOpenYear || 2023) === yr
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
+                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {yr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Calculated 15-Year Expiry & Rollover Age Card */}
+                  {(() => {
+                    const openYr = inputs.fhsaOpenYear || 2023;
+                    const expiryYr = openYr + 15;
+                    const rolloverAge = Math.min(71, inputs.currentAge + (expiryYr - 2026));
+                    const isRollover71 = rolloverAge >= 71;
+                    const rolloverTarget = isRollover71 ? 'RRIF' : (rolloverAge >= inputs.retirementAge ? 'RRIF / RRSP' : 'RRSP');
+
+                    return (
+                      <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-semibold text-amber-950 flex items-center gap-1">
+                            <span>⏳</span> 15-Year CRA Participation Window:
+                          </span>
+                          <span className="font-mono font-bold px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 text-[11px]">
+                            Opened in {openYr} → 15 Yrs Ends in {expiryYr}
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-amber-900 leading-snug">
+                          {inputs.fhsaIntent === 'home_purchase' ? (
+                            <>
+                              If not utilized for a home purchase by year <strong>{expiryYr}</strong>, your FHSA balance rolls over at <strong>Age {rolloverAge}</strong> into your <strong>{rolloverTarget}</strong> 100% tax-free!
+                            </>
+                          ) : (
+                            <>
+                              After 15 years in <strong>{expiryYr}</strong>, your accumulated FHSA automatically rolls over at <span className="font-extrabold text-amber-950 underline decoration-amber-500 underline-offset-2">Age {rolloverAge}</span> directly into your <strong>{rolloverTarget}</strong> tax-free without reducing any RRSP contribution room.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    );
+                  })()}
+
+                  {/* FHSA Intent Switcher */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100">
+                    <span className="text-xs font-semibold text-slate-700">Account Intent:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => updateField('fhsaIntent', 'rollover_to_rrsp')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                          inputs.fhsaIntent !== 'home_purchase'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-bold'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Rollover to RRSP/RRIF
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateField('fhsaIntent', 'home_purchase')}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                          inputs.fhsaIntent === 'home_purchase'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-bold'
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        }`}
+                      >
+                        Buy First Home
+                      </button>
+                    </div>
+                  </div>
+
+                  {inputs.fhsaIntent === 'home_purchase' && (
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
+                      <span className="text-slate-600">Planned Home Purchase Age:</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min={inputs.currentAge + 1}
+                          max={Math.min(71, inputs.currentAge + ((inputs.fhsaOpenYear || 2023) + 15 - 2026))}
+                          value={inputs.fhsaHomePurchaseAge || inputs.currentAge + 3}
+                          onChange={(e) => updateField('fhsaHomePurchaseAge', Number(e.target.value))}
+                          className="w-24 sm:w-32 h-1.5 bg-slate-200 rounded cursor-pointer accent-amber-600"
+                        />
+                        <span className="font-mono font-bold text-amber-900 text-xs">
+                          Age {inputs.fhsaHomePurchaseAge || inputs.currentAge + 3}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Non-Registered */}
-              <div className="p-4 rounded-xl border border-purple-100 bg-purple-50/30 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-                    <span className="text-sm font-bold text-slate-900">Non-Registered (SA / Taxable)</span>
-                  </div>
-                  <span className="text-[11px] font-medium text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded">
-                    Taxable
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={2000}
-                        value={inputs.nonRegBalance}
-                        onChange={(e) => updateField('nonRegBalance', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                      <input
-                        type="number"
-                        min={0}
-                        step={1000}
-                        value={inputs.nonRegAnnualContribution}
-                        onChange={(e) => updateField('nonRegAnnualContribution', Number(e.target.value))}
-                        className="w-full pl-6 pr-2 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] font-medium text-purple-800 block mb-1 font-semibold">Expected Return</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min={0}
-                        max={15}
-                        step={0.1}
-                        value={inputs.accountReturns?.nonRegReturn ?? 5.5}
-                        onChange={(e) => updateAccountReturn('nonRegReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-purple-700 rounded-lg border border-purple-200 bg-white"
-                      />
-                      <span className="absolute right-2.5 top-2 text-xs text-purple-600 font-bold">%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Non-Registered (SA / Taxable) - Unified Bucket with Custom Accounts Support */}
+              <NonRegAccountsManager
+                accounts={inputs.nonRegCustomAccounts}
+                baseBalance={inputs.nonRegBalance}
+                baseAnnualContribution={inputs.nonRegAnnualContribution}
+                baseReturn={inputs.accountReturns?.nonRegReturn ?? 5.5}
+                onUpdate={(newAccounts, totalBal, totalCont, weightedRet) => {
+                  onChange({
+                    ...inputs,
+                    nonRegBalance: totalBal,
+                    nonRegAnnualContribution: totalCont,
+                    nonRegCustomAccounts: newAccounts,
+                    accountReturns: {
+                      ...(inputs.accountReturns || DEFAULT_ACCOUNT_RETURNS),
+                      nonRegReturn: weightedRet
+                    }
+                  });
+                }}
+                onClearToSimple={(fallbackBal, fallbackCont) => {
+                  onChange({
+                    ...inputs,
+                    nonRegBalance: fallbackBal,
+                    nonRegAnnualContribution: fallbackCont,
+                    nonRegCustomAccounts: []
+                  });
+                }}
+              />
 
             </div>
           </div>
@@ -982,17 +1178,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                         <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                           Original Cost of Home (Purchase Price)
                         </label>
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                          <input
-                            type="number"
-                            min={50000}
-                            step={10000}
-                            value={costOfHome}
-                            onChange={(e) => updateRealEstateField('costOfHome', Number(e.target.value))}
-                            className="w-full pl-6 pr-3 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                          />
-                        </div>
+                        <CurrencyInput
+                          value={costOfHome}
+                          onChange={(val) => updateRealEstateField('costOfHome', val)}
+                          min={50000}
+                          step={10000}
+                          aria-label="Original Cost of Home"
+                        />
                       </div>
 
                       {/* Current Market Value */}
@@ -1000,17 +1192,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                         <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                           Current Estimated Market Value Today
                         </label>
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                          <input
-                            type="number"
-                            min={50000}
-                            step={10000}
-                            value={currentMarketValue}
-                            onChange={(e) => updateRealEstateField('currentMarketValue', Number(e.target.value))}
-                            className="w-full pl-6 pr-3 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                          />
-                        </div>
+                        <CurrencyInput
+                          value={currentMarketValue}
+                          onChange={(val) => updateRealEstateField('currentMarketValue', val)}
+                          min={50000}
+                          step={10000}
+                          aria-label="Current Estimated Market Value Today"
+                        />
                       </div>
 
                       {/* Down Payment */}
@@ -1019,18 +1207,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                           <span className="text-slate-700">Down Payment Paid:</span>
                           <span className="text-amber-700 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
                         </div>
-                        <div className="relative">
-                          <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={costOfHome}
-                            step={5000}
-                            value={downPayment}
-                            onChange={(e) => updateRealEstateField('downPayment', Number(e.target.value))}
-                            className="w-full pl-6 pr-3 py-1.5 text-xs font-mono font-medium rounded-lg border border-slate-200 bg-white"
-                          />
-                        </div>
+                        <CurrencyInput
+                          value={downPayment}
+                          onChange={(val) => updateRealEstateField('downPayment', val)}
+                          min={0}
+                          max={costOfHome}
+                          step={5000}
+                          aria-label="Down Payment Paid"
+                        />
                       </div>
 
                       {/* Ownership Share */}
@@ -1317,17 +1501,13 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
 
               <div>
                 <label className="text-[11px] font-semibold text-slate-700 block mb-1">Annual Employment Income</label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-2 text-xs text-slate-400 font-mono">$</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={5000}
-                    value={inputs.spouse.annualIncome}
-                    onChange={(e) => updateSpouseField('annualIncome', Number(e.target.value))}
-                    className="w-full pl-6 pr-2 py-1.5 text-xs rounded-lg border border-slate-200 font-mono font-medium"
-                  />
-                </div>
+                <CurrencyInput
+                  value={inputs.spouse.annualIncome}
+                  onChange={(val) => updateSpouseField('annualIncome', val)}
+                  min={0}
+                  step={5000}
+                  aria-label="Spouse Annual Employment Income"
+                />
                 <div className="flex items-center justify-between gap-1 mt-1 text-[10.5px]">
                   <span className="text-slate-500">Wage Trend:</span>
                   <div className="flex items-center gap-1">
@@ -1358,24 +1538,22 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.rrspBalance}
+                      onChange={(val) => updateSpouseField('rrspBalance', val)}
                       min={0}
                       step={1000}
-                      value={inputs.spouse.rrspBalance}
-                      onChange={(e) => updateSpouseField('rrspBalance', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse RRSP Current Balance"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.rrspAnnualContribution}
+                      onChange={(val) => updateSpouseField('rrspAnnualContribution', val)}
                       min={0}
                       step={500}
-                      value={inputs.spouse.rrspAnnualContribution}
-                      onChange={(e) => updateSpouseField('rrspAnnualContribution', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse RRSP Annual Contribution"
                     />
                   </div>
                 </div>
@@ -1390,25 +1568,23 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.tfsaBalance}
+                      onChange={(val) => updateSpouseField('tfsaBalance', val)}
                       min={0}
                       step={1000}
-                      value={inputs.spouse.tfsaBalance}
-                      onChange={(e) => updateSpouseField('tfsaBalance', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse TFSA Current Balance"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.tfsaAnnualContribution}
+                      onChange={(val) => updateSpouseField('tfsaAnnualContribution', val)}
                       min={0}
                       max={15000}
                       step={500}
-                      value={inputs.spouse.tfsaAnnualContribution}
-                      onChange={(e) => updateSpouseField('tfsaAnnualContribution', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse TFSA Annual Contribution"
                     />
                   </div>
                 </div>
@@ -1423,27 +1599,59 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.fhsaBalance}
+                      onChange={(val) => updateSpouseField('fhsaBalance', val)}
                       min={0}
                       step={1000}
-                      value={inputs.spouse.fhsaBalance}
-                      onChange={(e) => updateSpouseField('fhsaBalance', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse FHSA Current Balance"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.fhsaAnnualContribution}
+                      onChange={(val) => updateSpouseField('fhsaAnnualContribution', val)}
                       min={0}
                       max={8000}
                       step={500}
-                      value={inputs.spouse.fhsaAnnualContribution}
-                      onChange={(e) => updateSpouseField('fhsaAnnualContribution', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse FHSA Annual Contribution"
                     />
                   </div>
+                </div>
+
+                {/* Spouse Year FHSA Opened & 15-yr Rollover */}
+                <div className="pt-2 border-t border-amber-200/60 flex flex-col gap-2 bg-white/90 p-2.5 rounded-lg border border-amber-200/60 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-slate-700">Year Opened:</span>
+                    <div className="flex items-center gap-1">
+                      {[2023, 2024, 2025, 2026].map((yr) => (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => updateSpouseField('fhsaOpenYear', yr)}
+                          className={`px-2 py-0.5 text-[10.5px] font-mono font-bold rounded border transition ${
+                            (inputs.spouse?.fhsaOpenYear || 2023) === yr
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          {yr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {(() => {
+                    const spOpenYr = inputs.spouse?.fhsaOpenYear || 2023;
+                    const spExpiryYr = spOpenYr + 15;
+                    const spRolloverAge = Math.min(71, (inputs.spouse?.currentAge || 40) + (spExpiryYr - 2026));
+                    const spTarget = spRolloverAge >= 71 ? 'RRIF' : (spRolloverAge >= (inputs.spouse?.retirementAge || 65) ? 'RRIF / RRSP' : 'RRSP');
+                    return (
+                      <span className="text-[11px] text-amber-900 leading-tight">
+                        CRA 15-yr limit in <strong>{spExpiryYr}</strong> → rolls over into spouse's <strong>{spTarget}</strong> at <span className="font-bold underline decoration-amber-500">Age {spRolloverAge}</span>.
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -1456,24 +1664,22 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.nonRegBalance}
+                      onChange={(val) => updateSpouseField('nonRegBalance', val)}
                       min={0}
                       step={2000}
-                      value={inputs.spouse.nonRegBalance}
-                      onChange={(e) => updateSpouseField('nonRegBalance', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse Non-Registered Current Balance"
                     />
                   </div>
                   <div>
                     <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
-                    <input
-                      type="number"
+                    <CurrencyInput
+                      value={inputs.spouse.nonRegAnnualContribution}
+                      onChange={(val) => updateSpouseField('nonRegAnnualContribution', val)}
                       min={0}
                       step={1000}
-                      value={inputs.spouse.nonRegAnnualContribution}
-                      onChange={(e) => updateSpouseField('nonRegAnnualContribution', Number(e.target.value))}
-                      className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200"
+                      aria-label="Spouse Non-Registered Annual Contribution"
                     />
                   </div>
                 </div>
@@ -1631,26 +1837,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
         {/* TAB 5: MARKET RETURNS & INFLATION */}
         {activeTab === 'market' && (
           <div className="flex flex-col gap-6">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Economic Parameters & Per-Account Return Rates</h4>
-                <p className="text-xs text-slate-500">Configure global benchmarks or customize return rates independently for each account</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-600">Rate Mode:</span>
-                <button
-                  type="button"
-                  onClick={() => updateAccountReturn('useCustomReturns', !inputs.accountReturns?.useCustomReturns)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold border transition ${
-                    inputs.accountReturns?.useCustomReturns
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {inputs.accountReturns?.useCustomReturns ? '✨ Per-Account Custom Rates' : 'Uniform Global Rate'}
-                </button>
-              </div>
+            <div className="border-b border-slate-100 pb-3">
+              <h4 className="text-sm font-bold text-slate-900">Economic Parameters & Per-Account Return Rates</h4>
+              <p className="text-xs text-slate-500">Configure expected return rates independently for each Canadian account vehicle</p>
             </div>
 
             {/* Individual Account Returns Grid */}
@@ -1661,7 +1850,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                   Individual Account Expected Return Rates
                 </span>
                 <span className="text-[11px] font-semibold text-indigo-700">
-                  {inputs.accountReturns?.useCustomReturns ? 'Custom rates applied to each vehicle' : 'Synced with global pre/post retirement return'}
+                  Independent compounding rates applied directly to each account
                 </span>
               </div>
 
@@ -1742,85 +1931,35 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                     <span className="w-2 h-2 rounded-full bg-purple-600"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">Expected:</span>
+                    <span className="text-[11px] text-slate-500">
+                      {inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0 ? 'Blended:' : 'Expected:'}
+                    </span>
                     <span className="text-sm font-extrabold text-purple-700 font-mono">
                       {inputs.accountReturns?.nonRegReturn ?? 5.5}%
                     </span>
                   </div>
-                  <input
-                    type="range"
-                    min={2.0}
-                    max={12.0}
-                    step={0.1}
-                    value={inputs.accountReturns?.nonRegReturn ?? 5.5}
-                    onChange={(e) => updateAccountReturn('nonRegReturn', Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-purple-600"
-                  />
+                  {inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0 ? (
+                    <div className="text-[9px] text-purple-800 font-semibold bg-purple-50/80 px-1.5 py-0.5 rounded border border-purple-100 text-center">
+                      Calculated from {inputs.nonRegCustomAccounts.length} custom accounts
+                    </div>
+                  ) : (
+                    <input
+                      type="range"
+                      min={2.0}
+                      max={12.0}
+                      step={0.1}
+                      value={inputs.accountReturns?.nonRegReturn ?? 5.5}
+                      onChange={(e) => updateAccountReturn('nonRegReturn', Number(e.target.value))}
+                      className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-purple-600"
+                    />
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              
               <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-4">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Baseline Portfolio Return Rates</h5>
-
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Pre-Retirement Annual Return:</span>
-                    <span className="text-emerald-700 font-mono font-bold">{inputs.preRetirementReturn}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={3.0}
-                    max={10.0}
-                    step={0.1}
-                    value={inputs.preRetirementReturn}
-                    onChange={(e) => updateField('preRetirementReturn', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Post-Retirement Annual Return:</span>
-                    <span className="text-emerald-700 font-mono font-bold">{inputs.postRetirementReturn}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min={2.0}
-                    max={8.0}
-                    step={0.1}
-                    value={inputs.postRetirementReturn}
-                    onChange={(e) => updateField('postRetirementReturn', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
-                  />
-                </div>
-
-                {inputs.realEstate?.ownsHome && (
-                  <div className="pt-2 border-t border-slate-200">
-                    <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span className="text-slate-700 flex items-center gap-1">
-                        <Home className="w-3.5 h-3.5 text-amber-600" />
-                        Real Estate Appreciation Rate:
-                      </span>
-                      <span className="text-amber-700 font-mono font-bold">{inputs.realEstate.annualAppreciationRate}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={1.0}
-                      max={7.0}
-                      step={0.1}
-                      value={inputs.realEstate.annualAppreciationRate}
-                      onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-4">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Inflation & Tax Friction</h5>
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Macroeconomic & Tax Friction</h5>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
@@ -1836,6 +1975,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                     onChange={(e) => updateField('inflationRate', Number(e.target.value))}
                     className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Bank of Canada benchmark target is 2.0%</span>
                 </div>
 
                 <div>
@@ -1852,9 +1992,41 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                     onChange={(e) => updateField('nonRegYieldTaxRate', Number(e.target.value))}
                     className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-purple-600"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Estimated annual tax friction on dividend yields and realized capital gains</span>
                 </div>
               </div>
 
+              {inputs.realEstate?.ownsHome ? (
+                <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-4">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Property Appreciation</h5>
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span className="text-slate-700 flex items-center gap-1">
+                        <Home className="w-3.5 h-3.5 text-amber-600" />
+                        Real Estate Annual Appreciation Rate:
+                      </span>
+                      <span className="text-amber-700 font-mono font-bold">{inputs.realEstate.annualAppreciationRate}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={7.0}
+                      step={0.1}
+                      value={inputs.realEstate.annualAppreciationRate}
+                      onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
+                    />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Long-term Canadian residential market appreciation (CREA average ~3.2%)</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col justify-center text-xs text-slate-500">
+                  <p className="font-semibold text-slate-700 mb-1">Per-Account Compounding Active</p>
+                  <p className="text-[11px] leading-relaxed">
+                    Each Canadian vehicle (RRSP, TFSA, FHSA, and Non-Reg) compounds year-over-year strictly using its dedicated expected return rate specified above.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1951,7 +2123,9 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           </div>
         )}
 
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

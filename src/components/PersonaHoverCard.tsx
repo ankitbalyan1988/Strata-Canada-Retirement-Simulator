@@ -98,7 +98,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
                   {activePreset.name}
                 </span>
                 <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                  {inp.maritalStatus === 'married' ? 'Couple' : inp.maritalStatus === 'divorced' ? 'Solo' : 'Single'}
+                  {inp.maritalStatus === 'married' ? 'Couple' : 'Single / Divorced'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
@@ -185,7 +185,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
                   : 'Renting (No Real Estate Asset)'}
               </span>
               <span className="text-[10px] text-amber-800 font-mono font-bold">
-                {inp.accountReturns?.useCustomReturns ? 'Custom Rates' : `${inp.preRetirementReturn}% / ${inp.postRetirementReturn}%`}
+                {`RRSP ${inp.accountReturns?.rrspReturn ?? 6.5}% · TFSA ${inp.accountReturns?.tfsaReturn ?? 7.0}%`}
               </span>
             </div>
 
