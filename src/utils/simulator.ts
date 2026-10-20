@@ -17,9 +17,15 @@ import {
   FHSA_LIFETIME_LIMIT
 } from './canadianTax';
 
+export interface SimulationOptions {
+  stopContributionsAge?: number;
+  isCoastCheck?: boolean;
+}
+
 export function runRetirementSimulation(
   inputs: RetirementInputs,
-  stressTest?: StressTestOptions
+  stressTest?: StressTestOptions,
+  simulationOptions?: SimulationOptions
 ): {
   yearlyResults: YearSimulationResult[];
   summary: SimulationSummary;
@@ -400,6 +406,18 @@ export function runRetirementSimulation(
         pNonRegContrib = Math.max(0, nonRegAnnualContribution);
       }
 
+      if (simulationOptions?.stopContributionsAge !== undefined && age >= simulationOptions.stopContributionsAge) {
+        pRrspContrib = 0;
+        pTfsaContrib = 0;
+        pFhsaContrib = 0;
+        pNonRegContrib = 0;
+        if (hasCustomNonReg) {
+          customAccountsState.forEach((acc) => {
+            acc.currentContribution = 0;
+          });
+        }
+      }
+
       // If salary decreases as a result of a career disruption or downturn, reduce contributions
       const totalPlannedSavings = pRrspContrib + pTfsaContrib + pFhsaContrib + pNonRegContrib;
       if (totalPlannedSavings > 0) {
@@ -476,6 +494,12 @@ export function runRetirementSimulation(
         sCumulativeFhsa += allowed;
       }
       sNonRegContrib = Math.max(0, spouse.nonRegAnnualContribution);
+      if (simulationOptions?.stopContributionsAge !== undefined && (spouseAge !== undefined ? spouseAge >= simulationOptions.stopContributionsAge : age >= simulationOptions.stopContributionsAge)) {
+        sRrspContrib = 0;
+        sTfsaContrib = 0;
+        sFhsaContrib = 0;
+        sNonRegContrib = 0;
+      }
 
       if (spouse.careerDisruption?.enabled && spouseAge !== undefined) {
         const scd = spouse.careerDisruption;
@@ -571,7 +595,10 @@ export function runRetirementSimulation(
     sNonReg += sNonRegContrib + sNonRegGrowth;
 
     // 3. Decumulation & Pensions
-    let targetSpendingNominal = 0;
+    const currentLivingExpensesNominal = isRetired
+      ? targetRetirementSpendingToday * inflationFactor
+      : initialAnnualExpenses * inflationFactor;
+    let targetSpendingNominal = Math.round(currentLivingExpensesNominal);
     let netSpendableCashflow = 0;
     let cashflowGap = 0;
     let isRrifMandatory: boolean = Boolean(age >= 72 || (isCouple && spouse && spouseAge !== undefined && spouseAge >= 72));
@@ -579,7 +606,6 @@ export function runRetirementSimulation(
 
     if (isRetired) {
       totalRetirementYears++;
-      targetSpendingNominal = targetRetirementSpendingToday * inflationFactor;
       sumAnnualRetirementSpend += targetSpendingNominal;
 
       // Primary Pensions
@@ -906,6 +932,222 @@ export function runRetirementSimulation(
   const yearsFunded = depletionAge !== null ? (depletionAge - retirementAge) : totalYearsInRetirement;
   const readinessScore = Math.min(100, Math.max(0, Math.round((yearsFunded / totalYearsInRetirement) * 100)));
 
+  // ==========================================
+  // Strategic Milestone Analysis (Skipped in sub-sims)
+  // ==========================================
+  let crossoverAge: number | null = null;
+  let crossoverYear: number | null = null;
+  let crossoverInvestmentGrowth = 0;
+  let crossoverLivingExpenses = 0;
+
+  let coastFireAge: number | null = null;
+  let coastFireYear: number | null = null;
+  let coastFireNetWorth = 0;
+
+  let millionaireAge: number | null = null;
+  let millionaireYear: number | null = null;
+
+  let mortgagePayoffAge: number | null = null;
+  let mortgagePayoffYear: number | null = null;
+
+  if (!simulationOptions?.isCoastCheck) {
+    // 1. Crossover Point: The point at which returns on investment start outgrowing annual living expenses
+    for (const row of yearlyResults) {
+      if (row.totalInvestmentGrowth >= row.targetSpendingNominal && row.targetSpendingNominal > 0) {
+        crossoverAge = row.age;
+        crossoverYear = row.year;
+        crossoverInvestmentGrowth = row.totalInvestmentGrowth;
+        crossoverLivingExpenses = row.targetSpendingNominal;
+        row.isCrossoverMilestone = true;
+        const growthFormatted = Math.round(row.totalInvestmentGrowth).toLocaleString();
+        const spendingFormatted = Math.round(row.targetSpendingNominal).toLocaleString();
+        row.notes.unshift(
+          `🚀 Crossover Milestone: Annual investment returns ($${growthFormatted}/yr) outgrow required annual living expenses ($${spendingFormatted}/yr)! Portfolio compounding surpasses household spending.`
+        );
+        row.milestoneBadges = row.milestoneBadges || [];
+        row.milestoneBadges.push({
+          id: 'crossover',
+          label: 'Crossover Point',
+          shortLabel: '🚀 Returns > Expenses',
+          type: 'crossover',
+          icon: 'zap',
+          color: 'emerald',
+          description: 'Annual investment returns surpass required annual living expenses',
+          metricsSummary: `Returns: $${growthFormatted}/yr vs Living: $${spendingFormatted}/yr`
+        });
+        break;
+      }
+    }
+
+    // 2. Coast FIRE Milestone: Point where zero future contributions still fully funds intended retirement
+    for (let testAge = currentAge; testAge <= retirementAge; testAge++) {
+      const testSim = runRetirementSimulation(inputs, stressTest, {
+        isCoastCheck: true,
+        stopContributionsAge: testAge
+      });
+      if (testSim.summary.isFullyFunded) {
+        coastFireAge = testAge;
+        break;
+      }
+    }
+
+    if (coastFireAge !== null) {
+      const coastRow = yearlyResults.find(r => r.age === coastFireAge);
+      if (coastRow) {
+        coastFireYear = coastRow.year;
+        coastFireNetWorth = coastRow.totalNetWorth;
+        coastRow.isCoastFireMilestone = true;
+        coastRow.milestoneBadges = coastRow.milestoneBadges || [];
+        const nwFormatted = Math.round(coastRow.totalNetWorth).toLocaleString();
+        coastRow.milestoneBadges.push({
+          id: 'coast_fire',
+          label: 'Coast FIRE / Zero-Contribution',
+          shortLabel: '⚓ Coast FIRE',
+          type: 'coast_fire',
+          icon: 'anchor',
+          color: 'cyan',
+          description: 'Zero further contributions required to fully fund retirement through life expectancy',
+          metricsSummary: `Invested Assets: $${nwFormatted}`
+        });
+        const coastMsg = coastFireAge === currentAge
+          ? `⚓ Coast FIRE Milestone: Zero-contribution viability achieved today! Your current portfolio ($${nwFormatted}) alone will compound to fully fund all intended retirement expenses through age ${lifeExpectancy} with $0 future contributions required.`
+          : `⚓ Coast FIRE Milestone: Zero-contribution viability reached at Age ${coastFireAge}! Even if all savings contributions stop at age ${coastFireAge}, investment growth alone will fully fund retirement expenses through age ${lifeExpectancy}.`;
+        coastRow.notes.unshift(coastMsg);
+      }
+    }
+
+    // 3. Millionaire Milestone ($1M+ Net Worth)
+    for (const row of yearlyResults) {
+      if (row.totalNetWorth >= 1000000) {
+        millionaireAge = row.age;
+        millionaireYear = row.year;
+        row.isMillionaireMilestone = true;
+        row.milestoneBadges = row.milestoneBadges || [];
+        const nwFormatted = Math.round(row.totalNetWorth).toLocaleString();
+        row.milestoneBadges.push({
+          id: 'millionaire',
+          label: 'Millionaire Milestone',
+          shortLabel: '💎 $1M Net Worth',
+          type: 'millionaire',
+          icon: 'diamond',
+          color: 'blue',
+          description: 'Household net worth reaches $1,000,000 milestone',
+          metricsSummary: `Net Worth: $${nwFormatted}`
+        });
+        row.notes.push(`💎 Millionaire Milestone: Total Net Worth surpasses $1,000,000 ($${nwFormatted}).`);
+        break;
+      }
+    }
+
+    // 4. Mortgage Freedom Milestone
+    if (ownsHome && initialMortgagePrincipal > 0) {
+      for (const row of yearlyResults) {
+        if (row.remainingMortgage <= 0 && row.homeValue > 0 && !row.homeSoldThisYear) {
+          mortgagePayoffAge = row.age;
+          mortgagePayoffYear = row.year;
+          row.isMortgageFreeMilestone = true;
+          row.milestoneBadges = row.milestoneBadges || [];
+          row.milestoneBadges.push({
+            id: 'mortgage_free',
+            label: 'Mortgage Freedom',
+            shortLabel: '🏡 Debt Free',
+            type: 'mortgage_free',
+            icon: 'home',
+            color: 'teal',
+            description: 'Primary residence mortgage fully amortized to $0 balance',
+            metricsSummary: 'Mortgage: $0'
+          });
+          row.notes.push(`🏡 Mortgage Freedom: Home mortgage loan fully paid off to $0 balance! Cash flow freed from loan service.`);
+          break;
+        }
+      }
+    }
+
+    // 5. Target Retirement Day Milestone
+    const retRow = yearlyResults.find(r => r.age === retirementAge);
+    if (retRow) {
+      retRow.milestoneBadges = retRow.milestoneBadges || [];
+      const nwFormatted = Math.round(retRow.totalNetWorth).toLocaleString();
+      retRow.milestoneBadges.push({
+        id: 'retirement',
+        label: 'Target Retirement Day',
+        shortLabel: '🎯 Retire Target',
+        type: 'retirement',
+        icon: 'target',
+        color: 'rose',
+        description: 'Transition from accumulation to decumulation phase',
+        metricsSummary: `Starting Nest Egg: $${nwFormatted}`
+      });
+      retRow.notes.push(`🎯 Target Retirement: Employment income ends and portfolio decumulation begins. Starting net worth: $${nwFormatted}.`);
+    }
+
+    // 6. Peak Lifetime Wealth Milestone
+    const peakRow = yearlyResults.find(r => r.age === peakNetWorthAge);
+    if (peakRow && peakNetWorthAge !== retirementAge) {
+      peakRow.isPeakWealthMilestone = true;
+      peakRow.milestoneBadges = peakRow.milestoneBadges || [];
+      const peakNwFormatted = Math.round(peakRow.totalNetWorth).toLocaleString();
+      peakRow.milestoneBadges.push({
+        id: 'peak_wealth',
+        label: 'Peak Lifetime Wealth Apex',
+        shortLabel: '🏔️ Peak Wealth',
+        type: 'peak_net_worth',
+        icon: 'mountain',
+        color: 'indigo',
+        description: 'Maximum lifetime net worth apex before decumulation',
+        metricsSummary: `Peak Net Worth: $${peakNwFormatted}`
+      });
+      peakRow.notes.push(`🏔️ Peak Net Worth: Lifetime wealth apex of $${peakNwFormatted} achieved at Age ${peakNetWorthAge}.`);
+    }
+
+    // 7. CPP & OAS Pension Starts
+    const cppRow = yearlyResults.find(r => r.age === cppStartAge);
+    if (cppRow && cppRow.cppIncome > 0) {
+      cppRow.milestoneBadges = cppRow.milestoneBadges || [];
+      cppRow.milestoneBadges.push({
+        id: 'cpp_start',
+        label: 'CPP Pension Benefit Start',
+        shortLabel: '🏛️ CPP Start',
+        type: 'pension',
+        icon: 'landmark',
+        color: 'violet',
+        description: 'Canada Pension Plan monthly retirement benefits begin',
+        metricsSummary: `CPP Benefit: $${Math.round(cppRow.cppIncome).toLocaleString()}/yr`
+      });
+    }
+
+    const oasRow = yearlyResults.find(r => r.age === oasStartAge);
+    if (oasRow && oasRow.oasNetIncome > 0) {
+      oasRow.milestoneBadges = oasRow.milestoneBadges || [];
+      oasRow.milestoneBadges.push({
+        id: 'oas_start',
+        label: 'OAS Pension Benefit Start',
+        shortLabel: '🏛️ OAS Start',
+        type: 'pension',
+        icon: 'landmark',
+        color: 'emerald',
+        description: 'Old Age Security monthly benefits begin',
+        metricsSummary: `OAS Net: $${Math.round(oasRow.oasNetIncome).toLocaleString()}/yr`
+      });
+    }
+
+    // 8. CRA Mandatory RRIF Conversion
+    const rrifRow = yearlyResults.find(r => r.age === 72);
+    if (rrifRow && rrifRow.rrspBalance > 0) {
+      rrifRow.milestoneBadges = rrifRow.milestoneBadges || [];
+      rrifRow.milestoneBadges.push({
+        id: 'rrif_mandatory',
+        label: 'CRA RRIF Mandatory Conversion',
+        shortLabel: '📜 RRIF Minimums',
+        type: 'rrif',
+        icon: 'file-text',
+        color: 'amber',
+        description: 'CRA statutory mandatory minimum RRIF withdrawal rules active',
+        metricsSummary: `Statutory Rate: ${(getRrifMinimumRate(72) * 100).toFixed(2)}%`
+      });
+    }
+  }
+
   const summary: SimulationSummary = {
     portfolioDepletionAge: depletionAge,
     yearsFunded,
@@ -932,6 +1174,17 @@ export function runRetirementSimulation(
     firstRrifMandatoryYear: 72,
     cppStartAge,
     oasStartAge,
+    crossoverAge,
+    crossoverYear,
+    crossoverInvestmentGrowth: Math.round(crossoverInvestmentGrowth),
+    crossoverLivingExpenses: Math.round(crossoverLivingExpenses),
+    coastFireAge,
+    coastFireYear,
+    coastFireNetWorth: Math.round(coastFireNetWorth),
+    millionaireAge,
+    millionaireYear,
+    mortgagePayoffAge,
+    mortgagePayoffYear,
     isCouple,
     spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined
   };

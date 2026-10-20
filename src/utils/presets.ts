@@ -101,6 +101,7 @@ export const PRESETS: ScenarioPreset[] = [
       province: 'ON',
       currentAnnualIncome: 145000,
       incomeGrowthRate: 2.5,
+      monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
       targetRetirementSpendingToday: 78000,
       realEstate: {
         ownsHome: true,
@@ -160,6 +161,7 @@ export const PRESETS: ScenarioPreset[] = [
       province: 'ON',
       currentAnnualIncome: 135000,
       incomeGrowthRate: 2.2,
+      monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
       targetRetirementSpendingToday: 95000,
       realEstate: {
         ownsHome: true,
@@ -241,6 +243,7 @@ export const PRESETS: ScenarioPreset[] = [
       province: 'BC',
       currentAnnualIncome: 130000,
       incomeGrowthRate: 3.0,
+      monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
       targetRetirementSpendingToday: 62000,
       realEstate: {
         ownsHome: true,
@@ -300,6 +303,7 @@ export const PRESETS: ScenarioPreset[] = [
       province: 'AB',
       currentAnnualIncome: 215000,
       incomeGrowthRate: 2.0,
+      monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
       targetRetirementSpendingToday: 110000,
       realEstate: {
         ownsHome: true,
@@ -359,6 +363,7 @@ export const PRESETS: ScenarioPreset[] = [
       province: 'QC',
       currentAnnualIncome: 122000,
       incomeGrowthRate: 2.2,
+      monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
       targetRetirementSpendingToday: 68000,
       realEstate: {
         ownsHome: true,

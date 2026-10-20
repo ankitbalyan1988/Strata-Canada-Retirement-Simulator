@@ -214,7 +214,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
         onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full ${!hidePrefix ? 'pl-6' : 'px-2.5'} pr-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 focus:outline-none transition ${className}`}
+        className={`w-full ${!hidePrefix ? 'pl-6' : 'px-2.5'} pr-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-400 focus:outline-none transition ${className}`}
         {...rest}
       />
     </div>

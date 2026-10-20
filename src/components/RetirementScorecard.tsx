@@ -7,7 +7,9 @@ import {
   Percent, 
   Receipt,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Zap,
+  Anchor
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary, YearSimulationResult } from '../types/retirement';
 
@@ -80,9 +82,25 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = ({
           </div>
         </div>
 
-        <span className="text-[11px] text-slate-500">
-          {summary.yearsFunded} of {summary.totalYearsInRetirement} retirement years funded to Age {inputs.lifeExpectancy}
-        </span>
+        <div className="flex flex-col gap-1.5 mt-1">
+          <span className="text-[11px] text-slate-500">
+            {summary.yearsFunded} of {summary.totalYearsInRetirement} retirement years funded to Age {inputs.lifeExpectancy}
+          </span>
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            {summary.crossoverAge && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-md" title={`Crossover Point: Returns exceed expenses at Age ${summary.crossoverAge}`}>
+                <Zap className="w-2.5 h-2.5 text-emerald-600 fill-emerald-500" />
+                <span>Crossover: Age {summary.crossoverAge}</span>
+              </span>
+            )}
+            {summary.coastFireAge !== undefined && summary.coastFireAge !== null && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded-md" title={`Coast FIRE: Zero-contribution viability achieved at Age ${summary.coastFireAge}`}>
+                <Anchor className="w-2.5 h-2.5 text-cyan-600" />
+                <span>Coast FIRE: {summary.coastFireAge === inputs.currentAge ? 'Achieved!' : `Age ${summary.coastFireAge}`}</span>
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Card 2: Net Worth at Retirement & End */}

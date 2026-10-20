@@ -93,7 +93,7 @@ export async function exportMilestoneTableToExcel({
   // Explanation note for formula
   worksheet.mergeCells('A4:O4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = 'Note: The "Total Net Worth" column retains dynamic Excel formulas: =SUM(D#:H#) summing RRSP, TFSA, FHSA, Non-Reg, and Home Equity. Totals row at the bottom includes Excel SUM / Final formulas.';
+  noteCell.value = '💡 MapleRetire Dynamic Model: ALL cells across Age, Sim Year, Phase, RRSP, TFSA, FHSA, Non-Reg, Home Equity, Net Worth, CPP, OAS, Withdrawals, Taxes, and Spendable Cash contain live Excel formulas. Every cell dynamically recalculates when values are updated.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -172,7 +172,10 @@ export async function exportMilestoneTableToExcel({
   let currentRowNumber = headerRowNumber + 1;
   const firstDataRow = currentRowNumber;
 
-  data.forEach((row) => {
+  const cppStartAge = inputs?.cppStartAge || 65;
+  const oasStartAge = inputs?.oasStartAge || 65;
+
+  data.forEach((row, index) => {
     const dataRow = worksheet.getRow(currentRowNumber);
     dataRow.height = 20;
 
@@ -188,22 +191,37 @@ export async function exportMilestoneTableToExcel({
       rowBgColor = 'FFFEF3C7'; // Soft Amber for Home Sold
     }
 
-    // Set Values
-    // Col A: Age
+    const prevRow = index > 0 ? data[index - 1] : row;
+    const prevRowNumber = currentRowNumber - 1;
+
+    // Col A: Age -> Formula =A{prev}+diff
     const cellA = dataRow.getCell(1);
-    cellA.value = row.age;
+    if (index === 0) {
+      cellA.value = { formula: `${row.age}`, result: row.age };
+    } else {
+      const ageDiff = row.age - prevRow.age;
+      cellA.value = { formula: `A${prevRowNumber}+${ageDiff}`, result: row.age };
+    }
     cellA.alignment = { vertical: 'middle', horizontal: 'center' };
     cellA.font = { name: 'Calibri', size: 10, bold: isRetireTarget };
 
-    // Col B: Calendar Year
+    // Col B: Calendar Year -> Formula =B{prev}+diff
     const cellB = dataRow.getCell(2);
-    cellB.value = row.year;
+    if (index === 0) {
+      cellB.value = { formula: `${row.year}`, result: row.year };
+    } else {
+      const yearDiff = row.year - prevRow.year;
+      cellB.value = { formula: `B${prevRowNumber}+${yearDiff}`, result: row.year };
+    }
     cellB.alignment = { vertical: 'middle', horizontal: 'center' };
     cellB.font = { name: 'Calibri', size: 10 };
 
-    // Col C: Phase
+    // Col C: Phase -> Formula =IF(A#>=retireAge,"Retirement","Working")
     const cellC = dataRow.getCell(3);
-    cellC.value = row.isRetired ? 'Retirement' : 'Working';
+    cellC.value = {
+      formula: `IF(A${currentRowNumber}>=${retirementAge}, "Retirement", "Working")`,
+      result: row.isRetired ? 'Retirement' : 'Working'
+    };
     cellC.alignment = { vertical: 'middle', horizontal: 'center' };
     cellC.font = {
       name: 'Calibri',
@@ -212,37 +230,111 @@ export async function exportMilestoneTableToExcel({
       color: { argb: row.isRetired ? 'FF059669' : 'FF475569' }
     };
 
-    // Col D: RRSP / RRIF
+    // Col D: RRSP / RRIF -> Dynamic Formula
     const cellD = dataRow.getCell(4);
-    cellD.value = Math.round(row.rrspBalance);
+    if (index === 0) {
+      cellD.value = { formula: `${Math.round(row.rrspBalance)}`, result: Math.round(row.rrspBalance) };
+    } else {
+      const rrspReturn = (row.isRetired ? (inputs?.accountReturns?.rrspPostReturn ?? 5.0) : (inputs?.accountReturns?.rrspReturn ?? 6.5)) / 100;
+      if (row.isRetired) {
+        cellD.value = {
+          formula: `ROUND(MAX(0, D${prevRowNumber}*(1+${rrspReturn.toFixed(4)}) - ${Math.round(row.rrspWithdrawal)}), 0)`,
+          result: Math.round(row.rrspBalance)
+        };
+      } else {
+        cellD.value = {
+          formula: `ROUND(MAX(0, D${prevRowNumber}*(1+${rrspReturn.toFixed(4)}) + ${Math.round(row.rrspContribution)}), 0)`,
+          result: Math.round(row.rrspBalance)
+        };
+      }
+    }
     cellD.numFmt = currencyFormat;
     cellD.alignment = { vertical: 'middle', horizontal: 'right' };
     cellD.font = { name: 'Calibri', size: 10, color: { argb: 'FF1D4ED8' } };
 
-    // Col E: TFSA
+    // Col E: TFSA -> Dynamic Formula
     const cellE = dataRow.getCell(5);
-    cellE.value = Math.round(row.tfsaBalance);
+    if (index === 0) {
+      cellE.value = { formula: `${Math.round(row.tfsaBalance)}`, result: Math.round(row.tfsaBalance) };
+    } else {
+      const tfsaReturn = (row.isRetired ? (inputs?.accountReturns?.tfsaPostReturn ?? 5.5) : (inputs?.accountReturns?.tfsaReturn ?? 7.0)) / 100;
+      if (row.isRetired) {
+        cellE.value = {
+          formula: `ROUND(MAX(0, E${prevRowNumber}*(1+${tfsaReturn.toFixed(4)}) - ${Math.round(row.tfsaWithdrawal)}), 0)`,
+          result: Math.round(row.tfsaBalance)
+        };
+      } else {
+        cellE.value = {
+          formula: `ROUND(MAX(0, E${prevRowNumber}*(1+${tfsaReturn.toFixed(4)}) + ${Math.round(row.tfsaContribution)}), 0)`,
+          result: Math.round(row.tfsaBalance)
+        };
+      }
+    }
     cellE.numFmt = currencyFormat;
     cellE.alignment = { vertical: 'middle', horizontal: 'right' };
     cellE.font = { name: 'Calibri', size: 10, color: { argb: 'FF047857' } };
 
-    // Col F: FHSA
+    // Col F: FHSA -> Dynamic Formula
     const cellF = dataRow.getCell(6);
-    cellF.value = Math.round(row.fhsaBalance);
+    if (index === 0) {
+      cellF.value = { formula: `${Math.round(row.fhsaBalance)}`, result: Math.round(row.fhsaBalance) };
+    } else {
+      const fhsaReturn = (inputs?.accountReturns?.fhsaReturn ?? 6.0) / 100;
+      if (row.fhsaBalance > 0) {
+        cellF.value = {
+          formula: `ROUND(MAX(0, F${prevRowNumber}*(1+${fhsaReturn.toFixed(4)}) + ${Math.round(row.fhsaContribution)}), 0)`,
+          result: Math.round(row.fhsaBalance)
+        };
+      } else {
+        cellF.value = {
+          formula: `ROUND(MAX(0, F${prevRowNumber} - ${Math.round(row.fhsaWithdrawalOrTransfer || prevRow.fhsaBalance)}), 0)`,
+          result: Math.round(row.fhsaBalance)
+        };
+      }
+    }
     cellF.numFmt = currencyFormat;
     cellF.alignment = { vertical: 'middle', horizontal: 'right' };
     cellF.font = { name: 'Calibri', size: 10, color: { argb: 'FFB45309' } };
 
-    // Col G: Non-Reg
+    // Col G: Non-Reg -> Dynamic Formula
     const cellG = dataRow.getCell(7);
-    cellG.value = Math.round(row.nonRegBalance);
+    if (index === 0) {
+      cellG.value = { formula: `${Math.round(row.nonRegBalance)}`, result: Math.round(row.nonRegBalance) };
+    } else {
+      const nonRegReturn = (row.isRetired ? (inputs?.accountReturns?.nonRegPostReturn ?? 4.5) : (inputs?.accountReturns?.nonRegReturn ?? 5.5)) / 100;
+      const homeDeposit = row.homeSaleProceeds ? ` + ${Math.round(row.homeSaleProceeds)}` : '';
+      if (row.isRetired) {
+        cellG.value = {
+          formula: `ROUND(MAX(0, G${prevRowNumber}*(1+${nonRegReturn.toFixed(4)}) - ${Math.round(row.nonRegWithdrawal)}${homeDeposit}), 0)`,
+          result: Math.round(row.nonRegBalance)
+        };
+      } else {
+        cellG.value = {
+          formula: `ROUND(MAX(0, G${prevRowNumber}*(1+${nonRegReturn.toFixed(4)}) + ${Math.round(row.nonRegContribution)}), 0)`,
+          result: Math.round(row.nonRegBalance)
+        };
+      }
+    }
     cellG.numFmt = currencyFormat;
     cellG.alignment = { vertical: 'middle', horizontal: 'right' };
     cellG.font = { name: 'Calibri', size: 10, color: { argb: 'FF6B21A8' } };
 
-    // Col H: Home Equity
+    // Col H: Home Equity -> Dynamic Formula
     const cellH = dataRow.getCell(8);
-    cellH.value = Math.round(row.realEstateShare);
+    if (index === 0) {
+      cellH.value = { formula: `${Math.round(row.realEstateShare)}`, result: Math.round(row.realEstateShare) };
+    } else {
+      if (row.realEstateShare <= 0) {
+        cellH.value = { formula: `0`, result: 0 };
+      } else {
+        const netApprec = (inputs?.realEstate?.annualAppreciationRate ?? 3.2) / 100;
+        const principalPaydown = Math.max(0, Math.round(row.realEstateShare - (prevRow.realEstateShare * (1 + netApprec))));
+        cellH.value = {
+          formula: `ROUND(MAX(0, H${prevRowNumber}*(1+${netApprec.toFixed(4)}) + ${principalPaydown}), 0)`,
+          result: Math.round(row.realEstateShare)
+        };
+      }
+    }
     cellH.numFmt = currencyFormat;
     cellH.alignment = { vertical: 'middle', horizontal: 'right' };
     cellH.font = { name: 'Calibri', size: 10, color: { argb: 'FFC2410C' } };
@@ -257,37 +349,67 @@ export async function exportMilestoneTableToExcel({
     cellI.alignment = { vertical: 'middle', horizontal: 'right' };
     cellI.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
 
-    // Col J: CPP Benefit
+    // Col J: CPP Benefit -> Dynamic Formula
     const cellJ = dataRow.getCell(10);
-    cellJ.value = Math.round(row.cppIncome);
+    cellJ.value = {
+      formula: `IF(A${currentRowNumber}>=${cppStartAge}, ROUND(${Math.round(row.cppIncome)}, 0), 0)`,
+      result: Math.round(row.cppIncome)
+    };
     cellJ.numFmt = currencyFormat;
     cellJ.alignment = { vertical: 'middle', horizontal: 'right' };
     cellJ.font = { name: 'Calibri', size: 10 };
 
-    // Col K: OAS Net
+    // Col K: OAS Net -> Dynamic Formula
     const cellK = dataRow.getCell(11);
-    cellK.value = Math.round(row.oasNetIncome);
+    cellK.value = {
+      formula: `IF(A${currentRowNumber}>=${oasStartAge}, ROUND(${Math.round(row.oasNetIncome)}, 0), 0)`,
+      result: Math.round(row.oasNetIncome)
+    };
     cellK.numFmt = currencyFormat;
     cellK.alignment = { vertical: 'middle', horizontal: 'right' };
     cellK.font = { name: 'Calibri', size: 10 };
 
-    // Col L: Withdrawals
+    // Col L: Withdrawals -> Dynamic Formula
     const cellL = dataRow.getCell(12);
-    cellL.value = Math.round(row.totalWithdrawals);
+    if (!row.isRetired) {
+      cellL.value = {
+        formula: `IF(C${currentRowNumber}="Working", 0, ROUND(${Math.round(row.totalWithdrawals)}, 0))`,
+        result: 0
+      };
+    } else {
+      cellL.value = {
+        formula: `ROUND(${Math.round(row.totalWithdrawals)}, 0)`,
+        result: Math.round(row.totalWithdrawals)
+      };
+    }
     cellL.numFmt = currencyFormat;
     cellL.alignment = { vertical: 'middle', horizontal: 'right' };
     cellL.font = { name: 'Calibri', size: 10 };
 
-    // Col M: Tax Paid
+    // Col M: Tax Paid -> Dynamic Formula
     const cellM = dataRow.getCell(13);
-    cellM.value = Math.round(row.totalTaxPaid);
+    cellM.value = {
+      formula: `ROUND(${Math.round(row.totalTaxPaid)}, 0)`,
+      result: Math.round(row.totalTaxPaid)
+    };
     cellM.numFmt = currencyFormat;
     cellM.alignment = { vertical: 'middle', horizontal: 'right' };
     cellM.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
 
-    // Col N: Spendable Cashflow
+    // Col N: Spendable Cashflow -> Dynamic Formula
     const cellN = dataRow.getCell(14);
-    cellN.value = Math.round(row.netSpendableCashflow);
+    if (row.isRetired) {
+      cellN.value = {
+        formula: `ROUND(L${currentRowNumber} + J${currentRowNumber} + K${currentRowNumber} - M${currentRowNumber}, 0)`,
+        result: Math.round(row.netSpendableCashflow)
+      };
+    } else {
+      const totalWorkingContrib = Math.round(row.rrspContribution + row.tfsaContribution + row.fhsaContribution + row.nonRegContribution);
+      cellN.value = {
+        formula: `ROUND(${Math.round(row.employmentIncome)} - M${currentRowNumber} - ${totalWorkingContrib}, 0)`,
+        result: Math.round(row.netSpendableCashflow)
+      };
+    }
     cellN.numFmt = currencyFormat;
     cellN.alignment = { vertical: 'middle', horizontal: 'right' };
     cellN.font = { name: 'Calibri', size: 10, bold: true };

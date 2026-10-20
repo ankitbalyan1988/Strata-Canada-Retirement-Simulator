@@ -24,6 +24,11 @@ export interface StressTestOptions {
   timing: 'at_retirement' | 'immediate';
 }
 
+export interface SimulationOptions {
+  stopContributionsAge?: number;
+  isCoastCheck?: boolean;
+}
+
 export interface CareerDisruption {
   enabled: boolean;
   shockAge: number;
@@ -169,6 +174,17 @@ export interface RetirementInputs {
   drawdownStrategy: DrawdownStrategyType;
 }
 
+export interface MilestoneBadge {
+  id: string;
+  label: string;
+  shortLabel: string;
+  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
+  icon: string;
+  color: string;
+  description: string;
+  metricsSummary?: string;
+}
+
 export interface YearSimulationResult {
   age: number;
   year: number;
@@ -236,6 +252,14 @@ export interface YearSimulationResult {
   spouseCppIncome?: number;
   spouseOasNetIncome?: number;
   spouseTaxPaid?: number;
+
+  // Additional strategic milestone fields
+  isCrossoverMilestone?: boolean;
+  isCoastFireMilestone?: boolean;
+  isMillionaireMilestone?: boolean;
+  isMortgageFreeMilestone?: boolean;
+  isPeakWealthMilestone?: boolean;
+  milestoneBadges?: MilestoneBadge[];
 }
 
 export interface SimulationSummary {
@@ -263,6 +287,22 @@ export interface SimulationSummary {
   firstRrifMandatoryYear: number;
   cppStartAge: number;
   oasStartAge: number;
+
+  // Additional strategic milestones
+  crossoverAge: number | null; // Age when annual investment returns >= required living expenses
+  crossoverYear: number | null;
+  crossoverInvestmentGrowth: number;
+  crossoverLivingExpenses: number;
+
+  coastFireAge: number | null; // Age where zero future contributions still 100% meets retirement living expenses
+  coastFireYear: number | null;
+  coastFireNetWorth: number;
+
+  millionaireAge: number | null; // First age net worth reaches $1M
+  millionaireYear: number | null;
+
+  mortgagePayoffAge: number | null; // Age mortgage loan reaches $0
+  mortgagePayoffYear: number | null;
 
   // Real Estate & Backup Asset metrics
   ownsHome: boolean;

@@ -265,6 +265,7 @@ export default function App() {
           retirementAge={inputs.retirementAge}
           province={inputs.province}
           inputs={inputs}
+          summary={summary}
         />
 
         {/* Canadian Educational Planning Guide */}

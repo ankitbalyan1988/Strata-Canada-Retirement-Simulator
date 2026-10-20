@@ -46,7 +46,7 @@ import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 
 interface InputPanelProps {
   inputs: RetirementInputs;
-  onChange: (inputs: RetirementInputs) => void;
+  onChange: React.Dispatch<React.SetStateAction<RetirementInputs>> | ((inputs: RetirementInputs) => void);
 }
 
 export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
@@ -55,9 +55,12 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   const updateField = <K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
-    onChange({
-      ...inputs,
-      [field]: value
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      return {
+        ...base,
+        [field]: value
+      };
     });
   };
 
@@ -133,7 +136,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
       
       {/* Marital Status Selector Bar */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
@@ -197,27 +200,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
 
       {/* Collapsed Summary Bar */}
       {!isExpanded && (
-        <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="px-4 py-3 bg-slate-50/90 dark:bg-slate-850/90 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="font-bold text-slate-800">Current Inputs:</span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Age <strong className="text-slate-900">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600">{inputs.retirementAge}</strong>)
+            <span className="font-bold text-slate-800 dark:text-white">Current Inputs:</span>
+            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              Age <strong className="text-slate-900 dark:text-white">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600 dark:text-rose-400">{inputs.retirementAge}</strong>)
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Income: <strong className="text-slate-900">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              Income: <strong className="text-slate-900 dark:text-white">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Target Spending: <strong className="text-slate-900">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              Target Spending: <strong className="text-slate-900 dark:text-white">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Province: <strong className="text-slate-900">{inputs.province}</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+              Province: <strong className="text-slate-900 dark:text-white">{inputs.province}</strong>
             </span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"
+            className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-1 ml-auto"
           >
             <span>Show Full Planning Tabs</span>
             <ChevronDown className="w-3.5 h-3.5" />
@@ -229,14 +232,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
       {isExpanded && (
         <>
           {/* Tabs Header */}
-          <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
+          <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-slate-50/70 dark:bg-slate-850/90 p-1.5 gap-1 text-xs font-semibold">
             <button
           type="button"
           onClick={() => setActiveTab('personal')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'personal'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <User className="w-4 h-4 text-blue-600" />
@@ -248,11 +251,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('expenses')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'expenses'
-              ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
-              : 'text-rose-700 hover:text-rose-900 hover:bg-rose-50/60 font-semibold'
+              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 shadow-sm border border-rose-200 dark:border-rose-800 font-bold ring-1 ring-rose-300 dark:ring-rose-800'
+              : 'text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 hover:bg-rose-50/60 dark:hover:bg-rose-950/40 font-semibold'
           }`}
         >
-          <Receipt className="w-4 h-4 text-rose-600" />
+          <Receipt className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           <span>Living Expenses</span>
         </button>
 
@@ -261,11 +264,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('accounts')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'accounts'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <PiggyBank className="w-4 h-4 text-emerald-600" />
+          <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <span>Primary Accounts</span>
         </button>
 
@@ -275,11 +278,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('realestate')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'realestate'
-              ? 'bg-amber-50 text-amber-900 shadow-sm border border-amber-200 font-bold ring-1 ring-amber-300'
-              : 'text-amber-800 hover:text-amber-950 hover:bg-amber-50/60 font-semibold'
+              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 shadow-sm border border-amber-200 dark:border-amber-800 font-bold ring-1 ring-amber-300 dark:ring-amber-800'
+              : 'text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 font-semibold'
           }`}
         >
-          <Home className="w-4 h-4 text-amber-600" />
+          <Home className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           <span>Real Estate & Home</span>
           {inputs.realEstate?.ownsHome && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -293,11 +296,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
             onClick={() => setActiveTab('spouse')}
             className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'spouse'
-                ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
-                : 'text-rose-700 hover:text-rose-900 hover:bg-rose-50/60 font-semibold'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 shadow-sm border border-rose-200 dark:border-rose-800 font-bold ring-1 ring-rose-300 dark:ring-rose-800'
+                : 'text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 hover:bg-rose-50/60 dark:hover:bg-rose-950/40 font-semibold'
             }`}
           >
-            <Users className="w-4 h-4 text-rose-600" />
+            <Users className="w-4 h-4 text-rose-600 dark:text-rose-400" />
             <span>Spouse Details & Accounts</span>
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
           </button>
@@ -308,11 +311,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('pensions')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'pensions'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <Landmark className="w-4 h-4 text-purple-600" />
+          <Landmark className="w-4 h-4 text-purple-600 dark:text-purple-400" />
           <span>CPP & OAS Pensions</span>
         </button>
 
@@ -321,11 +324,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('market')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'market'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <TrendingUp className="w-4 h-4 text-amber-600" />
+          <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           <span>Returns & Inflation</span>
         </button>
 
@@ -334,11 +337,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('strategy')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'strategy'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
+              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
-          <ArrowRightLeft className="w-4 h-4 text-rose-600" />
+          <ArrowRightLeft className="w-4 h-4 text-rose-600 dark:text-rose-400" />
           <span>Drawdown Strategy</span>
         </button>
       </div>
@@ -643,29 +646,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
               spouseAnnualIncome={inputs.spouse?.annualIncome || 0}
               realEstate={inputs.realEstate}
               targetRetirementSpendingToday={inputs.targetRetirementSpendingToday}
-              onUpdateExpenses={(newExpenses) => {
-                onChange({
-                  ...inputs,
-                  monthlyExpenses: newExpenses
-                });
-              }}
-              onUpdateTargetSpending={(newSpending) => {
-                onChange({
-                  ...inputs,
-                  targetRetirementSpendingToday: newSpending
+              onUpdateExpenses={(newExpenses, newSpending) => {
+                (onChange as any)((prev: RetirementInputs) => {
+                  const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+                  return {
+                    ...base,
+                    monthlyExpenses: newExpenses,
+                    ...(newSpending !== undefined ? { targetRetirementSpendingToday: newSpending } : {})
+                  };
                 });
               }}
             />
 
             {/* Target Retirement Spending Summary / Direct Override */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 rounded-xl border border-slate-200 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 dark:bg-slate-850/90 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
               <div>
-                <label className="font-bold text-slate-800 block text-xs">
+                <label className="font-bold text-slate-800 dark:text-white block text-xs">
                   {isMarried
                     ? 'Combined Household Retirement Annual Target (Today\'s Dollars)'
                     : 'Personal Retirement Annual Spending Target (Today\'s Dollars)'}
                 </label>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   Auto-calculated from your monthly living expenses with post-retirement shift applied (or customize manually)
                 </span>
               </div>
