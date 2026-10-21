@@ -151,7 +151,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
               value={retirementAge}
               onChange={(e) => onChangeRetirementAge(Number(e.target.value))}
               aria-label="Target Retirement Age"
-              className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+              className="w-full h-3 rounded-lg cursor-pointer accent-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
             />
 
             {/* Quick Landmark Buttons */}

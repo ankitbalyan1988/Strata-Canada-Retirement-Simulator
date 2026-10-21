@@ -181,7 +181,9 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
               <span className="flex items-center gap-1 font-semibold text-amber-950">
                 <span>🏡</span>
                 {inp.realEstate?.ownsHome
-                  ? `Owns Home (${formatCur(inp.realEstate.currentMarketValue || 750000)} | ${inp.realEstate.ownershipSharePercent ?? 100}% share)`
+                  ? (inp.realEstate.purchaseType === 'future'
+                      ? `Renting (Planning Home Purchase @ Age ${inp.realEstate.futurePurchaseAge || 'Future'})`
+                      : `Owns Home (${formatCur(inp.realEstate.currentMarketValue || 750000)} | ${inp.realEstate.ownershipSharePercent ?? 100}% share)`)
                   : 'Renting (No Real Estate Asset)'}
               </span>
               <span className="text-[10px] text-amber-800 font-mono font-bold">

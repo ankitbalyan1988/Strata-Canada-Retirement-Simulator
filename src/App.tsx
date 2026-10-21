@@ -8,12 +8,15 @@ import { NetWorthChart } from './components/Charts/NetWorthChart';
 import { IncomeStreamChart } from './components/Charts/IncomeStreamChart';
 import { InputPanel } from './components/InputPanel';
 import { MilestoneTable } from './components/MilestoneTable';
+import { EstatePlanningModule } from './components/EstatePlanningModule';
+import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { CanadianPlanningTips } from './components/CanadianPlanningTips';
 import { ScenarioComparisonModal } from './components/ScenarioComparisonModal';
 import { AIPersonaModal } from './components/AIPersonaModal';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
 import { DEFAULT_INPUTS, PRESETS } from './utils/presets';
 import { CanadianProvince, RetirementInputs, ScenarioPreset } from './types/retirement';
+import { ExpatInputs } from './types/expat';
 import { runRetirementSimulation } from './utils/simulator';
 import { generateRetirementPdfReport } from './utils/pdfExport';
 import { Layers, Wallet, Sparkles, ShieldCheck } from 'lucide-react';
@@ -47,6 +50,13 @@ export default function App() {
   const handleSelectPreset = (preset: ScenarioPreset) => {
     setInputs(preset.inputs);
     setActivePresetId(preset.id);
+  };
+
+  const handleUpdateExpatInputs = (newExpat: ExpatInputs) => {
+    setInputs(prev => ({
+      ...prev,
+      expat: newExpat
+    }));
   };
 
   const handleReset = () => {
@@ -266,6 +276,21 @@ export default function App() {
           province={inputs.province}
           inputs={inputs}
           summary={summary}
+        />
+
+        {/* Canadian Estate Planning & Pending Reserves Liquidation Module */}
+        <EstatePlanningModule
+          retirementInputs={inputs}
+          yearlyResults={yearlyResults}
+          summary={summary}
+        />
+
+        {/* Canadian Expat & Non-Resident Retirement Planning Module */}
+        <ExpatRetirementModule
+          retirementInputs={inputs}
+          yearlyResults={yearlyResults}
+          summary={summary}
+          onUpdateExpatInputs={handleUpdateExpatInputs}
         />
 
         {/* Canadian Educational Planning Guide */}

@@ -154,7 +154,17 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = ({
       });
     }
 
-    // 7. Mortgage Freedom
+    // 7. Future Home Purchase
+    if (summary?.isFutureHomeBuyer && summary?.futurePurchaseAge) {
+      list.push({
+        label: `🏡 Home Purchase @ Age ${summary.futurePurchaseAge}`,
+        question: `How does purchasing a home at Age ${summary.futurePurchaseAge} impact my FHSA, down payment savings, and long-term net worth?`,
+        age: summary.futurePurchaseAge,
+        metric: 'Home Equity'
+      });
+    }
+
+    // 8. Mortgage Freedom
     if (summary?.mortgagePayoffAge) {
       list.push({
         label: `🏡 Mortgage Free @ Age ${summary.mortgagePayoffAge}`,

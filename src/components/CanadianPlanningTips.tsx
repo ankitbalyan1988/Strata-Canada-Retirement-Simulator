@@ -106,29 +106,29 @@ export const CanadianPlanningTips: React.FC = () => {
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-5 flex flex-col gap-3 transition duration-200">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col gap-3 transition duration-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
         <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400">
+          <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
             <Lightbulb className="w-4 h-4" />
           </span>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              <h3 className="font-bold text-slate-900 text-sm">
                 Canadian Retirement Rules & Wealth Guide
               </h3>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
                 5 CRA Strategies
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Essential CRA tax principles every Canadian professional should know</p>
+            <p className="text-xs text-slate-500">Essential CRA tax principles every Canadian professional should know</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/80 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-750 transition border border-slate-200 dark:border-slate-700 font-medium self-start sm:self-auto cursor-pointer"
+          className="text-xs text-slate-600 hover:text-slate-900:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100/80 hover:bg-slate-200/80:bg-slate-750 transition border border-slate-200 font-medium self-start sm:self-auto cursor-pointer"
           title={isExpanded ? 'Collapse Wealth Guide' : 'Expand Wealth Guide'}
           aria-expanded={isExpanded}
         >
@@ -138,7 +138,7 @@ export const CanadianPlanningTips: React.FC = () => {
       </div>
 
       {isExpanded && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="divide-y divide-slate-100">
           {tips.map((tip, idx) => {
             const isOpen = openSection === idx;
             return (
@@ -146,7 +146,7 @@ export const CanadianPlanningTips: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setOpenSection(isOpen ? null : idx)}
-                  className="w-full flex items-center justify-between text-left text-xs font-bold text-slate-800 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer"
+                  className="w-full flex items-center justify-between text-left text-xs font-bold text-slate-800 hover:text-rose-600:text-rose-400 transition cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     {tip.icon}
@@ -156,7 +156,7 @@ export const CanadianPlanningTips: React.FC = () => {
                 </button>
 
                 {isOpen && (
-                  <div className="mt-2.5 pl-6 pr-2 pb-1 text-slate-600 dark:text-slate-300">
+                  <div className="mt-2.5 pl-6 pr-2 pb-1 text-slate-600">
                     {tip.content}
                   </div>
                 )}

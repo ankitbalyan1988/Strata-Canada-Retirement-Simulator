@@ -85,20 +85,20 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col transition-colors">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col transition-colors">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-sm">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900">
                   AI Persona Generator
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
                   Powered by Gemini
                 </span>
               </div>
@@ -122,7 +122,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
           
           {/* Prompt Descriptor Input Box */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
               <span>Describe Your Target Persona:</span>
               <span className="text-[11px] font-normal text-slate-400">Natural English / Canadian details</span>
             </label>
@@ -133,7 +133,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. A 32-year-old software architect in Vancouver earning $135,000 with $60,000 in TFSA and $40,000 in RRSP, wanting to retire at age 54 with a comfortable lifestyle..."
-                className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-850 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none font-medium text-slate-800 dark:text-slate-100 leading-relaxed placeholder:text-slate-400"
+                className="w-full p-3 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none font-medium text-slate-800 leading-relaxed placeholder:text-slate-400"
               />
             </div>
 
@@ -148,7 +148,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
                     key={idx}
                     type="button"
                     onClick={() => setPrompt(p)}
-                    className="text-[11px] text-left px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition cursor-pointer"
+                    className="text-[11px] text-left px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80:bg-slate-750 text-slate-700 border border-slate-200/80 transition cursor-pointer"
                   >
                     "{p.substring(0, 48)}..."
                   </button>
@@ -202,41 +202,41 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
 
               {/* Grid of Key Synthesized Attributes */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="bg-white p-2 rounded-lg border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-sans">Age & Target</span>
-                  <span className="font-bold text-slate-800 dark:text-white">
+                  <span className="font-bold text-slate-800">
                     Age {generatedPersona.currentAge} → {generatedPersona.retirementAge}
                   </span>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="bg-white p-2 rounded-lg border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-sans">Salary & Province</span>
-                  <span className="font-bold text-slate-800 dark:text-white">
+                  <span className="font-bold text-slate-800">
                     {formatCur(generatedPersona.currentAnnualIncome)} ({generatedPersona.province})
                   </span>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="bg-white p-2 rounded-lg border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-sans">RRSP / TFSA</span>
-                  <span className="font-bold text-blue-700 dark:text-blue-400">
+                  <span className="font-bold text-blue-700">
                     {formatCur(generatedPersona.rrspBalance)} / {formatCur(generatedPersona.tfsaBalance)}
                   </span>
                 </div>
 
-                <div className="bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                <div className="bg-white p-2 rounded-lg border border-slate-200">
                   <span className="text-[10px] text-slate-400 block font-sans">Target Spending</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="font-bold text-emerald-700">
                     {formatCur(generatedPersona.targetRetirementSpendingToday)}/yr
                   </span>
                 </div>
               </div>
 
               {generatedPersona.maritalStatus === 'married' && generatedPersona.spouse && (
-                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                <div className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between">
                   <span>
                     Spouse: {generatedPersona.spouse.name} (Age {generatedPersona.spouse.currentAge}, Retire @ {generatedPersona.spouse.retirementAge})
                   </span>
-                  <span className="font-mono font-bold text-slate-800 dark:text-white">
+                  <span className="font-mono font-bold text-slate-800">
                     Salary: {formatCur(generatedPersona.spouse.annualIncome)}
                   </span>
                 </div>

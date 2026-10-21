@@ -99,6 +99,11 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = ({
                 <span>Coast FIRE: {summary.coastFireAge === inputs.currentAge ? 'Achieved!' : `Age ${summary.coastFireAge}`}</span>
               </span>
             )}
+            {summary.isFutureHomeBuyer && summary.futurePurchaseAge && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-800 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-md" title={`Planning Home Purchase at Age ${summary.futurePurchaseAge} (Year ${summary.futurePurchaseYear})`}>
+                <span>🏡 Buy @ Age {summary.futurePurchaseAge}</span>
+              </span>
+            )}
           </div>
         </div>
       </div>

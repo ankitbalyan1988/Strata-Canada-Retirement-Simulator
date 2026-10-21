@@ -2,6 +2,9 @@ import { ScenarioPreset, SpouseInputs, RealEstateInputs, AccountReturnRates, Ret
 
 export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   ownsHome: true,
+  purchaseType: 'current',
+  futurePurchaseAge: 35,
+  useHbp: true,
   costOfHome: 650000, // Canadian average benchmark (CREA / StatCan)
   currentMarketValue: 750000, // Current estimated market value
   downPayment: 130000, // 20% down payment
@@ -12,7 +15,13 @@ export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   annualAppreciationRate: 3.2, // Long-term Canadian housing growth
   planToSellHome: false, // User can toggle and set target disposition age
   sellHomeAge: 72,
-  sellingCostPercent: 4.5 // Realtor commissions, legal & closing friction
+  sellingCostPercent: 4.5, // Realtor commissions, legal & closing friction
+  fundWithFhsa: true,
+  fundWithHbp: true,
+  fundWithTfsa: true,
+  fundWithNonReg: true,
+  downPaymentPercentPreset: 20,
+  rentOverridden: false
 };
 
 export const DEFAULT_MONTHLY_EXPENSES: MonthlyExpenseEstimates = {

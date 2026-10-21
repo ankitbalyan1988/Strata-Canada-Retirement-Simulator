@@ -1,10 +1,21 @@
-import {createRoot} from 'react-dom/client';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
-import { ThemeProvider } from './context/ThemeContext.tsx';
+
+// Ensure clean light-mode theme state
+if (typeof document !== 'undefined') {
+  document.documentElement.classList.remove('dark');
+  document.documentElement.style.colorScheme = 'light';
+  try {
+    localStorage.removeItem('mapleretire_theme');
+  } catch (e) {
+    // ignore
+  }
+}
 
 createRoot(document.getElementById('root')!).render(
-  <ThemeProvider>
+  <StrictMode>
     <App />
-  </ThemeProvider>
+  </StrictMode>
 );

@@ -120,20 +120,20 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   const passesStressTest = stressDepletionYear === null && stressEndNW >= 0;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col gap-4 transition-colors">
+    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col gap-4 transition-colors">
       
       {/* Chart Header & Toggles */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-400">
+            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
               <Layers className="w-4 h-4" />
             </span>
-            <h3 className="font-bold text-slate-900 dark:text-white text-base">
+            <h3 className="font-bold text-slate-900 text-base">
               Net Worth & Account Balances Over Time
             </h3>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Projection from Age {minAge} to Age {maxAge} across Canadian registered & taxable accounts
           </p>
         </div>
@@ -142,7 +142,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
         <div className="flex items-center flex-wrap gap-2.5">
           
           {/* MARKET STRESS TEST TOGGLE */}
-          <div className="flex items-center bg-slate-900 dark:bg-slate-800 text-white rounded-xl p-1 shadow-xs border border-slate-800 dark:border-slate-700 text-xs">
+          <div className="flex items-center bg-slate-900 text-white rounded-xl p-1 shadow-xs border border-slate-800 text-xs">
             <button
               type="button"
               onClick={onToggleStressTest}
@@ -194,8 +194,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               onClick={() => setVisibleAccounts(p => ({ ...p, rrsp: !p.rrsp }))}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition text-[11px] ${
                 visibleAccounts.rrsp
-                  ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 font-semibold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 line-through'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200 font-semibold'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
@@ -207,8 +207,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               onClick={() => setVisibleAccounts(p => ({ ...p, tfsa: !p.tfsa }))}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition text-[11px] ${
                 visibleAccounts.tfsa
-                  ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 font-semibold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 line-through'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
@@ -220,8 +220,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               onClick={() => setVisibleAccounts(p => ({ ...p, fhsa: !p.fhsa }))}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition text-[11px] ${
                 visibleAccounts.fhsa
-                  ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 font-semibold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 line-through'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 font-semibold'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
@@ -233,8 +233,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               onClick={() => setVisibleAccounts(p => ({ ...p, nonReg: !p.nonReg }))}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition text-[11px] ${
                 visibleAccounts.nonReg
-                  ? 'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 font-semibold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 line-through'
+                  ? 'bg-purple-50 text-purple-700 border-purple-200 font-semibold'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-purple-600"></span>
@@ -246,8 +246,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               onClick={() => setVisibleAccounts(p => ({ ...p, realEstate: !p.realEstate }))}
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border transition text-[11px] ${
                 visibleAccounts.realEstate
-                  ? 'bg-orange-50 dark:bg-orange-950/70 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800 font-semibold'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 line-through'
+                  ? 'bg-orange-50 text-orange-700 border-orange-200 font-semibold'
+                  : 'bg-slate-100 text-slate-400 border-slate-200 line-through'
               }`}
             >
               <span className="w-2 h-2 rounded-full bg-orange-500"></span>
@@ -262,8 +262,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
       {isStressTestActive && (
         <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition animate-in fade-in duration-200 ${
           passesStressTest
-            ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/60 text-amber-950 dark:text-amber-200'
-            : 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800/60 text-rose-950 dark:text-rose-200'
+            ? 'bg-amber-50/80 border-amber-300 text-amber-950'
+            : 'bg-rose-50/80 border-rose-300 text-rose-950'
         }`}>
           <div className="flex items-start gap-2.5">
             <span className="p-1 rounded-md bg-white border border-amber-200 text-amber-700 shrink-0 mt-0.5">

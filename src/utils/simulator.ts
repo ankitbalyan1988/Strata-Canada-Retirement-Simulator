@@ -67,9 +67,21 @@ export function runRetirementSimulation(
   // Real Estate Setup
   const re = inputs.realEstate;
   const ownsHome = Boolean(re && re.ownsHome);
+  const purchaseType = re?.purchaseType ?? (ownsHome ? 'current' : 'rent');
+  const isFuturePurchase = Boolean(ownsHome && purchaseType === 'future');
+  const futurePurchaseAge = Math.max(currentAge + 1, re?.futurePurchaseAge ?? (currentAge + 5));
+  const yearsToPurchase = Math.max(1, futurePurchaseAge - currentAge);
+  const futurePurchaseYear = 2026 + yearsToPurchase;
+  const fundWithFhsa = re?.fundWithFhsa !== false;
+  const fundWithHbp = re?.fundWithHbp !== false && re?.useHbp !== false;
+  const fundWithTfsa = re?.fundWithTfsa !== false;
+  const fundWithNonReg = re?.fundWithNonReg !== false;
+  const useHbp = fundWithHbp;
+
   const homeCost = re?.costOfHome ?? 650000;
   const currentHomeMarketVal = re?.currentMarketValue ?? homeCost;
   const downPayment = re?.downPayment ?? 130000;
+  const downPaymentRatio = homeCost > 0 ? Math.min(0.9, Math.max(0.05, downPayment / homeCost)) : 0.20;
   const mortgageRate = (re?.mortgageInterestRate ?? 4.79) / 100;
   const mortgageTermYears = re?.mortgageTermYears ?? 25;
   const mortgageStartYear = re?.mortgageStartYear ?? 2021;
@@ -79,7 +91,7 @@ export function runRetirementSimulation(
   const sellAge = re?.sellHomeAge ?? 72;
   const sellingCostRate = (re?.sellingCostPercent ?? 4.5) / 100;
 
-  // Canadian Mortgage Amortization (semi-annual compounding converted to monthly)
+  // Canadian Mortgage Amortization math (semi-annual compounding converted to monthly)
   const initialMortgagePrincipal = Math.max(0, homeCost - downPayment);
   const semiAnnualRate = mortgageRate / 2;
   const monthlyRate = mortgageRate > 0 ? Math.pow(1 + semiAnnualRate, 2 / 12) - 1 : 0;
@@ -90,10 +102,31 @@ export function runRetirementSimulation(
         : initialMortgagePrincipal / totalMortgageMonths)
     : 0;
 
-  // Baseline Annual Living Expenses (Today's Dollars)
+  // Future purchase financial projections
+  const nominalPurchasePrice = Math.round(homeCost * Math.pow(1 + appreciationRate, yearsToPurchase));
+  const targetFutureDownPayment = Math.round(nominalPurchasePrice * downPaymentRatio);
+  const projectedFutureLoan = Math.max(0, nominalPurchasePrice - targetFutureDownPayment);
+
+  const calcMonthlyPmtForLoan = (loan: number) => {
+    if (loan <= 0 || totalMortgageMonths <= 0) return 0;
+    return monthlyRate > 0
+      ? (loan * monthlyRate * Math.pow(1 + monthlyRate, totalMortgageMonths)) / (Math.pow(1 + monthlyRate, totalMortgageMonths) - 1)
+      : loan / totalMortgageMonths;
+  };
+
+  let futureActualLoanPrincipal = projectedFutureLoan;
+  let futureActualMonthlyPmt = calcMonthlyPmtForLoan(projectedFutureLoan);
+  let futurePurchaseExecuted = false;
+  let totalDownPaymentFunded = 0;
+
+  // Baseline Living Expenses (Today's Dollars)
   const me = inputs.monthlyExpenses;
+  const currentRentMonthly = (re?.rentOverridden && re?.currentRent !== undefined)
+    ? re.currentRent
+    : (me?.rentOrMortgage ?? re?.currentRent ?? 2200);
+  const nonHousingMonthly = (me?.utilities || 0) + (me?.creditCard || 0) + (me?.otherExpenses || 0);
   const initialMonthlyExpenses = me
-    ? (me.rentOrMortgage || 0) + (me.utilities || 0) + (me.creditCard || 0) + (me.otherExpenses || 0)
+    ? (me.rentOrMortgage || 0) + nonHousingMonthly
     : Math.round((inputs.targetRetirementSpendingToday / 12) * 1.25);
   const initialAnnualExpenses = initialMonthlyExpenses * 12;
 
@@ -202,60 +235,241 @@ export function runRetirementSimulation(
     let userRealEstateShare = 0;
     let homeSoldThisYear = false;
     let homeSaleProceeds = 0;
+    let isHomePurchasedThisYear = false;
+    let downPaymentPaidThisYear = 0;
+    let yearFhsaWithdrawalOrTransfer = 0;
+    let housingStatus: 'renting' | 'mortgage' | 'mortgage_free' = ownsHome ? 'mortgage' : 'renting';
 
-    if (ownsHome && !homeSold) {
-      const currentSimYear = 2026 + i;
-      const elapsedMonths = Math.max(0, (currentSimYear - mortgageStartYear) * 12);
-      if (initialMortgagePrincipal <= 0 || elapsedMonths >= totalMortgageMonths) {
-        remainingMortgage = 0;
-      } else {
-        remainingMortgage = Math.max(
-          0,
-          initialMortgagePrincipal * Math.pow(1 + monthlyRate, elapsedMonths) -
-            monthlyMortgagePmt * ((Math.pow(1 + monthlyRate, elapsedMonths) - 1) / (monthlyRate || 1))
-        );
-      }
-
-      // Current year home market value with compounding appreciation
-      yearHomeValue = currentHomeMarketVal * Math.pow(1 + appreciationRate, i);
-      yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
-      userRealEstateShare = yearHomeEquity * ownershipShare;
-
-      // Disposition / Sale at specified target age
-      if (planToSell && age === sellAge) {
-        homeSoldThisYear = true;
-        homeSold = true;
-        homeSoldAge = age;
-
-        const grossSalePrice = yearHomeValue;
-        const netAfterClosing = grossSalePrice * (1 - sellingCostRate);
-        const equityProceeds = Math.max(0, netAfterClosing - remainingMortgage);
-        homeSaleProceeds = equityProceeds * ownershipShare;
-        homeNetProceedsAtSale = homeSaleProceeds;
-
-        // Deposited into taxable (non-registered) investment account
-        pNonReg += homeSaleProceeds;
-        if (hasCustomNonReg && customAccountsState.length > 0) {
-          const targetAcc =
-            customAccountsState.find((a) => a.category === 'investment') ||
-            customAccountsState.find((a) => a.category === 'savings') ||
-            customAccountsState[0];
-          if (targetAcc) {
-            targetAcc.balance += homeSaleProceeds;
-          }
+    if (!ownsHome) {
+      housingStatus = 'renting';
+      yearHomeValue = 0;
+      remainingMortgage = 0;
+      yearHomeEquity = 0;
+      userRealEstateShare = 0;
+    } else if (!isFuturePurchase) {
+      // CURRENT HOMEOWNER (Purchased in past)
+      if (!homeSold) {
+        const currentSimYear = 2026 + i;
+        const elapsedMonths = Math.max(0, (currentSimYear - mortgageStartYear) * 12);
+        if (initialMortgagePrincipal <= 0 || elapsedMonths >= totalMortgageMonths) {
+          remainingMortgage = 0;
+          housingStatus = 'mortgage_free';
+        } else {
+          remainingMortgage = Math.max(
+            0,
+            initialMortgagePrincipal * Math.pow(1 + monthlyRate, elapsedMonths) -
+              monthlyMortgagePmt * ((Math.pow(1 + monthlyRate, elapsedMonths) - 1) / (monthlyRate || 1))
+          );
+          housingStatus = 'mortgage';
         }
 
-        // Disposed from physical real estate holding
+        // Current year home market value with compounding appreciation
+        yearHomeValue = currentHomeMarketVal * Math.pow(1 + appreciationRate, i);
+        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
+        userRealEstateShare = yearHomeEquity * ownershipShare;
+
+        // Disposition / Sale at specified target age
+        if (planToSell && age === sellAge) {
+          homeSoldThisYear = true;
+          homeSold = true;
+          homeSoldAge = age;
+
+          const grossSalePrice = yearHomeValue;
+          const netAfterClosing = grossSalePrice * (1 - sellingCostRate);
+          const equityProceeds = Math.max(0, netAfterClosing - remainingMortgage);
+          homeSaleProceeds = equityProceeds * ownershipShare;
+          homeNetProceedsAtSale = homeSaleProceeds;
+
+          // Deposited into taxable (non-registered) investment account
+          pNonReg += homeSaleProceeds;
+          if (hasCustomNonReg && customAccountsState.length > 0) {
+            const targetAcc =
+              customAccountsState.find((a) => a.category === 'investment') ||
+              customAccountsState.find((a) => a.category === 'savings') ||
+              customAccountsState[0];
+            if (targetAcc) {
+              targetAcc.balance += homeSaleProceeds;
+            }
+          }
+
+          // Disposed from physical real estate holding
+          yearHomeValue = 0;
+          remainingMortgage = 0;
+          yearHomeEquity = 0;
+          userRealEstateShare = 0;
+
+          notes.push(
+            `🏡 Age ${age}: Home sold for $${Math.round(grossSalePrice).toLocaleString()}! Net equity proceeds of $${Math.round(
+              homeSaleProceeds
+            ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
+          );
+        }
+      }
+    } else {
+      // FUTURE HOME PURCHASE (Currently renting, buying at futurePurchaseAge)
+      if (age < futurePurchaseAge) {
+        housingStatus = 'renting';
         yearHomeValue = 0;
         remainingMortgage = 0;
         yearHomeEquity = 0;
         userRealEstateShare = 0;
 
+        if (i === 0) {
+          notes.push(
+            `🏢 Currently Renting: Paying $${Math.round(currentRentMonthly).toLocaleString()}/month while saving toward planned home purchase at Age ${futurePurchaseAge} (Year ${futurePurchaseYear}).`
+          );
+        }
+      } else if (age === futurePurchaseAge && !futurePurchaseExecuted) {
+        // PURCHASE YEAR!
+        futurePurchaseExecuted = true;
+        isHomePurchasedThisYear = true;
+        housingStatus = 'mortgage';
+
+        let downPaymentNeeded = targetFutureDownPayment;
+        totalDownPaymentFunded = 0;
+
+        // 1. Primary FHSA qualifying withdrawal (if selected)
+        if (fundWithFhsa && pFhsa > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(pFhsa, downPaymentNeeded);
+          pFhsa -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+          pFhsaActive = false;
+          yearFhsaWithdrawalOrTransfer += used;
+          notes.push(`🏠 Age ${age}: First Home Savings Account (FHSA) fully deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
+        }
+
+        // 2. Spouse FHSA (if couple and selected)
+        if (fundWithFhsa && isCouple && spouse && sFhsa > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(sFhsa, downPaymentNeeded);
+          sFhsa -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+          sFhsaActive = false;
+          yearFhsaWithdrawalOrTransfer += used;
+          notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
+        }
+
+        // 3. RRSP Home Buyers' Plan (HBP) withdrawal (CRA max $60,000 per person) (if selected)
+        if (fundWithHbp && pRrsp > 0 && downPaymentNeeded > 0) {
+          const hbp = Math.min(60000, pRrsp, downPaymentNeeded);
+          pRrsp -= hbp;
+          downPaymentNeeded -= hbp;
+          totalDownPaymentFunded += hbp;
+          notes.push(`🍁 Age ${age}: CRA Home Buyers' Plan (HBP) tax-free RRSP withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
+        }
+        if (fundWithHbp && isCouple && spouse && sRrsp > 0 && downPaymentNeeded > 0) {
+          const hbp = Math.min(60000, sRrsp, downPaymentNeeded);
+          sRrsp -= hbp;
+          downPaymentNeeded -= hbp;
+          totalDownPaymentFunded += hbp;
+          notes.push(`🍁 Spouse Age ${spouseAge}: Spouse CRA Home Buyers' Plan (HBP) withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
+        }
+
+        // 4. Non-Registered taxable savings (if selected)
+        if (fundWithNonReg && pNonReg > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(pNonReg, downPaymentNeeded);
+          pNonReg -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+          if (hasCustomNonReg && customAccountsState.length > 0) {
+            let rem = used;
+            for (const acc of customAccountsState) {
+              const deduct = Math.min(acc.balance, rem);
+              acc.balance -= deduct;
+              rem -= deduct;
+              if (rem <= 0) break;
+            }
+          }
+          notes.push(`💵 Age ${age}: Deployed $${Math.round(used).toLocaleString()} from Non-Registered taxable savings for down payment.`);
+        }
+        if (fundWithNonReg && isCouple && spouse && sNonReg > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(sNonReg, downPaymentNeeded);
+          sNonReg -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+        }
+
+        // 5. TFSA savings (if selected)
+        if (fundWithTfsa && pTfsa > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(pTfsa, downPaymentNeeded);
+          pTfsa -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+          notes.push(`🛡️ Age ${age}: Deployed $${Math.round(used).toLocaleString()} from TFSA tax-free for down payment.`);
+        }
+        if (fundWithTfsa && isCouple && spouse && sTfsa > 0 && downPaymentNeeded > 0) {
+          const used = Math.min(sTfsa, downPaymentNeeded);
+          sTfsa -= used;
+          downPaymentNeeded -= used;
+          totalDownPaymentFunded += used;
+        }
+
+        downPaymentPaidThisYear = totalDownPaymentFunded;
+        futureActualLoanPrincipal = Math.max(0, nominalPurchasePrice - totalDownPaymentFunded);
+        futureActualMonthlyPmt = calcMonthlyPmtForLoan(futureActualLoanPrincipal);
+
+        remainingMortgage = futureActualLoanPrincipal;
+        yearHomeValue = nominalPurchasePrice;
+        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
+        userRealEstateShare = yearHomeEquity * ownershipShare;
+
         notes.push(
-          `🏡 Age ${age}: Home sold for $${Math.round(grossSalePrice).toLocaleString()}! Net equity proceeds of $${Math.round(
-            homeSaleProceeds
-          ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
+          `🏡 Age ${age}: Purchased primary residence for $${Math.round(nominalPurchasePrice).toLocaleString()}! Down payment of $${Math.round(totalDownPaymentFunded).toLocaleString()} funded from savings. Originated ${mortgageTermYears}-yr mortgage of $${Math.round(futureActualLoanPrincipal).toLocaleString()} ($${Math.round(futureActualMonthlyPmt).toLocaleString()}/month).`
         );
+      } else if (futurePurchaseExecuted && !homeSold) {
+        // POST-PURCHASE YEARS
+        const elapsedMonths = Math.max(0, (age - futurePurchaseAge) * 12);
+        if (futureActualLoanPrincipal <= 0 || elapsedMonths >= totalMortgageMonths) {
+          remainingMortgage = 0;
+          housingStatus = 'mortgage_free';
+        } else {
+          remainingMortgage = Math.max(
+            0,
+            futureActualLoanPrincipal * Math.pow(1 + monthlyRate, elapsedMonths) -
+              futureActualMonthlyPmt * ((Math.pow(1 + monthlyRate, elapsedMonths) - 1) / (monthlyRate || 1))
+          );
+          housingStatus = 'mortgage';
+        }
+
+        yearHomeValue = nominalPurchasePrice * Math.pow(1 + appreciationRate, age - futurePurchaseAge);
+        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
+        userRealEstateShare = yearHomeEquity * ownershipShare;
+
+        // Optional sale / downsizing
+        if (planToSell && age === sellAge) {
+          homeSoldThisYear = true;
+          homeSold = true;
+          homeSoldAge = age;
+
+          const grossSalePrice = yearHomeValue;
+          const netAfterClosing = grossSalePrice * (1 - sellingCostRate);
+          const equityProceeds = Math.max(0, netAfterClosing - remainingMortgage);
+          homeSaleProceeds = equityProceeds * ownershipShare;
+          homeNetProceedsAtSale = homeSaleProceeds;
+
+          pNonReg += homeSaleProceeds;
+          if (hasCustomNonReg && customAccountsState.length > 0) {
+            const targetAcc =
+              customAccountsState.find((a) => a.category === 'investment') ||
+              customAccountsState.find((a) => a.category === 'savings') ||
+              customAccountsState[0];
+            if (targetAcc) {
+              targetAcc.balance += homeSaleProceeds;
+            }
+          }
+
+          yearHomeValue = 0;
+          remainingMortgage = 0;
+          yearHomeEquity = 0;
+          userRealEstateShare = 0;
+
+          notes.push(
+            `🏡 Age ${age}: Home sold for $${Math.round(grossSalePrice).toLocaleString()}! Net equity proceeds of $${Math.round(
+              homeSaleProceeds
+            ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
+          );
+        }
       }
     }
 
@@ -277,7 +491,6 @@ export function runRetirementSimulation(
     let sTfsaWithdrawal = 0;
     let pNonRegWithdrawal = 0;
     let sNonRegWithdrawal = 0;
-    let yearFhsaWithdrawalOrTransfer = 0;
     let fhsaRolledOver = false;
 
     // Check FHSA (15-Year CRA Expiry or Age 71 Rollover into RRSP/RRIF or Home Purchase)
@@ -289,7 +502,7 @@ export function runRetirementSimulation(
       const primaryYearsSinceOpen = currentSimYear - primaryFhsaOpenYear;
       const primaryReached15Years = primaryYearsSinceOpen >= 15;
 
-      if (fhsaIntent === 'home_purchase' && age === fhsaHomePurchaseAge) {
+      if (fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && age === fhsaHomePurchaseAge) {
         yearFhsaWithdrawalOrTransfer += pFhsa;
         notes.push(`🏠 Age ${age}: FHSA fully withdrawn tax-free ($${Math.round(pFhsa).toLocaleString()}) for qualifying home purchase!`);
         pFhsa = 0;
@@ -314,7 +527,7 @@ export function runRetirementSimulation(
       const spouseYearsSinceOpen = currentSimYear - spouseFhsaOpenYear;
       const spouseReached15Years = spouseYearsSinceOpen >= 15;
 
-      if (spouse.fhsaIntent === 'home_purchase' && spouseAge === spouse.fhsaHomePurchaseAge) {
+      if (spouse.fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && spouseAge === spouse.fhsaHomePurchaseAge) {
         yearFhsaWithdrawalOrTransfer += sFhsa;
         notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA withdrawn tax-free ($${Math.round(sFhsa).toLocaleString()}) for qualifying home purchase!`);
         sFhsa = 0;
@@ -595,9 +808,34 @@ export function runRetirementSimulation(
     sNonReg += sNonRegContrib + sNonRegGrowth;
 
     // 3. Decumulation & Pensions
-    const currentLivingExpensesNominal = isRetired
-      ? targetRetirementSpendingToday * inflationFactor
-      : initialAnnualExpenses * inflationFactor;
+    let currentLivingExpensesNominal: number;
+    if (isRetired) {
+      currentLivingExpensesNominal = targetRetirementSpendingToday * inflationFactor;
+      // If mortgage is still active during retirement, factor in ongoing loan payments
+      if (remainingMortgage > 0) {
+        const annualMortgage = (isFuturePurchase ? futureActualMonthlyPmt : monthlyMortgagePmt) * 12;
+        currentLivingExpensesNominal += annualMortgage * inflationFactor;
+      }
+    } else {
+      if (isFuturePurchase) {
+        if (age < futurePurchaseAge) {
+          // Pre-purchase phase: currently renting
+          currentLivingExpensesNominal = (currentRentMonthly + nonHousingMonthly) * 12 * inflationFactor;
+        } else if (remainingMortgage > 0) {
+          // Post-purchase phase: amortizing mortgage
+          currentLivingExpensesNominal = (futureActualMonthlyPmt + nonHousingMonthly) * 12 * inflationFactor;
+        } else {
+          // Debt-free home ownership prior to retirement
+          currentLivingExpensesNominal = nonHousingMonthly * 12 * inflationFactor;
+        }
+      } else {
+        if (remainingMortgage <= 0 && ownsHome) {
+          currentLivingExpensesNominal = nonHousingMonthly * 12 * inflationFactor;
+        } else {
+          currentLivingExpensesNominal = initialAnnualExpenses * inflationFactor;
+        }
+      }
+    }
     let targetSpendingNominal = Math.round(currentLivingExpensesNominal);
     let netSpendableCashflow = 0;
     let cashflowGap = 0;
@@ -892,6 +1130,9 @@ export function runRetirementSimulation(
       realEstateShare: Math.round(userRealEstateShare),
       homeSoldThisYear,
       homeSaleProceeds: Math.round(homeSaleProceeds),
+      isHomePurchasedThisYear,
+      downPaymentPaidThisYear: Math.round(downPaymentPaidThisYear),
+      housingStatus,
       rrspContribution: Math.round(pRrspContrib + sRrspContrib),
       tfsaContribution: Math.round(pTfsaContrib + sTfsaContrib),
       fhsaContribution: Math.round(pFhsaContrib + sFhsaContrib),
@@ -1039,10 +1280,33 @@ export function runRetirementSimulation(
       }
     }
 
-    // 4. Mortgage Freedom Milestone
-    if (ownsHome && initialMortgagePrincipal > 0) {
+    // 4. Future Home Purchase Milestone
+    if (isFuturePurchase) {
+      const buyRow = yearlyResults.find(r => r.age === futurePurchaseAge);
+      if (buyRow) {
+        buyRow.milestoneBadges = buyRow.milestoneBadges || [];
+        buyRow.milestoneBadges.push({
+          id: 'home_purchase',
+          label: `Home Purchase (Age ${futurePurchaseAge})`,
+          shortLabel: '🏡 Home Purchase',
+          type: 'home_purchase',
+          icon: 'home',
+          color: 'amber',
+          description: `Transitioned from renting to homeowner: purchased primary residence for $${Math.round(nominalPurchasePrice).toLocaleString()}`,
+          metricsSummary: `Down Payment: $${Math.round(totalDownPaymentFunded).toLocaleString()}`
+        });
+      }
+    }
+
+    // 5. Mortgage Freedom Milestone
+    if (ownsHome && (initialMortgagePrincipal > 0 || (isFuturePurchase && futureActualLoanPrincipal > 0))) {
       for (const row of yearlyResults) {
-        if (row.remainingMortgage <= 0 && row.homeValue > 0 && !row.homeSoldThisYear) {
+        if (
+          row.remainingMortgage <= 0 &&
+          row.homeValue > 0 &&
+          !row.homeSoldThisYear &&
+          (!isFuturePurchase || row.age >= futurePurchaseAge)
+        ) {
           mortgagePayoffAge = row.age;
           mortgagePayoffYear = row.year;
           row.isMortgageFreeMilestone = true;
@@ -1159,6 +1423,9 @@ export function runRetirementSimulation(
     peakNetWorth: Math.round(peakNetWorth),
     peakNetWorthAge,
     ownsHome,
+    isFutureHomeBuyer: isFuturePurchase,
+    futurePurchaseAge: isFuturePurchase ? futurePurchaseAge : null,
+    futurePurchaseYear: isFuturePurchase ? futurePurchaseYear : null,
     homeEquityAtRetirement: Math.round(homeEquityAtRetirement),
     homeSoldAge,
     homeNetProceedsAtSale: Math.round(homeNetProceedsAtSale),

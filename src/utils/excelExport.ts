@@ -75,7 +75,7 @@ export async function exportMilestoneTableToExcel({
   const metaCell = worksheet.getCell('A2');
   const todayStr = new Date().toLocaleDateString('en-CA');
   const planInfo = inputs
-    ? `Target Retirement: Age ${retirementAge} | Province: ${province} | Homeowner: ${inputs.realEstate?.ownsHome ? 'Yes' : 'No'}`
+    ? `Target Retirement: Age ${retirementAge} | Province: ${province} | Housing: ${inputs.realEstate?.ownsHome ? (inputs.realEstate.purchaseType === 'future' ? `Future Buy @ Age ${inputs.realEstate.futurePurchaseAge || 'Future'}` : 'Homeowner') : 'Renting'}`
     : `Target Retirement: Age ${retirementAge} | Province: ${province}`;
   metaCell.value = `Export View: ${filterLabels[filterMode] || filterMode} | ${planInfo} | Generated: ${todayStr}`;
   metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };

@@ -1,3 +1,5 @@
+import { ExpatInputs } from './expat';
+
 export type CanadianProvince = 
   | 'ON' // Ontario
   | 'BC' // British Columbia
@@ -77,11 +79,17 @@ export interface SpouseInputs {
   pensionIncomeSplitting: boolean; // allow up to 50% RRIF income splitting at 65+
 }
 
+export type RealEstatePurchaseType = 'current' | 'future';
+
 export interface RealEstateInputs {
   ownsHome: boolean;
-  costOfHome: number; // Original purchase price / cost of the home
+  purchaseType?: RealEstatePurchaseType; // 'current' (bought in past) | 'future' (renting now, buying later)
+  futurePurchaseAge?: number; // Age of future home purchase (e.g. 35)
+  currentRent?: number; // Monthly rent while currently renting before purchase
+  useHbp?: boolean; // Use RRSP Home Buyers' Plan for down payment (up to $60k CRA limit)
+  costOfHome: number; // Original purchase price / baseline cost of home in today's dollars
   currentMarketValue: number; // Estimated current market value
-  downPayment: number; // Down payment paid upfront
+  downPayment: number; // Down payment paid upfront or target down payment
   mortgageInterestRate: number; // Annual mortgage interest rate (%)
   mortgageTermYears: number; // Amortization term in years (e.g. 25, 30)
   mortgageStartYear: number; // Year the mortgage originated (e.g. 2020)
@@ -90,6 +98,14 @@ export interface RealEstateInputs {
   planToSellHome: boolean; // Whether the user plans to dispose/downsize the home
   sellHomeAge: number; // Age at which the home is sold
   sellingCostPercent: number; // Realtor, legal, and closing fees (%)
+
+  // Future Home Purchase Down Payment Funding Accounts Selection
+  fundWithFhsa?: boolean; // Use accumulated FHSA balance
+  fundWithHbp?: boolean; // Use RRSP Home Buyers' Plan (HBP)
+  fundWithTfsa?: boolean; // Use TFSA savings
+  fundWithNonReg?: boolean; // Use Non-Registered / Taxable savings
+  downPaymentPercentPreset?: 5 | 10 | 15 | 20 | 'custom'; // Selected down payment % preset or custom
+  rentOverridden?: boolean; // True if user manually entered a custom rent in real estate tab
 }
 
 export type NonRegAccountCategory = 'savings' | 'investment' | 'gic';
@@ -172,13 +188,16 @@ export interface RetirementInputs {
 
   // Post-Retirement Strategy
   drawdownStrategy: DrawdownStrategyType;
+
+  // Expat Emigration Planning
+  expat?: ExpatInputs;
 }
 
 export interface MilestoneBadge {
   id: string;
   label: string;
   shortLabel: string;
-  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
+  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
   icon: string;
   color: string;
   description: string;
@@ -211,6 +230,9 @@ export interface YearSimulationResult {
   realEstateShare: number; // user's ownership share of home equity
   homeSoldThisYear: boolean;
   homeSaleProceeds: number; // net proceeds deposited into taxable account
+  isHomePurchasedThisYear?: boolean;
+  downPaymentPaidThisYear?: number;
+  housingStatus?: 'renting' | 'mortgage' | 'mortgage_free';
 
   // Contributions in working years
   rrspContribution: number;
@@ -306,6 +328,9 @@ export interface SimulationSummary {
 
   // Real Estate & Backup Asset metrics
   ownsHome: boolean;
+  isFutureHomeBuyer?: boolean;
+  futurePurchaseAge?: number | null;
+  futurePurchaseYear?: number | null;
   homeEquityAtRetirement: number;
   homeSoldAge: number | null;
   homeNetProceedsAtSale: number;

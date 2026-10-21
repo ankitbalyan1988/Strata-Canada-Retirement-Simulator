@@ -14,6 +14,7 @@ import {
   Info,
   Briefcase,
   AlertOctagon,
+  AlertTriangle,
   TrendingDown,
   ArrowDownRight,
   Home,
@@ -25,7 +26,11 @@ import {
   ArrowRight,
   ArrowLeft,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar,
+  CheckCircle2,
+  Globe,
+  Plane
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -38,7 +43,9 @@ import {
   CustomNonRegAccount,
   MonthlyExpenseEstimates
 } from '../types/retirement';
+import { ExpatInputs } from '../types/expat';
 import { DEFAULT_SPOUSE_INPUTS, DEFAULT_REAL_ESTATE_INPUTS, DEFAULT_ACCOUNT_RETURNS } from '../utils/presets';
+import { EXPAT_DESTINATIONS, DEFAULT_EXPAT_INPUTS } from '../utils/expatCountries';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
@@ -51,8 +58,26 @@ interface InputPanelProps {
 
 export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
   const isMarried = inputs.maritalStatus === 'married';
-  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
   const [isExpanded, setIsExpanded] = useState(true);
+
+  const updateExpatField = <K extends keyof ExpatInputs>(field: K, value: ExpatInputs[K]) => {
+    const current = inputs.expat || {
+      ...DEFAULT_EXPAT_INPUTS,
+      emigrationAge: Math.max(inputs.currentAge + 1, inputs.retirementAge - 2),
+      yearsLivedInCanadaAfter18: Math.min(40, Math.max(20, inputs.retirementAge - 18))
+    };
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      return {
+        ...base,
+        expat: {
+          ...current,
+          [field]: value
+        }
+      };
+    });
+  };
 
   const updateField = <K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
     (onChange as any)((prev: RetirementInputs) => {
@@ -64,56 +89,73 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
     });
   };
 
-  const updateRealEstateField = <K extends keyof RealEstateInputs>(field: K, value: RealEstateInputs[K]) => {
-    const current = inputs.realEstate || DEFAULT_REAL_ESTATE_INPUTS;
-    onChange({
-      ...inputs,
-      realEstate: {
-        ...current,
-        [field]: value
-      }
+  const updateRealEstate = (patch: Partial<RealEstateInputs>) => {
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      const current = base.realEstate || DEFAULT_REAL_ESTATE_INPUTS;
+      return {
+        ...base,
+        realEstate: {
+          ...current,
+          ...patch
+        }
+      };
     });
   };
 
+  const updateRealEstateField = <K extends keyof RealEstateInputs>(field: K, value: RealEstateInputs[K]) => {
+    updateRealEstate({ [field]: value } as Partial<RealEstateInputs>);
+  };
+
   const updateAccountReturn = (field: keyof AccountReturnRates, value: any) => {
-    const current = inputs.accountReturns || DEFAULT_ACCOUNT_RETURNS;
-    onChange({
-      ...inputs,
-      accountReturns: {
-        ...current,
-        [field]: value
-      }
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      const current = base.accountReturns || DEFAULT_ACCOUNT_RETURNS;
+      return {
+        ...base,
+        accountReturns: {
+          ...current,
+          [field]: value
+        }
+      };
     });
   };
 
   const handleMaritalStatusChange = (status: MaritalStatus) => {
-    if (status === 'married') {
-      onChange({
-        ...inputs,
-        maritalStatus: 'married',
-        spouse: inputs.spouse || DEFAULT_SPOUSE_INPUTS
-      });
-      setActiveTab('spouse'); // guide user to spouse inputs
-    } else {
-      onChange({
-        ...inputs,
-        maritalStatus: status,
-        spouse: undefined
-      });
-      if (activeTab === 'spouse') {
-        setActiveTab('personal');
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      if (status === 'married') {
+        return {
+          ...base,
+          maritalStatus: 'married',
+          spouse: base.spouse || DEFAULT_SPOUSE_INPUTS
+        };
+      } else {
+        return {
+          ...base,
+          maritalStatus: status,
+          spouse: undefined
+        };
       }
+    });
+    if (status === 'married') {
+      setActiveTab('spouse'); // guide user to spouse inputs
+    } else if (activeTab === 'spouse') {
+      setActiveTab('personal');
     }
   };
 
   const updateSpouseField = <K extends keyof SpouseInputs>(field: K, value: SpouseInputs[K]) => {
-    if (!inputs.spouse) return;
-    onChange({
-      ...inputs,
-      spouse: {
-        ...inputs.spouse,
-        [field]: value
-      }
+    (onChange as any)((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      if (!base.spouse) return base;
+      return {
+        ...base,
+        spouse: {
+          ...base.spouse,
+          [field]: value
+        }
+      };
     });
   };
 
@@ -136,7 +178,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col transition-colors">
+    <div className="bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-colors">
       
       {/* Marital Status Selector Bar */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
@@ -200,27 +242,27 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
 
       {/* Collapsed Summary Bar */}
       {!isExpanded && (
-        <div className="px-4 py-3 bg-slate-50/90 dark:bg-slate-850/90 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="font-bold text-slate-800 dark:text-white">Current Inputs:</span>
-            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-              Age <strong className="text-slate-900 dark:text-white">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600 dark:text-rose-400">{inputs.retirementAge}</strong>)
+            <span className="font-bold text-slate-800">Current Inputs:</span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Age <strong className="text-slate-900">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600">{inputs.retirementAge}</strong>)
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-              Income: <strong className="text-slate-900 dark:text-white">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Income: <strong className="text-slate-900">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-              Target Spending: <strong className="text-slate-900 dark:text-white">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Target Spending: <strong className="text-slate-900">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-              Province: <strong className="text-slate-900 dark:text-white">{inputs.province}</strong>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
+              Province: <strong className="text-slate-900">{inputs.province}</strong>
             </span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-1 ml-auto"
+            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"
           >
             <span>Show Full Planning Tabs</span>
             <ChevronDown className="w-3.5 h-3.5" />
@@ -232,14 +274,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
       {isExpanded && (
         <>
           {/* Tabs Header */}
-          <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto bg-slate-50/70 dark:bg-slate-850/90 p-1.5 gap-1 text-xs font-semibold">
+          <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
             <button
           type="button"
           onClick={() => setActiveTab('personal')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'personal'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
+              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
           }`}
         >
           <User className="w-4 h-4 text-blue-600" />
@@ -251,11 +293,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('expenses')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'expenses'
-              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 shadow-sm border border-rose-200 dark:border-rose-800 font-bold ring-1 ring-rose-300 dark:ring-rose-800'
-              : 'text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 hover:bg-rose-50/60 dark:hover:bg-rose-950/40 font-semibold'
+              ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
+              : 'text-rose-700 hover:text-rose-900:text-rose-100 hover:bg-rose-50/60:bg-rose-950/40 font-semibold'
           }`}
         >
-          <Receipt className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+          <Receipt className="w-4 h-4 text-rose-600" />
           <span>Living Expenses</span>
         </button>
 
@@ -264,11 +306,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('accounts')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'accounts'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
+              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
           }`}
         >
-          <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          <PiggyBank className="w-4 h-4 text-emerald-600" />
           <span>Primary Accounts</span>
         </button>
 
@@ -278,14 +320,24 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('realestate')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'realestate'
-              ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 shadow-sm border border-amber-200 dark:border-amber-800 font-bold ring-1 ring-amber-300 dark:ring-amber-800'
-              : 'text-amber-800 dark:text-amber-300 hover:text-amber-950 dark:hover:text-amber-100 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 font-semibold'
+              ? 'bg-amber-50 text-amber-900 shadow-sm border border-amber-200 font-bold ring-1 ring-amber-300'
+              : 'text-amber-800 hover:text-amber-950:text-amber-100 hover:bg-amber-50/60:bg-amber-950/40 font-semibold'
           }`}
         >
-          <Home className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <Home className="w-4 h-4 text-amber-600" />
           <span>Real Estate & Home</span>
-          {inputs.realEstate?.ownsHome && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          {inputs.realEstate?.ownsHome ? (
+            inputs.realEstate.purchaseType === 'future' ? (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
+                Buy @ {inputs.realEstate.futurePurchaseAge || inputs.currentAge + 3}
+              </span>
+            ) : (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            )
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">
+              Rent
+            </span>
           )}
         </button>
 
@@ -296,11 +348,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
             onClick={() => setActiveTab('spouse')}
             className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
               activeTab === 'spouse'
-                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 shadow-sm border border-rose-200 dark:border-rose-800 font-bold ring-1 ring-rose-300 dark:ring-rose-800'
-                : 'text-rose-700 dark:text-rose-300 hover:text-rose-900 dark:hover:text-rose-100 hover:bg-rose-50/60 dark:hover:bg-rose-950/40 font-semibold'
+                ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
+                : 'text-rose-700 hover:text-rose-900:text-rose-100 hover:bg-rose-50/60:bg-rose-950/40 font-semibold'
             }`}
           >
-            <Users className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+            <Users className="w-4 h-4 text-rose-600" />
             <span>Spouse Details & Accounts</span>
             <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
           </button>
@@ -311,11 +363,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('pensions')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'pensions'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
+              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
           }`}
         >
-          <Landmark className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+          <Landmark className="w-4 h-4 text-purple-600" />
           <span>CPP & OAS Pensions</span>
         </button>
 
@@ -324,11 +376,11 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('market')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'market'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
+              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
           }`}
         >
-          <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <TrendingUp className="w-4 h-4 text-amber-600" />
           <span>Returns & Inflation</span>
         </button>
 
@@ -337,12 +389,35 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           onClick={() => setActiveTab('strategy')}
           className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
             activeTab === 'strategy'
-              ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700 font-bold'
-              : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
+              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
           }`}
         >
-          <ArrowRightLeft className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+          <ArrowRightLeft className="w-4 h-4 text-rose-600" />
           <span>Drawdown Strategy</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('expat')}
+          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+            activeTab === 'expat'
+              ? 'bg-cyan-50 text-cyan-900 shadow-sm border border-cyan-300 font-bold ring-1 ring-cyan-300'
+              : 'text-cyan-800 hover:text-cyan-950 hover:bg-cyan-50/60 font-semibold'
+          }`}
+        >
+          <Globe className="w-4 h-4 text-cyan-600" />
+          <span>Expat & Relocation</span>
+          {inputs.expat?.planToEmigrate ? (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-bold flex items-center gap-1">
+              <span>{EXPAT_DESTINATIONS.find(d => d.id === inputs.expat?.destinationCountryId)?.flag || '✈️'}</span>
+              <span>{inputs.expat.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
+            </span>
+          ) : (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">
+              Optional
+            </span>
+          )}
         </button>
       </div>
 
@@ -598,6 +673,72 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
 
             </div>
 
+            {/* Expat Emigration Planning Question Card */}
+            <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/50 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-cyan-600 text-white">
+                    <Globe className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-900">
+                      Do you plan to exit Canada and settle in a different country at a later date?
+                    </h5>
+                    <p className="text-[11px] text-slate-500">
+                      Model CRA non-resident withholding taxes, treaty protections, departure tax, and local purchasing power (PPP).
+                    </p>
+                  </div>
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(inputs.expat?.planToEmigrate)}
+                    onChange={(e) => updateExpatField('planToEmigrate', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                </label>
+              </div>
+
+              {inputs.expat?.planToEmigrate && (
+                <div className="pt-3 border-t border-cyan-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-slate-700">Destination:</span>
+                      <select
+                        value={inputs.expat.destinationCountryId || 'mexico'}
+                        onChange={(e) => updateExpatField('destinationCountryId', e.target.value)}
+                        className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
+                      >
+                        {EXPAT_DESTINATIONS.map(d => (
+                          <option key={d.id} value={d.id}>
+                            {d.flag} {d.name} ({d.purchasingPowerMultiplier.toFixed(1)}x PPP • {d.currencyCode})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-slate-700">Planned Exit Age:</span>
+                      <strong className="text-xs font-mono font-bold text-cyan-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        Age {inputs.expat.emigrationAge || inputs.retirementAge}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('expat')}
+                    className="text-xs font-bold text-cyan-700 hover:text-cyan-800 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                  >
+                    <span>Configure Full Expat Parameters</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Next Step Guidance to Living Expenses */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
               <div className="flex items-center gap-3">
@@ -659,14 +800,14 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
             />
 
             {/* Target Retirement Spending Summary / Direct Override */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 dark:bg-slate-850/90 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 rounded-xl border border-slate-200 text-xs">
               <div>
-                <label className="font-bold text-slate-800 dark:text-white block text-xs">
+                <label className="font-bold text-slate-800 block text-xs">
                   {isMarried
                     ? 'Combined Household Retirement Annual Target (Today\'s Dollars)'
                     : 'Personal Retirement Annual Spending Target (Today\'s Dollars)'}
                 </label>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] text-slate-500">
                   Auto-calculated from your monthly living expenses with post-retirement shift applied (or customize manually)
                 </span>
               </div>
@@ -1029,7 +1170,7 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           const costOfHome = re.costOfHome || 650000;
           const currentMarketValue = re.currentMarketValue || costOfHome;
           const downPayment = re.downPayment ?? 130000;
-          const downPaymentPct = costOfHome > 0 ? Math.round((downPayment / costOfHome) * 100) : 0;
+          const downPaymentPct = costOfHome > 0 ? Math.round((downPayment / costOfHome) * 100) : 20;
           const mortgageInterestRate = re.mortgageInterestRate ?? 4.79;
           const mortgageTermYears = re.mortgageTermYears ?? 25;
           const mortgageStartYear = re.mortgageStartYear ?? 2021;
@@ -1038,19 +1179,43 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           const planToSellHome = Boolean(re.planToSellHome);
           const sellHomeAge = re.sellHomeAge ?? 72;
           const sellingCostPercent = re.sellingCostPercent ?? 4.5;
+          const isFuturePurchase = Boolean(re.ownsHome && re.purchaseType === 'future');
+          const futurePurchaseAge = re.futurePurchaseAge ?? Math.min(inputs.retirementAge, inputs.currentAge + 3);
 
-          // Financial Amortization calculations
-          const initialLoan = Math.max(0, costOfHome - downPayment);
+          // Living expenses rent auto-population & override detection
+          const livingExpensesRent = inputs.monthlyExpenses?.rentOrMortgage;
+          const isRentOverridden = Boolean(re.rentOverridden);
+          const currentRent = (isRentOverridden && re.currentRent !== undefined)
+            ? re.currentRent
+            : (livingExpensesRent ?? re.currentRent ?? 2200);
+
+          // Down payment percentage presets (5%, 10%, 15%, 20%, or custom)
+          const downPaymentPreset = re.downPaymentPercentPreset ?? (costOfHome > 0 && Math.abs((downPayment / costOfHome) - 0.20) < 0.01 ? 20 : 'custom');
+
+          // Accounts to fund the down payment
+          const fundWithFhsa = re.fundWithFhsa !== false;
+          const fundWithHbp = re.fundWithHbp !== false && re.useHbp !== false;
+          const fundWithTfsa = re.fundWithTfsa !== false;
+          const fundWithNonReg = re.fundWithNonReg !== false;
+          const useHbp = fundWithHbp;
+
+          const currentCalendarYear = 2026;
+          const yearsToPurchase = Math.max(1, futurePurchaseAge - inputs.currentAge);
+          const futurePurchaseYear = currentCalendarYear + yearsToPurchase;
+
+          // Amortization math
           const semiAnnualRate = (mortgageInterestRate / 100) / 2;
           const monthlyRate = mortgageInterestRate > 0 ? Math.pow(1 + semiAnnualRate, 2 / 12) - 1 : 0;
           const totalMonths = mortgageTermYears * 12;
+
+          // Current Homeowner calculations
+          const initialLoan = Math.max(0, costOfHome - downPayment);
           const monthlyPayment = (initialLoan > 0 && totalMonths > 0)
             ? (monthlyRate > 0
                 ? (initialLoan * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
                 : initialLoan / totalMonths)
             : 0;
 
-          const currentCalendarYear = 2026;
           const elapsedMonthsToday = Math.max(0, (currentCalendarYear - mortgageStartYear) * 12);
           const remainingMortgageToday = (initialLoan <= 0 || elapsedMonthsToday >= totalMonths)
             ? 0
@@ -1059,77 +1224,772 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
           const totalEquityToday = Math.max(0, currentMarketValue - remainingMortgageToday);
           const userEquityToday = totalEquityToday * (ownershipSharePercent / 100);
 
+          // Future Purchase calculations
+          const projectedPurchasePrice = Math.round(costOfHome * Math.pow(1 + annualAppreciationRate / 100, yearsToPurchase));
+          const projectedDownPayment = Math.round(projectedPurchasePrice * (downPaymentPct / 100));
+          const futureInitialLoan = Math.max(0, projectedPurchasePrice - projectedDownPayment);
+          const futureMonthlyPayment = (futureInitialLoan > 0 && totalMonths > 0)
+            ? (monthlyRate > 0
+                ? (futureInitialLoan * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                : futureInitialLoan / totalMonths)
+            : 0;
+          const mortgageFreeAge = futurePurchaseAge + mortgageTermYears;
+
           // Projected sale calculation
-          const yearsToSale = Math.max(0, sellHomeAge - inputs.currentAge);
-          const projectedValueAtSale = currentMarketValue * Math.pow(1 + annualAppreciationRate / 100, yearsToSale);
-          const elapsedMonthsAtSale = Math.max(0, (currentCalendarYear + yearsToSale - mortgageStartYear) * 12);
+          const effectiveBasePrice = isFuturePurchase ? projectedPurchasePrice : currentMarketValue;
+          const baseAge = isFuturePurchase ? futurePurchaseAge : inputs.currentAge;
+          const yearsToSale = Math.max(0, sellHomeAge - baseAge);
+          const projectedValueAtSale = effectiveBasePrice * Math.pow(1 + annualAppreciationRate / 100, yearsToSale);
+          const elapsedMonthsAtSale = isFuturePurchase
+            ? Math.max(0, (sellHomeAge - futurePurchaseAge) * 12)
+            : Math.max(0, (currentCalendarYear + yearsToSale - mortgageStartYear) * 12);
+          const saleLoan = isFuturePurchase ? futureInitialLoan : initialLoan;
+          const saleMonthlyPmt = isFuturePurchase ? futureMonthlyPayment : monthlyPayment;
           const remainingMortgageAtSale = elapsedMonthsAtSale >= totalMonths
             ? 0
-            : Math.max(0, initialLoan * Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - monthlyPayment * ((Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - 1) / (monthlyRate || 1)));
+            : Math.max(0, saleLoan * Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - saleMonthlyPmt * ((Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - 1) / (monthlyRate || 1)));
           const netProceedsAtSale = Math.max(0, (projectedValueAtSale * (1 - sellingCostPercent / 100)) - remainingMortgageAtSale) * (ownershipSharePercent / 100);
 
           return (
             <div className="flex flex-col gap-6">
               
-              {/* Header & Ownership Toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              {/* Header & 3-Way Housing Mode Selection */}
+              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Home className="w-4 h-4 text-amber-600" />
-                    Canadian Real Estate & Home Equity Asset
+                    Canadian Real Estate, Mortgage & Housing Strategy
                   </h4>
                   <p className="text-xs text-slate-500">
-                    Model property valuation, mortgage amortization, ownership share, and future downsizing / sale proceeds
+                    Model existing homeownership, simulate a future home purchase with FHSA/HBP down payments, or model long-term renting throughout retirement.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-600">Homeowner:</span>
-                  <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => updateRealEstateField('ownsHome', true)}
-                      className={`px-3 py-1 rounded-md font-bold transition ${
-                        re.ownsHome
-                          ? 'bg-amber-500 text-slate-950 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      Yes (Own Home)
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => updateRealEstateField('ownsHome', false)}
-                      className={`px-3 py-1 rounded-md font-bold transition ${
-                        !re.ownsHome
-                          ? 'bg-slate-700 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      No (Renting)
-                    </button>
-                  </div>
+                {/* 3-Way Segmented Control */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateRealEstate({
+                        ownsHome: true,
+                        purchaseType: 'current'
+                      });
+                    }}
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                      re.ownsHome && re.purchaseType !== 'future'
+                        ? 'bg-white text-slate-900 shadow-sm border border-amber-300 ring-2 ring-amber-400/40'
+                        : 'text-slate-600 hover:bg-white/60'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType !== 'future' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200/70 text-slate-600'}`}>
+                      <Home className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5">
+                        <span>Owns Home Today</span>
+                      </div>
+                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                        Purchased in past; existing mortgage & accumulated equity
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateRealEstate({
+                        ownsHome: true,
+                        purchaseType: 'future',
+                        futurePurchaseAge: re.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3),
+                        ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
+                      });
+                    }}
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                      re.ownsHome && re.purchaseType === 'future'
+                        ? 'bg-white text-slate-900 shadow-sm border border-blue-300 ring-2 ring-blue-500/40'
+                        : 'text-slate-600 hover:bg-white/60'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType === 'future' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200/70 text-slate-600'}`}>
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5">
+                        <span>Future Home Purchase</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-extrabold uppercase">Simulator</span>
+                      </div>
+                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                        Currently renting; model future purchase & financial impact
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateRealEstate({
+                        ownsHome: false
+                      });
+                    }}
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                      !re.ownsHome
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-300 ring-2 ring-slate-400/40'
+                        : 'text-slate-600 hover:bg-white/60'
+                    }`}
+                  >
+                    <div className={`p-1.5 rounded-lg shrink-0 ${!re.ownsHome ? 'bg-slate-700 text-white' : 'bg-slate-200/70 text-slate-600'}`}>
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs flex items-center gap-1.5">
+                        <span>Rent Long-Term</span>
+                      </div>
+                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                        No real estate asset; 100% renting throughout retirement
+                      </span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
-              {!re.ownsHome ? (
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 text-center flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-slate-200/70 flex items-center justify-center text-slate-600">
-                    <Home className="w-6 h-6" />
+              {/* VIEW 1: RENT LONG-TERM (NO REAL ESTATE) */}
+              {!re.ownsHome && (
+                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 text-center flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600">
+                    <Building2 className="w-6 h-6" />
                   </div>
-                  <h5 className="font-bold text-slate-800 text-sm">No Real Estate Mode (Renting)</h5>
-                  <p className="text-xs text-slate-500 max-w-md">
-                    Your net worth and retirement decumulation are 100% modeled through your Canadian registered (RRSP, TFSA, FHSA) and non-registered investment accounts without mortgage payments or property equity.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => updateRealEstateField('ownsHome', true)}
-                    className="mt-2 text-xs font-bold text-amber-700 hover:text-amber-800 bg-amber-100/70 hover:bg-amber-100 px-4 py-2 rounded-xl border border-amber-200"
-                  >
-                    + Add Primary Home to Simulation
-                  </button>
+                  <div>
+                    <h5 className="font-bold text-slate-900 text-sm">Long-Term Renting Mode</h5>
+                    <p className="text-xs text-slate-500 max-w-lg mt-1">
+                      You are modeling retirement with 100% rental housing. Your wealth compounds in Canadian registered accounts (TFSA, RRSP) and non-registered investments without mortgage debt or physical home equity.
+                    </p>
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateRealEstate({
+                          ownsHome: true,
+                          purchaseType: 'future',
+                          futurePurchaseAge: re.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3),
+                          ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
+                        });
+                      }}
+                      className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl border border-blue-200 transition cursor-pointer"
+                    >
+                      + Model Future Home Purchase
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateRealEstate({
+                          ownsHome: true,
+                          purchaseType: 'current'
+                        });
+                      }}
+                      className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-4 py-2 rounded-xl border border-amber-200 transition cursor-pointer"
+                    >
+                      + Model Current Homeownership
+                    </button>
+                  </div>
                 </div>
-              ) : (
+              )}
+
+              {/* VIEW 2: FUTURE HOME PURCHASE (CURRENTLY RENTING) */}
+              {re.ownsHome && isFuturePurchase && (
+                <div className="flex flex-col gap-6">
+
+                  {/* Future Buyer Stepper Journey Bar */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-emerald-50/80 border border-blue-200/90 flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-blue-200/60 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
+                        <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                          Future Home Purchase Journey (Assumption: Currently Renting)
+                        </span>
+                      </div>
+                      <span className="text-xs font-semibold text-blue-800 font-mono">
+                        {yearsToPurchase} {yearsToPurchase === 1 ? 'Year' : 'Years'} Until Purchase
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="p-2.5 rounded-xl bg-white/90 border border-blue-200/70">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase block">1. Today (Age {inputs.currentAge})</span>
+                        <span className="font-extrabold text-slate-900 block mt-0.5">🏢 Currently Renting</span>
+                        <span className="text-[11px] text-blue-700 font-mono font-semibold">${Math.round(currentRent).toLocaleString()} / month</span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white/90 border border-indigo-200/80">
+                        <span className="text-[10px] font-bold text-indigo-700 uppercase block">2. Age {futurePurchaseAge} ({futurePurchaseYear})</span>
+                        <span className="font-extrabold text-indigo-950 block mt-0.5">🏡 Buy Primary Home</span>
+                        <span className="text-[11px] text-indigo-700 font-mono font-semibold">${Math.round(projectedPurchasePrice).toLocaleString()} est. price</span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white/90 border border-indigo-200/80">
+                        <span className="text-[10px] font-bold text-indigo-700 uppercase block">3. Down Payment</span>
+                        <span className="font-extrabold text-indigo-950 block mt-0.5">💰 ${Math.round(projectedDownPayment).toLocaleString()} ({downPaymentPct}%)</span>
+                        <span className="text-[10.5px] text-slate-600 block truncate">
+                          {[fundWithFhsa && 'FHSA', fundWithHbp && 'HBP', fundWithTfsa && 'TFSA', fundWithNonReg && 'Non-Reg'].filter(Boolean).join(' + ') || 'Mortgage Only'}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-white/90 border border-emerald-200/80">
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase block">4. Age {mortgageFreeAge}</span>
+                        <span className="font-extrabold text-emerald-950 block mt-0.5">🎉 100% Mortgage-Free</span>
+                        <span className="text-[11px] text-emerald-700 font-mono font-semibold">$0 Housing Debt</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Future Purchase Top Metrics Badges */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-blue-100/30 p-4 rounded-2xl border border-blue-200/80">
+                    <div>
+                      <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">Target Purchase Age</span>
+                      <span className="text-lg font-extrabold text-slate-900 font-mono">Age {futurePurchaseAge}</span>
+                      <span className="text-[10px] text-slate-500 block">Year {futurePurchaseYear} ({yearsToPurchase} yrs away)</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider block">Projected Home Price</span>
+                      <span className="text-lg font-extrabold text-indigo-950 font-mono">${Math.round(projectedPurchasePrice).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 block">(${costOfHome.toLocaleString()} in today's $)</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Target Down Payment</span>
+                      <span className="text-lg font-extrabold text-amber-900 font-mono">${Math.round(projectedDownPayment).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 block">{downPaymentPct}% of purchase price</span>
+                    </div>
+
+                    <div className="bg-white/80 p-2 rounded-xl border border-blue-200 shadow-2xs">
+                      <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Future Mortgage</span>
+                      <span className="text-lg font-black text-blue-950 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()}/mo</span>
+                      <span className="text-[10px] font-semibold text-emerald-700 block">Free by Age {mortgageFreeAge}</span>
+                    </div>
+                  </div>
+
+                  {/* 2-Column Inputs Grid for Future Home Purchase */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                    {/* Column 1: Future Purchase Timing & Price */}
+                    <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/20 flex flex-col gap-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                          Purchase Timing & Current Rent
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                          Renting → Buying
+                        </span>
+                      </div>
+
+                      {/* Target Purchase Age */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                          <span className="text-slate-700">Planned Age of Home Purchase:</span>
+                          <span className="text-blue-700 font-bold font-mono">Age {futurePurchaseAge} (in {yearsToPurchase} yrs)</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={inputs.currentAge + 1}
+                          max={Math.min(75, inputs.retirementAge + 5)}
+                          step={1}
+                          value={futurePurchaseAge}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            updateRealEstateField('futurePurchaseAge', val);
+                            if (inputs.fhsaIntent === 'home_purchase') {
+                              updateField('fhsaHomePurchaseAge', val);
+                            }
+                          }}
+                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                          <span>Earliest: Age {inputs.currentAge + 1}</span>
+                          <span>Retirement: Age {inputs.retirementAge}</span>
+                        </div>
+                      </div>
+
+                      {/* Current Monthly Rent */}
+                      <div>
+                        <div className="flex justify-between items-center text-[11px] font-semibold mb-1">
+                          <label className="text-slate-700">
+                            Current Monthly Rent Paid Today (Prior to Purchase)
+                          </label>
+                          {livingExpensesRent && isRentOverridden && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateRealEstate({
+                                  rentOverridden: false,
+                                  currentRent: livingExpensesRent
+                                });
+                              }}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 underline font-semibold cursor-pointer"
+                            >
+                              Sync with Living Expenses (${livingExpensesRent.toLocaleString()}/mo)
+                            </button>
+                          )}
+                        </div>
+                        <CurrencyInput
+                          value={currentRent}
+                          onChange={(val) => {
+                            updateRealEstate({
+                              currentRent: val,
+                              rentOverridden: true
+                            });
+                          }}
+                          min={0}
+                          step={50}
+                          aria-label="Current Monthly Rent"
+                        />
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          {isRentOverridden
+                            ? 'Custom rent override active for pre-purchase rental phase.'
+                            : livingExpensesRent
+                            ? `Auto-populated from Living Expenses tab ($${livingExpensesRent.toLocaleString()}/month). Edit value to override.`
+                            : 'Your housing cost during the rental period before buying the home.'}
+                        </span>
+                      </div>
+
+                      {/* Target Home Price in Today's Dollars */}
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                          Target Home Cost in Today's Dollars
+                        </label>
+                        <CurrencyInput
+                          value={costOfHome}
+                          onChange={(val) => {
+                            updateRealEstate({
+                              costOfHome: val,
+                              ...(typeof downPaymentPreset === 'number' ? { downPayment: Math.round(val * (downPaymentPreset / 100)) } : {})
+                            });
+                          }}
+                          min={100000}
+                          step={10000}
+                          aria-label="Target Home Cost in Today's Dollars"
+                        />
+                        <span className="text-[10.5px] text-blue-700 font-medium mt-0.5 block">
+                          At {annualAppreciationRate}% annual growth, this home will cost ~${Math.round(projectedPurchasePrice).toLocaleString()} at Age {futurePurchaseAge}.
+                        </span>
+                      </div>
+
+                      {/* Target Down Payment with Percentage Presets */}
+                      <div>
+                        <div className="flex justify-between items-center text-[11px] font-semibold mb-1.5">
+                          <span className="text-slate-700">Target Down Payment:</span>
+                          <span className="text-amber-700 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
+                        </div>
+
+                        {/* Percentage Preset Pill Buttons: 5%, 10%, 15%, 20%, Custom */}
+                        <div className="flex items-center gap-1.5 mb-2">
+                          {[5, 10, 15, 20].map((pct) => {
+                            const isSelected = downPaymentPreset === pct;
+                            return (
+                              <button
+                                key={pct}
+                                type="button"
+                                onClick={() => {
+                                  const autoAmount = Math.round(costOfHome * (pct / 100));
+                                  updateRealEstate({
+                                    downPayment: autoAmount,
+                                    downPaymentPercentPreset: pct as any
+                                  });
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                                }`}
+                              >
+                                {pct}%
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateRealEstateField('downPaymentPercentPreset', 'custom');
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                              downPaymentPreset === 'custom'
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            Custom
+                          </button>
+                        </div>
+
+                        <CurrencyInput
+                          value={downPayment}
+                          onChange={(val) => {
+                            const matchedPreset = [5, 10, 15, 20].find(p => Math.abs(Math.round(costOfHome * (p / 100)) - val) < 100);
+                            updateRealEstate({
+                              downPayment: val,
+                              downPaymentPercentPreset: matchedPreset ? (matchedPreset as any) : 'custom'
+                            });
+                          }}
+                          min={0}
+                          max={costOfHome}
+                          step={5000}
+                          aria-label="Target Down Payment"
+                        />
+                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                          Projected down payment at purchase: ~${Math.round(projectedDownPayment).toLocaleString()}.
+                        </span>
+                      </div>
+
+                      {/* Selectable Accounts to Fund Down Payment */}
+                      <div className="bg-white p-3.5 rounded-xl border border-blue-200 flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                            Select Accounts to Fund Down Payment
+                          </span>
+                          <span className="text-[10px] text-slate-500">
+                            Choose all accounts that apply
+                          </span>
+                        </div>
+
+                        <div className="flex flex-col gap-2 text-xs">
+                          {/* 1. FHSA */}
+                          <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
+                            fundWithFhsa
+                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={fundWithFhsa}
+                              onChange={(e) => updateRealEstateField('fundWithFhsa', e.target.checked)}
+                              className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <strong className="font-bold text-[11.5px]">FHSA (First Home Savings Account)</strong>
+                                <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
+                                  fundWithFhsa ? 'bg-blue-200/80 text-blue-900' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {fundWithFhsa ? '100% Tax-Free' : 'Preserved'}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                                {fundWithFhsa
+                                  ? `Qualifying tax-free withdrawal of accumulated FHSA balance at Age ${futurePurchaseAge}.`
+                                  : 'FHSA will NOT be used for down payment; balance remains invested for rollover into RRSP.'}
+                              </p>
+                            </div>
+                          </label>
+
+                          {/* 2. RRSP Home Buyers' Plan */}
+                          <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
+                            fundWithHbp
+                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={fundWithHbp}
+                              onChange={(e) => {
+                                updateRealEstate({
+                                  fundWithHbp: e.target.checked,
+                                  useHbp: e.target.checked
+                                });
+                              }}
+                              className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <strong className="font-bold text-[11.5px]">RRSP Home Buyers' Plan (HBP)</strong>
+                                <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
+                                  fundWithHbp ? 'bg-blue-200/80 text-blue-900' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {fundWithHbp ? (isMarried ? 'Up to $120,000' : 'Up to $60,000') : 'Preserved'}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                                {fundWithHbp
+                                  ? 'Withdraw up to $60,000 tax-free per person from RRSP (CRA 15-year repayment schedule).'
+                                  : 'RRSP retirement investments will remain untouched.'}
+                              </p>
+                            </div>
+                          </label>
+
+                          {/* 3. TFSA */}
+                          <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
+                            fundWithTfsa
+                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={fundWithTfsa}
+                              onChange={(e) => updateRealEstateField('fundWithTfsa', e.target.checked)}
+                              className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <strong className="font-bold text-[11.5px]">TFSA (Tax-Free Savings Account)</strong>
+                                <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
+                                  fundWithTfsa ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {fundWithTfsa ? 'Tax-Free Withdrawal' : 'Preserved'}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                                {fundWithTfsa
+                                  ? 'Withdraw liquid TFSA savings to fund any remaining down payment portion.'
+                                  : 'TFSA investments will be protected and left to compound tax-free.'}
+                              </p>
+                            </div>
+                          </label>
+
+                          {/* 4. Non-Registered */}
+                          <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
+                            fundWithNonReg
+                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
+                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={fundWithNonReg}
+                              onChange={(e) => updateRealEstateField('fundWithNonReg', e.target.checked)}
+                              className="mt-0.5 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between">
+                                <strong className="font-bold text-[11.5px]">Non-Registered / Taxable Accounts</strong>
+                                <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
+                                  fundWithNonReg ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
+                                }`}>
+                                  {fundWithNonReg ? 'Liquid Savings' : 'Preserved'}
+                                </span>
+                              </div>
+                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                                {fundWithNonReg
+                                  ? 'Deploy taxable high-interest savings, investments, or cash toward down payment.'
+                                  : 'Non-registered investments will remain untouched.'}
+                              </p>
+                            </div>
+                          </label>
+
+                          {!fundWithFhsa && !fundWithHbp && !fundWithTfsa && !fundWithNonReg && (
+                            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-[10.5px] text-amber-900 font-semibold flex items-center gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                              <span>No funding accounts selected. 100% of the purchase price will be financed as mortgage debt.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* Column 2: Mortgage Terms & Future Amortization */}
+                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 flex flex-col gap-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-slate-700" />
+                          Future Mortgage Terms
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                          Est. Loan: ${Math.round(futureInitialLoan).toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Mortgage Interest Rate */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                          <span className="text-slate-700">Mortgage Interest Rate (Semi-Annual Compounding):</span>
+                          <span className="text-rose-700 font-bold font-mono">{mortgageInterestRate}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={2.0}
+                          max={9.0}
+                          step={0.05}
+                          value={mortgageInterestRate}
+                          onChange={(e) => updateRealEstateField('mortgageInterestRate', Number(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                        />
+                      </div>
+
+                      {/* Mortgage Amortization Term */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                          <span className="text-slate-700">Amortization Term:</span>
+                          <span className="text-blue-700 font-bold font-mono">{mortgageTermYears} Years</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1.5 mb-1.5">
+                          {[15, 20, 25, 30].map(term => (
+                            <button
+                              key={term}
+                              type="button"
+                              onClick={() => updateRealEstateField('mortgageTermYears', term)}
+                              className={`py-1 text-[11px] font-bold rounded-lg border transition ${
+                                mortgageTermYears === term
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                              }`}
+                            >
+                              {term} yrs
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Expected Annual Appreciation */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                          <span className="text-slate-700">Annual Real Estate Appreciation Rate:</span>
+                          <span className="text-emerald-700 font-bold font-mono">{annualAppreciationRate}% / yr</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={1.0}
+                          max={7.0}
+                          step={0.1}
+                          value={annualAppreciationRate}
+                          onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
+                        />
+                      </div>
+
+                      {/* Ownership Share */}
+                      <div>
+                        <div className="flex justify-between text-[11px] font-semibold mb-1">
+                          <span className="text-slate-700">Your Ownership Share of the Home:</span>
+                          <span className="text-blue-800 font-bold font-mono">{ownershipSharePercent}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={10}
+                          max={100}
+                          step={5}
+                          value={ownershipSharePercent}
+                          onChange={(e) => updateRealEstateField('ownershipSharePercent', Number(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                        />
+                        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                          <span>50% (Equal Co-owner)</span>
+                          <span>100% (Sole Owner)</span>
+                        </div>
+                      </div>
+
+                      {/* Future Payment Summary Box */}
+                      <div className="bg-white p-3 rounded-xl border border-blue-200 flex items-center justify-between">
+                        <div>
+                          <span className="text-[11px] text-slate-500 block">Projected Monthly Payment</span>
+                          <span className="text-sm font-bold text-slate-900 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()} / mo</span>
+                          <span className="text-[10px] text-slate-400">vs Rent: ${Math.round(currentRent).toLocaleString()}/mo</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[11px] text-slate-500 block">Mortgage-Free By</span>
+                          <span className="text-xs font-bold text-emerald-700 font-mono">
+                            Age {mortgageFreeAge} (Year {futurePurchaseYear + mortgageTermYears})
+                          </span>
+                          <span className="text-[10px] text-emerald-600 block">
+                            {mortgageFreeAge <= inputs.retirementAge ? 'Paid before retirement!' : `${mortgageFreeAge - inputs.retirementAge} yrs into retirement`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Disposition / Downsizing / Sale Section */}
+                  <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/20 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+                        <span className="text-sm font-bold text-slate-900">
+                          Future Home Downsizing / Sale (Backup Asset Liquidation)
+                        </span>
+                      </div>
+
+                      <label className="flex items-center gap-2 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-xs font-semibold text-indigo-900 shadow-2xs">
+                        <input
+                          type="checkbox"
+                          checked={planToSellHome}
+                          onChange={(e) => updateRealEstateField('planToSellHome', e.target.checked)}
+                          className="rounded text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span>Plan to sell / downsize home later</span>
+                      </label>
+                    </div>
+
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Optionally model selling the home at an older age. Capital gains are 100% tax-free under Canada’s <strong>Principal Residence Exemption (PRE)</strong>. Net equity proceeds are deposited into your <strong>Taxable Non-Registered Account</strong>.
+                    </p>
+
+                    {planToSellHome && (
+                      <div className="pt-3 border-t border-indigo-100 flex flex-col gap-3 bg-white p-3.5 rounded-xl border border-indigo-100">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex justify-between text-xs font-semibold mb-1">
+                              <span className="text-slate-700">Planned Age at Sale:</span>
+                              <span className="text-indigo-700 font-bold font-mono">Age {sellHomeAge}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={futurePurchaseAge + 1}
+                              max={inputs.lifeExpectancy - 1}
+                              step={1}
+                              value={Math.max(futurePurchaseAge + 1, sellHomeAge)}
+                              onChange={(e) => updateRealEstateField('sellHomeAge', Number(e.target.value))}
+                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                            />
+                            <span className="text-[10px] text-slate-400">
+                              {sellHomeAge - futurePurchaseAge} years after purchasing
+                            </span>
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between text-xs font-semibold mb-1">
+                              <span className="text-slate-700">Selling & Legal Closing Friction:</span>
+                              <span className="text-slate-800 font-bold font-mono">{sellingCostPercent}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={2.0}
+                              max={7.0}
+                              step={0.5}
+                              value={sellingCostPercent}
+                              onChange={(e) => updateRealEstateField('sellingCostPercent', Number(e.target.value))}
+                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-slate-700"
+                            />
+                            <span className="text-[10px] text-slate-400">Realtor commissions & closing costs</span>
+                          </div>
+                        </div>
+
+                        {/* Projected Proceeds Card */}
+                        <div className="p-3 rounded-lg bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div>
+                            <span className="text-xs font-bold text-emerald-950 block">
+                              🎉 Projected Net Equity Inflow at Age {sellHomeAge}:
+                            </span>
+                            <span className="text-[11px] text-emerald-700">
+                              Estimated property value of ${Math.round(projectedValueAtSale).toLocaleString()} with ${Math.round(remainingMortgageAtSale).toLocaleString()} mortgage remaining.
+                            </span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="text-lg font-black text-emerald-800 font-mono">
+                              +${Math.round(netProceedsAtSale).toLocaleString()}
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-600 block">
+                              Deposited to Taxable Account
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+              {/* VIEW 3: CURRENT HOMEOWNER (PURCHASED IN PAST) */}
+              {re.ownsHome && !isFuturePurchase && (
                 <div className="flex flex-col gap-6">
 
                   {/* Top Live Real Estate Badge */}
@@ -2121,6 +2981,267 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
               </div>
 
             </div>
+          </div>
+        )}
+
+        {/* TAB: EXPAT EMIGRATION & NON-RESIDENT RETIREMENT */}
+        {activeTab === 'expat' && (
+          <div className="flex flex-col gap-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-cyan-600" />
+                  <span>Expat Emigration & Non-Resident Retirement Planning</span>
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Plan your departure from Canada, model CRA non-resident Part XIII withholding taxes, departure tax (S. 128.1), and convert your pension to local currency with Purchasing Power Parity (PPP).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-700">Enable Expat Plan:</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(inputs.expat?.planToEmigrate)}
+                    onChange={(e) => updateExpatField('planToEmigrate', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                </label>
+              </div>
+            </div>
+
+            {/* If Expat Plan is Inactive */}
+            {!inputs.expat?.planToEmigrate && (
+              <div className="p-6 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/40 text-center flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-700 flex items-center justify-center">
+                  <Plane className="w-6 h-6" />
+                </div>
+                <div>
+                  <h5 className="text-sm font-bold text-slate-900">
+                    Are you planning to retire or settle outside Canada?
+                  </h5>
+                  <p className="text-xs text-slate-600 max-w-md mt-1">
+                    Toggle on the Expat Plan to model how moving to Mexico, Portugal, Thailand, Costa Rica, Spain, Panama, or other popular destinations stretches your retirement income.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => updateExpatField('planToEmigrate', true)}
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plane className="w-4 h-4" />
+                  <span>Activate Expat Retirement Planning</span>
+                </button>
+              </div>
+            )}
+
+            {/* If Expat Plan is Active */}
+            {inputs.expat?.planToEmigrate && (
+              <div className="flex flex-col gap-5 animate-in fade-in duration-200">
+                
+                {/* Destination Country Selection */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                    <span>1. Which country do you plan to settle in?</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      Selected: {EXPAT_DESTINATIONS.find(d => d.id === (inputs.expat?.destinationCountryId || 'mexico'))?.name}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {EXPAT_DESTINATIONS.map(dest => {
+                      const isSelected = dest.id === (inputs.expat?.destinationCountryId || 'mexico');
+                      return (
+                        <button
+                          key={dest.id}
+                          type="button"
+                          onClick={() => updateExpatField('destinationCountryId', dest.id)}
+                          className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
+                            isSelected
+                              ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
+                              : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xl leading-none">{dest.flag}</span>
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                              {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-slate-900 truncate">
+                            {dest.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                            <span>{dest.currencyCode}</span>
+                            <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Exit Age & OAS 20-Year Rule */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Exit Age */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-700 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-cyan-600" />
+                        <span>Planned Departure Age from Canada:</span>
+                      </span>
+                      <strong className="text-cyan-900 font-mono text-sm font-bold">
+                        Age {inputs.expat?.emigrationAge || inputs.retirementAge}
+                      </strong>
+                    </div>
+
+                    <input
+                      type="range"
+                      min={inputs.currentAge}
+                      max={inputs.lifeExpectancy - 2}
+                      step={1}
+                      value={inputs.expat?.emigrationAge || inputs.retirementAge}
+                      onChange={(e) => updateExpatField('emigrationAge', Number(e.target.value))}
+                      className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                    />
+
+                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                      <span>Current ({inputs.currentAge})</span>
+                      <span>Retire ({inputs.retirementAge})</span>
+                      <span>Max ({inputs.lifeExpectancy})</span>
+                    </div>
+
+                    <span className="text-[11px] text-slate-500 mt-1">
+                      {(inputs.expat?.emigrationAge || inputs.retirementAge) < inputs.retirementAge
+                        ? 'Departing before Canadian retirement (early expat phase).'
+                        : 'Departing at or after retirement age.'}
+                    </span>
+                  </div>
+
+                  {/* OAS 20-Year Residence Rule */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-slate-700 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Years Lived in Canada After Age 18:</span>
+                      </span>
+                      <strong className="text-indigo-900 font-mono text-sm font-bold">
+                        {inputs.expat?.yearsLivedInCanadaAfter18 || 30} Years
+                      </strong>
+                    </div>
+
+                    <input
+                      type="range"
+                      min={5}
+                      max={50}
+                      step={1}
+                      value={inputs.expat?.yearsLivedInCanadaAfter18 || 30}
+                      onChange={(e) => updateExpatField('yearsLivedInCanadaAfter18', Number(e.target.value))}
+                      className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                    />
+
+                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                      <span>5 yrs</span>
+                      <span className="text-indigo-700 font-bold">20 yrs (OAS Worldwide Threshold)</span>
+                      <span>40 yrs (Full OAS)</span>
+                    </div>
+
+                    <div className="text-[11px] mt-1 flex items-center gap-1.5">
+                      {(inputs.expat?.yearsLivedInCanadaAfter18 || 30) >= 20 ? (
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>OAS Qualified: Payments continue for life worldwide.</span>
+                        </span>
+                      ) : (
+                        <span className="text-rose-700 font-semibold flex items-center gap-1">
+                          <AlertTriangle className="w-3.5 h-3.5" />
+                          <span>Warning: OAS stops after 6 months abroad (under 20 yrs).</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Canadian Real Estate Strategy */}
+                {inputs.realEstate?.ownsHome && (
+                  <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Home className="w-4 h-4 text-amber-700 shrink-0" />
+                      <div>
+                        <strong className="text-amber-950 font-bold block">
+                          Canadian Home Ownership Strategy:
+                        </strong>
+                        <span className="text-amber-800 text-[11px]">
+                          Choose how you handle your home upon leaving Canada.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center bg-white rounded-lg p-0.5 border border-amber-300 text-xs shrink-0 font-medium">
+                      <button
+                        type="button"
+                        onClick={() => updateExpatField('realEstateStrategy', 'sell_before_departure')}
+                        className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                          (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'sell_before_departure'
+                            ? 'bg-amber-600 text-white font-bold shadow-xs'
+                            : 'text-amber-900 hover:bg-amber-100'
+                        }`}
+                      >
+                        Sell Before Exit (PRE Tax-Free)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateExpatField('realEstateStrategy', 'keep_and_rent')}
+                        className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                          (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'keep_and_rent'
+                            ? 'bg-amber-600 text-white font-bold shadow-xs'
+                            : 'text-amber-900 hover:bg-amber-100'
+                        }`}
+                      >
+                        Keep & Rent (S.216 Net)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateExpatField('realEstateStrategy', 'sell_after_departure')}
+                        className={`px-2.5 py-1 rounded transition cursor-pointer ${
+                          (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'sell_after_departure'
+                            ? 'bg-amber-600 text-white font-bold shadow-xs'
+                            : 'text-amber-900 hover:bg-amber-100'
+                        }`}
+                      >
+                        Sell as Non-Resident (S.116)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Direct Jump to Expat Simulator Module */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h5 className="font-bold text-white text-xs flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <span>Dedicated Expat Retirement Section Available</span>
+                    </h5>
+                    <p className="text-[11px] text-slate-300 mt-0.5">
+                      Explore the full interactive visualizer below for local currency conversions, Purchasing Power Parity (PPP) boost analysis, and CRA departure checklists.
+                    </p>
+                  </div>
+
+                  <a
+                    href="#expat-retirement-section"
+                    className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-xs"
+                  >
+                    <span>View Expat Analysis Section</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
 

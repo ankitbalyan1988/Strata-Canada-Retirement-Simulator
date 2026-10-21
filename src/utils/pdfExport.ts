@@ -145,9 +145,12 @@ export function generateRetirementPdfReport(
   ];
 
   if (inputs.realEstate?.ownsHome) {
+    const isFut = inputs.realEstate.purchaseType === 'future';
     paramRows.push([
-      'Home Valuation / Equity Share',
-      `${formatCur(inputs.realEstate.currentMarketValue)} (${inputs.realEstate.ownershipSharePercent}% ownership share)`,
+      isFut ? 'Housing Strategy / Target Home' : 'Home Valuation / Equity Share',
+      isFut
+        ? `Future Purchase @ Age ${inputs.realEstate.futurePurchaseAge || 'Future'} (${formatCur(inputs.realEstate.costOfHome)} today)`
+        : `${formatCur(inputs.realEstate.currentMarketValue)} (${inputs.realEstate.ownershipSharePercent}% ownership share)`,
       'Mortgage & Disposition Plan',
       `${inputs.realEstate.mortgageInterestRate}% (${inputs.realEstate.mortgageTermYears}yr term) | ${inputs.realEstate.planToSellHome ? `Sell @ Age ${inputs.realEstate.sellHomeAge} (into Non-Reg)` : 'Retain home'}`
     ]);

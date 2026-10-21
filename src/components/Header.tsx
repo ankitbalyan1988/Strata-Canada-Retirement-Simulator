@@ -7,15 +7,13 @@ import {
   ShieldCheck, 
   TrendingUp,
   MapPin,
-  Sun,
-  Moon,
-  Wand2
+  Wand2,
+  Landmark
 } from 'lucide-react';
 import { PRESETS } from '../utils/presets';
 import { CanadianProvince, RetirementInputs, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { PersonaHoverCard } from './PersonaHoverCard';
-import { useTheme } from '../context/ThemeContext';
 
 interface HeaderProps {
   inputs: RetirementInputs;
@@ -40,7 +38,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAIPersonaModal,
   onProvinceChange
 }) => {
-  const { theme, toggleTheme } = useTheme();
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,6 +111,19 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden sm:inline">Compare</span> Ages
             </button>
 
+            {/* Estate Planning Quick Link */}
+            <button
+              onClick={() => {
+                const el = document.getElementById('estate-planning-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-indigo-950/80 hover:bg-indigo-900 text-indigo-200 hover:text-white border border-indigo-700/60 transition shadow-xs"
+              title="Jump to Canadian Estate Planning & Reserves Liquidation"
+            >
+              <Landmark className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Estate Plan</span>
+            </button>
+
             {/* PDF Export button */}
             <button
               onClick={onExportPdf}
@@ -122,27 +132,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <FileDown className="w-3.5 h-3.5" />
               <span>{isExportingPdf ? 'Exporting...' : 'Export PDF'}</span>
-            </button>
-
-            {/* Theme Toggle Button (Light / Dark) */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition flex items-center gap-1.5 text-xs font-medium cursor-pointer border border-slate-700/60"
-              title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-              aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-300" />
-                  <span className="hidden xl:inline text-[11px] text-amber-200">Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-sky-300" />
-                  <span className="hidden xl:inline text-[11px] text-sky-200">Dark</span>
-                </>
-              )}
             </button>
 
             {/* Reset button */}

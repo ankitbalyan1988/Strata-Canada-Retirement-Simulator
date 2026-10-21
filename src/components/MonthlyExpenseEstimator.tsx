@@ -181,9 +181,13 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
                 <Home className="w-3.5 h-3.5 text-amber-600" />
-                Rent / Mortgage
+                {realEstate?.purchaseType === 'future' ? 'Current Rent' : (realEstate?.ownsHome ? 'Mortgage' : 'Monthly Rent')}
               </label>
-              {hasMortgage && (
+              {realEstate?.purchaseType === 'future' ? (
+                <span className="text-[9px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                  Renting (Buys @ {realEstate.futurePurchaseAge || 'Future'})
+                </span>
+              ) : hasMortgage && (
                 <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                   {currentExpenses.autoSyncMortgage ? 'Mortgage Synced' : 'Custom'}
                 </span>
@@ -275,38 +279,38 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
       </div>
 
       {/* Calculated Total & Post-Retirement Shift Slider */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-850 border border-indigo-100 dark:border-slate-700 flex flex-col gap-3 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-750 pb-2.5">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-indigo-100 flex flex-col gap-3 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Current Monthly Total:</span>
-            <span className="text-base font-extrabold text-slate-900 dark:text-white font-mono">
+            <span className="text-xs font-semibold text-slate-600">Current Monthly Total:</span>
+            <span className="text-base font-extrabold text-slate-900 font-mono">
               ${totalMonthly.toLocaleString()}/mo
             </span>
-            <span className="text-xs text-slate-400 dark:text-slate-500">(${totalAnnual.toLocaleString()}/yr)</span>
+            <span className="text-xs text-slate-400">(${totalAnnual.toLocaleString()}/yr)</span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">Post-Retirement Shift:</span>
+            <span className="text-xs font-semibold text-slate-600">Post-Retirement Shift:</span>
 
             {/* Quick +/- Steppers */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center bg-slate-100 rounded-lg p-0.5 border border-slate-200">
               <button
                 type="button"
                 onClick={() => handleSliderChange(Math.max(-50, adjustment - 5))}
                 disabled={adjustment <= -50}
-                className="px-2 py-1 rounded text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold text-xs"
+                className="px-2 py-1 rounded text-slate-700 hover:text-slate-900:text-white hover:bg-white:bg-slate-700 active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold text-xs"
                 title="Decrease post-retirement expenses by 5%"
                 aria-label="Decrease post-retirement shift by 5%"
               >
                 <Minus className="w-3.5 h-3.5" />
                 <span className="text-[10px] hidden sm:inline">-5%</span>
               </button>
-              <div className="w-[1px] h-3.5 bg-slate-200 dark:bg-slate-700 mx-0.5"></div>
+              <div className="w-[1px] h-3.5 bg-slate-200 mx-0.5"></div>
               <button
                 type="button"
                 onClick={() => handleSliderChange(Math.min(50, adjustment + 5))}
                 disabled={adjustment >= 50}
-                className="px-2 py-1 rounded text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-700 active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold text-xs"
+                className="px-2 py-1 rounded text-slate-700 hover:text-slate-900:text-white hover:bg-white:bg-slate-700 active:scale-95 disabled:opacity-40 transition cursor-pointer flex items-center gap-1 font-semibold text-xs"
                 title="Increase post-retirement expenses by 5%"
                 aria-label="Increase post-retirement shift by 5%"
               >
@@ -318,10 +322,10 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
             <span
               className={`text-xs font-mono font-bold px-2.5 py-0.5 rounded-full ${
                 adjustment < 0
-                  ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                   : adjustment > 0
-                  ? 'bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
+                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                  : 'bg-slate-100 text-slate-800 border border-slate-200'
               }`}
             >
               {adjustment > 0 ? `+${adjustment}%` : `${adjustment}%`}
@@ -332,17 +336,17 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
         {/* Slider for Post-Retirement Expense Adjustment */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center text-xs">
-            <span className="font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1">
+            <span className="font-semibold text-slate-700 flex items-center gap-1">
               {adjustment < 0 ? (
-                <TrendingDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <TrendingDown className="w-4 h-4 text-emerald-600" />
               ) : adjustment > 0 ? (
-                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <TrendingUp className="w-4 h-4 text-amber-600" />
               ) : (
-                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <Sparkles className="w-4 h-4 text-indigo-600" />
               )}
               Expect expenses to change post-retirement?
             </span>
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+            <span className="text-[11px] font-semibold text-slate-500">
               {adjustment < 0
                 ? `${Math.abs(adjustment)}% decrease (mortgage cleared, zero commute)`
                 : adjustment > 0
@@ -360,7 +364,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
               value={adjustment}
               onChange={(e) => handleSliderChange(Number(e.target.value))}
               onInput={(e) => handleSliderChange(Number((e.target as HTMLInputElement).value))}
-              className="w-full h-3 rounded-lg cursor-pointer accent-indigo-600 bg-slate-200 dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
+              className="w-full h-3 rounded-lg cursor-pointer accent-indigo-600 bg-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400/40"
               style={{
                 background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((adjustment + 50) / 100) * 100}%, #cbd5e1 ${((adjustment + 50) / 100) * 100}%, #cbd5e1 100%)`
               }}
@@ -369,7 +373,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
           </div>
 
           {/* Clickable Quick Preset Buttons */}
-          <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-slate-400 font-mono flex-wrap gap-1 pt-0.5">
+          <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono flex-wrap gap-1 pt-0.5">
             {[
               { val: -50, label: '-50% (Lean / Downsized)' },
               { val: -20, label: '-20% (Typical Canadian)' },
@@ -384,7 +388,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
                 className={`px-2 py-0.5 rounded-md transition cursor-pointer ${
                   adjustment === preset.val
                     ? 'bg-indigo-600 text-white font-bold shadow-2xs ring-2 ring-indigo-400/40'
-                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700'
+                    : 'text-slate-600 hover:text-slate-900:text-white bg-slate-100 hover:bg-slate-200/80:bg-slate-700 border border-slate-200/60'
                 }`}
                 title={`Set shift to ${preset.val}%`}
               >
@@ -395,27 +399,27 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
         </div>
 
         {/* Live Calculation Output Card */}
-        <div className="p-3 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-900/60 flex flex-wrap items-center justify-between gap-3 mt-1">
+        <div className="p-3 rounded-xl bg-indigo-50/70 border border-indigo-200/80 flex flex-wrap items-center justify-between gap-3 mt-1">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-300 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-900 block">
               Calculated Target Retirement Spending
             </span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-lg font-black text-indigo-950 dark:text-white font-mono">
+              <span className="text-lg font-black text-indigo-950 font-mono">
                 ${projectedPostRetirementAnnual.toLocaleString()}
               </span>
-              <span className="text-xs text-indigo-700 dark:text-indigo-300 font-semibold font-mono">
+              <span className="text-xs text-indigo-700 font-semibold font-mono">
                 / year (${projectedPostRetirementMonthly.toLocaleString()}/month)
               </span>
             </div>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+            <span className="text-[10px] text-slate-500">
               In today's purchasing power (compounds with CPI inflation in retirement)
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-1 rounded-lg flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-xs font-semibold text-emerald-800 bg-emerald-100/80 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               Auto-Synced to Plan
             </span>
           </div>
