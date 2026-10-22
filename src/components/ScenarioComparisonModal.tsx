@@ -2,7 +2,7 @@ import React from 'react';
 import { X, CheckCircle2, AlertTriangle, ArrowRight, Sparkles } from 'lucide-react';
 import { RetirementInputs } from '../types/retirement';
 import { runRetirementSimulation } from '../utils/simulator';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface ScenarioComparisonModalProps {
   isOpen?: boolean;
@@ -12,11 +12,15 @@ export interface ScenarioComparisonModalProps {
 }
 
 export const ScenarioComparisonModal: React.FC<ScenarioComparisonModalProps> = (props) => {
-  const sim = useSimulation();
-  const isOpen = props.isOpen ?? sim.isCompareModalOpen;
-  const onClose = props.onClose ?? (() => sim.setIsCompareModalOpen(false));
-  const baseInputs = props.baseInputs ?? sim.inputs;
-  const onApplyRetirementAge = props.onApplyRetirementAge ?? sim.applyRetirementAge;
+  const storeIsOpen = useSimulationStore((state) => state.isCompareModalOpen);
+  const storeSetIsOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
+  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeApplyRetirementAge = useSimulationStore((state) => state.applyRetirementAge);
+
+  const isOpen = props.isOpen ?? storeIsOpen;
+  const onClose = props.onClose ?? (() => storeSetIsOpen(false));
+  const baseInputs = props.baseInputs ?? storeInputs;
+  const onApplyRetirementAge = props.onApplyRetirementAge ?? storeApplyRetirementAge;
 
   if (!isOpen) return null;
 

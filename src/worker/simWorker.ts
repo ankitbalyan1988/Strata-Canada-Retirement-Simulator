@@ -1,5 +1,5 @@
 import { RetirementInputs, StressTestOptions, YearSimulationResult, SimulationSummary } from '../types/retirement';
-import { runRetirementSimulation, SimulationOptions } from '../utils/simulator';
+import { runRetirementSimulation, calculateSavingsPulse, SavingsPulseResult, SimulationOptions } from '../utils/simulator';
 
 export interface SimWorkerRequest {
   id: number;
@@ -14,21 +14,24 @@ export interface SimWorkerResponse {
   type: 'SIMULATION_RESULT' | 'SIMULATION_ERROR';
   yearlyResults?: YearSimulationResult[];
   summary?: SimulationSummary;
+  pulse?: SavingsPulseResult;
   error?: string;
 }
 
-// Dedicated Web Worker thread for running heavy Canadian retirement simulations
-self.onmessage = (event: MessageEvent<SimWorkerRequest>) => {
+// Dedicated Web Worker thread executing heavy retirement simulations and binary-search savings pulses
+self.addEventListener('message', (event: MessageEvent<SimWorkerRequest>) => {
   const { id, type, inputs, stressTest, simulationOptions } = event.data;
 
   if (type === 'RUN_SIMULATION') {
     try {
-      const result = runRetirementSimulation(inputs, stressTest, simulationOptions);
+      const simResult = runRetirementSimulation(inputs, stressTest, simulationOptions);
+      const pulse = calculateSavingsPulse(inputs, simResult.summary);
       const response: SimWorkerResponse = {
         id,
         type: 'SIMULATION_RESULT',
-        yearlyResults: result.yearlyResults,
-        summary: result.summary
+        yearlyResults: simResult.yearlyResults,
+        summary: simResult.summary,
+        pulse
       };
       self.postMessage(response);
     } catch (err: unknown) {
@@ -41,4 +44,4 @@ self.onmessage = (event: MessageEvent<SimWorkerRequest>) => {
       self.postMessage(errorResponse);
     }
   }
-};
+});

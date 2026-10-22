@@ -5,7 +5,7 @@ import {
   YearSimulationResult,
   SimulationSummary
 } from '../types/retirement';
-import { runRetirementSimulation, SimulationOptions } from './simulator';
+import { runRetirementSimulation, calculateSavingsPulse, SavingsPulseResult, SimulationOptions } from './simulator';
 import { SimWorkerRequest, SimWorkerResponse } from '../worker/simWorker';
 
 let workerInstance: Worker | null = null;
@@ -26,18 +26,18 @@ function getSimulationWorker(): Worker | null {
         type: 'module'
       });
 
-      workerInstance.onmessage = (event: MessageEvent<SimWorkerResponse>) => {
+      workerInstance.addEventListener('message', (event: MessageEvent<SimWorkerResponse>) => {
         const { id } = event.data;
         const callback = pendingCallbacks.get(id);
         if (callback) {
           callback(event.data);
           pendingCallbacks.delete(id);
         }
-      };
+      });
 
-      workerInstance.onerror = (err) => {
+      workerInstance.addEventListener('error', (err) => {
         console.warn('Simulation worker encountered an error, falling back to sync execution:', err);
-      };
+      });
     } catch (err) {
       console.warn('Failed to construct Simulation Worker, using sync fallback:', err);
       workerInstance = null;
@@ -47,20 +47,32 @@ function getSimulationWorker(): Worker | null {
   return workerInstance;
 }
 
+export interface SimulationPayload {
+  yearlyResults: YearSimulationResult[];
+  summary: SimulationSummary;
+  pulse: SavingsPulseResult;
+}
+
 /**
- * Asynchronously calculates the retirement simulation via Web Worker,
+ * Asynchronously calculates the retirement simulation and savings pulse via Web Worker,
  * with automatic fallback to synchronous execution in unsupported or test environments.
  */
 export function calculateSimulationAsync(
   inputs: RetirementInputs,
   stressTest?: StressTestOptions,
   simulationOptions?: SimulationOptions
-): Promise<{ yearlyResults: YearSimulationResult[]; summary: SimulationSummary }> {
+): Promise<SimulationPayload> {
   const worker = getSimulationWorker();
 
   if (!worker) {
     // Synchronous execution fallback
-    return Promise.resolve(runRetirementSimulation(inputs, stressTest, simulationOptions));
+    const sim = runRetirementSimulation(inputs, stressTest, simulationOptions);
+    const pulse = calculateSavingsPulse(inputs, sim.summary);
+    return Promise.resolve({
+      yearlyResults: sim.yearlyResults,
+      summary: sim.summary,
+      pulse
+    });
   }
 
   return new Promise((resolve, reject) => {
@@ -69,23 +81,36 @@ export function calculateSimulationAsync(
       pendingCallbacks.delete(id);
       // If worker times out or hangs, fallback to sync
       try {
-        resolve(runRetirementSimulation(inputs, stressTest, simulationOptions));
+        const sim = runRetirementSimulation(inputs, stressTest, simulationOptions);
+        const pulse = calculateSavingsPulse(inputs, sim.summary);
+        resolve({
+          yearlyResults: sim.yearlyResults,
+          summary: sim.summary,
+          pulse
+        });
       } catch (e) {
         reject(e);
       }
-    }, 1000);
+    }, 1500);
 
     pendingCallbacks.set(id, (response) => {
       clearTimeout(timeoutId);
-      if (response.type === 'SIMULATION_RESULT' && response.yearlyResults && response.summary) {
+      if (response.type === 'SIMULATION_RESULT' && response.yearlyResults && response.summary && response.pulse) {
         resolve({
           yearlyResults: response.yearlyResults,
-          summary: response.summary
+          summary: response.summary,
+          pulse: response.pulse
         });
       } else {
         // Fallback on error
         try {
-          resolve(runRetirementSimulation(inputs, stressTest, simulationOptions));
+          const sim = runRetirementSimulation(inputs, stressTest, simulationOptions);
+          const pulse = calculateSavingsPulse(inputs, sim.summary);
+          resolve({
+            yearlyResults: sim.yearlyResults,
+            summary: sim.summary,
+            pulse
+          });
         } catch (e) {
           reject(new Error(response.error || 'Worker simulation failed'));
         }
@@ -120,20 +145,28 @@ export function useSimulationWorker(
 ): {
   yearlyResults: YearSimulationResult[];
   summary: SimulationSummary;
+  pulse: SavingsPulseResult;
   isCalculating: boolean;
 } {
   const { debounceMs = 60, enabled = true } = options;
 
   // Compute initial baseline synchronously on first mount for instant 0ms initial render if enabled
-  const initialRef = useRef<{ yearlyResults: YearSimulationResult[]; summary: SimulationSummary } | null>(null);
+  const initialRef = useRef<SimulationPayload | null>(null);
   if (!initialRef.current && enabled) {
-    initialRef.current = runRetirementSimulation(inputs, stressTest);
+    const initialSim = runRetirementSimulation(inputs, stressTest);
+    const initialPulse = calculateSavingsPulse(inputs, initialSim.summary);
+    initialRef.current = {
+      yearlyResults: initialSim.yearlyResults,
+      summary: initialSim.summary,
+      pulse: initialPulse
+    };
   }
 
-  const [simulationState, setSimulationState] = useState(
+  const [simulationState, setSimulationState] = useState<SimulationPayload>(
     initialRef.current || {
       yearlyResults: [],
-      summary: {} as SimulationSummary
+      summary: {} as SimulationSummary,
+      pulse: {} as SavingsPulseResult
     }
   );
   const [isCalculating, setIsCalculating] = useState(false);
@@ -164,20 +197,22 @@ export function useSimulationWorker(
       const targetInputs = latestInputsRef.current;
       const targetStress = latestStressRef.current;
 
-      calculateSimulationAsync(targetInputs, targetStress).then((result) => {
-        // Only update if this request is still the latest one
-        if (runId === activeRunIdRef.current) {
-          startTransition(() => {
-            setSimulationState(result);
+      calculateSimulationAsync(targetInputs, targetStress)
+        .then((result) => {
+          // Only update if this request is still the latest one
+          if (runId === activeRunIdRef.current) {
+            startTransition(() => {
+              setSimulationState(result);
+              setIsCalculating(false);
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('Simulation execution failed:', err);
+          if (runId === activeRunIdRef.current) {
             setIsCalculating(false);
-          });
-        }
-      }).catch((err) => {
-        console.error('Simulation execution failed:', err);
-        if (runId === activeRunIdRef.current) {
-          setIsCalculating(false);
-        }
-      });
+          }
+        });
     }, debounceMs);
 
     return () => {
@@ -190,6 +225,7 @@ export function useSimulationWorker(
   return {
     yearlyResults: simulationState.yearlyResults,
     summary: simulationState.summary,
+    pulse: simulationState.pulse,
     isCalculating
   };
 }

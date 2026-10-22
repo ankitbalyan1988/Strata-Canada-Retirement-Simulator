@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, useRef } from 'react';
+import React from 'react';
 import {
   CanadianProvince,
   RetirementInputs,
@@ -8,15 +8,13 @@ import {
   StressTestOptions
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
-import { DEFAULT_INPUTS } from '../utils/presets';
-import { fastSimulateEndNetWorth } from '../utils/simulator';
-import { useSimulationWorker } from '../utils/simulationClient';
-import { triggerConfetti } from '../utils/confettiHelper';
+import { SavingsPulseResult } from '../utils/simulator';
+import { useSimulationStore, SimulationState } from '../store/useSimulationStore';
 
 export interface SimulationContextValue {
   // Primary state
   inputs: RetirementInputs;
-  setInputs: React.Dispatch<React.SetStateAction<RetirementInputs>>;
+  setInputs: (inputs: RetirementInputs | ((prev: RetirementInputs) => RetirementInputs)) => void;
   updateField: <K extends keyof RetirementInputs>(
     field: K,
     value: RetirementInputs[K] | ((prev: RetirementInputs[K]) => RetirementInputs[K])
@@ -27,13 +25,14 @@ export interface SimulationContextValue {
   // Simulation output
   yearlyResults: YearSimulationResult[];
   summary: SimulationSummary;
+  pulse: SavingsPulseResult;
   isCalculating: boolean;
 
   // Stress test
   isStressTestActive: boolean;
-  setIsStressTestActive: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsStressTestActive: (active: boolean | ((prev: boolean) => boolean)) => void;
   stressTiming: 'at_retirement' | 'immediate';
-  setStressTiming: React.Dispatch<React.SetStateAction<'at_retirement' | 'immediate'>>;
+  setStressTiming: (timing: 'at_retirement' | 'immediate') => void;
   stressSimulation: {
     yearlyResults: YearSimulationResult[];
     summary: SimulationSummary;
@@ -60,251 +59,59 @@ export interface SimulationContextValue {
   exportPdf: () => Promise<void>;
 }
 
-const SimulationContext = createContext<SimulationContextValue | null>(null);
-
 export interface SimulationProviderProps {
   children: React.ReactNode;
-  initialInputs?: RetirementInputs;
 }
 
-export const SimulationProvider: React.FC<SimulationProviderProps> = ({
-  children,
-  initialInputs = DEFAULT_INPUTS
-}) => {
-  const [inputs, setInputs] = useState<RetirementInputs>(initialInputs);
-  const [activePresetId, setActivePresetId] = useState<string>('canadian_average');
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
-  const [isAIPersonaModalOpen, setIsAIPersonaModalOpen] = useState(false);
-  const [isStressTestActive, setIsStressTestActive] = useState(false);
-  const [stressTiming, setStressTiming] = useState<'at_retirement' | 'immediate'>('at_retirement');
-  const [activeChartTab, setActiveChartTab] = useState<'networth' | 'cashflow'>('networth');
-
-  // Baseline Web Worker simulation
-  const { yearlyResults, summary, isCalculating } = useSimulationWorker(inputs, undefined, {
-    debounceMs: 50
-  });
-
-  const stressOptions: StressTestOptions | undefined = useMemo(() => {
-    if (!isStressTestActive) return undefined;
-    return {
-      enabled: true,
-      dropPercent: 10,
-      timing: stressTiming
-    };
-  }, [isStressTestActive, stressTiming]);
-
-  // Secondary stress test Web Worker simulation
-  const stressSimulation = useSimulationWorker(inputs, stressOptions, {
-    debounceMs: 50,
-    enabled: isStressTestActive
-  });
-
-  // Keep references for callbacks that shouldn't invalidate on result changes
-  const inputsRef = useRef(inputs);
-  inputsRef.current = inputs;
-  const summaryRef = useRef(summary);
-  summaryRef.current = summary;
-  const yearlyResultsRef = useRef(yearlyResults);
-  yearlyResultsRef.current = yearlyResults;
-
-  // Granular update action
-  const updateField = useCallback(<K extends keyof RetirementInputs>(
-    field: K,
-    value: RetirementInputs[K] | ((prev: RetirementInputs[K]) => RetirementInputs[K])
-  ) => {
-    setInputs((prev) => ({
-      ...prev,
-      [field]: typeof value === 'function' ? (value as (prev: RetirementInputs[K]) => RetirementInputs[K])(prev[field]) : value
-    }));
-  }, []);
-
-  const selectPreset = useCallback((preset: ScenarioPreset) => {
-    setInputs(preset.inputs);
-    setActivePresetId(preset.id);
-  }, []);
-
-  const resetToDefault = useCallback(() => {
-    setInputs(DEFAULT_INPUTS);
-    setActivePresetId('canadian_average');
-  }, []);
-
-  const applyAIPersona = useCallback((newInputs: RetirementInputs) => {
-    setInputs(newInputs);
-    setActivePresetId('custom_ai');
-    triggerConfetti({
-      particleCount: 60,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }, []);
-
-  const applyRetirementAge = useCallback((newAge: number) => {
-    setInputs((prev) => {
-      const updated = {
-        ...prev,
-        retirementAge: newAge
-      };
-
-      const testRes = fastSimulateEndNetWorth(updated);
-      if (testRes.isFullyFunded && !summaryRef.current.isFullyFunded) {
-        triggerConfetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 }
-        });
-      }
-
-      return updated;
-    });
-  }, []);
-
-  const applyProvince = useCallback((province: CanadianProvince) => {
-    setInputs((prev) => ({
-      ...prev,
-      province
-    }));
-  }, []);
-
-  const updateExpatInputs = useCallback((newExpat: ExpatInputs) => {
-    setInputs((prev) => ({
-      ...prev,
-      expat: newExpat
-    }));
-  }, []);
-
-  const applyMonthlyBoost = useCallback((additionalMonthly: number) => {
-    setInputs((prev) => {
-      const annualAddition = additionalMonthly * 12;
-      const rrspRoomLeft = Math.max(0, 32490 - prev.rrspAnnualContribution);
-      const toRrsp = Math.min(annualAddition, rrspRoomLeft);
-      const remainder = annualAddition - toRrsp;
-      const tfsaRoomLeft = Math.max(0, 7000 - prev.tfsaAnnualContribution);
-      const toTfsa = Math.min(remainder, tfsaRoomLeft);
-      const toNonReg = remainder - toTfsa;
-
-      return {
-        ...prev,
-        rrspAnnualContribution: prev.rrspAnnualContribution + toRrsp,
-        tfsaAnnualContribution: prev.tfsaAnnualContribution + toTfsa,
-        nonRegAnnualContribution: prev.nonRegAnnualContribution + toNonReg
-      };
-    });
-
-    triggerConfetti({
-      particleCount: 55,
-      spread: 65,
-      origin: { y: 0.6 }
-    });
-  }, []);
-
-  const exportPdf = useCallback(async () => {
-    try {
-      setIsExportingPdf(true);
-      const { generateRetirementPdfReport } = await import('../utils/pdfExport');
-      generateRetirementPdfReport(inputsRef.current, summaryRef.current, yearlyResultsRef.current);
-      setIsExportingPdf(false);
-    } catch (err) {
-      console.error('PDF export error:', err);
-      setIsExportingPdf(false);
-    }
-  }, []);
-
-  const contextValue = useMemo<SimulationContextValue>(() => ({
-    inputs,
-    setInputs,
-    updateField,
-    activePresetId,
-    setActivePresetId,
-    yearlyResults,
-    summary,
-    isCalculating,
-    isStressTestActive,
-    setIsStressTestActive,
-    stressTiming,
-    setStressTiming,
-    stressSimulation,
-    activeChartTab,
-    setActiveChartTab,
-    isExportingPdf,
-    isCompareModalOpen,
-    setIsCompareModalOpen,
-    isAIPersonaModalOpen,
-    setIsAIPersonaModalOpen,
-    selectPreset,
-    resetToDefault,
-    applyRetirementAge,
-    applyProvince,
-    applyMonthlyBoost,
-    applyAIPersona,
-    updateExpatInputs,
-    exportPdf
-  }), [
-    inputs,
-    updateField,
-    activePresetId,
-    yearlyResults,
-    summary,
-    isCalculating,
-    isStressTestActive,
-    stressTiming,
-    stressSimulation,
-    activeChartTab,
-    isExportingPdf,
-    isCompareModalOpen,
-    isAIPersonaModalOpen,
-    selectPreset,
-    resetToDefault,
-    applyRetirementAge,
-    applyProvince,
-    applyMonthlyBoost,
-    applyAIPersona,
-    updateExpatInputs,
-    exportPdf
-  ]);
-
-  return (
-    <SimulationContext.Provider value={contextValue}>
-      {children}
-    </SimulationContext.Provider>
-  );
+/**
+ * Backward-compatible SimulationProvider component.
+ * Note: Under the Zustand architecture, global state is managed directly via useSimulationStore.
+ */
+export const SimulationProvider: React.FC<SimulationProviderProps> = ({ children }) => {
+  return <>{children}</>;
 };
 
 /**
- * Hook to access the full retirement simulation context.
+ * Backward-compatible useSimulation hook forwarding directly to useSimulationStore.
  */
-export function useSimulation(): SimulationContextValue {
-  const context = useContext(SimulationContext);
-  if (!context) {
-    throw new Error('useSimulation must be used within a SimulationProvider');
-  }
-  return context;
+export function useSimulation(): SimulationState {
+  return useSimulationStore();
 }
 
 /**
  * Granular selector hook for input management only.
  */
 export function useSimulationInputs() {
-  const { inputs, setInputs, updateField } = useSimulation();
-  return useMemo(() => ({ inputs, setInputs, updateField }), [inputs, setInputs, updateField]);
+  const inputs = useSimulationStore((state) => state.inputs);
+  const setInputs = useSimulationStore((state) => state.setInputs);
+  const updateField = useSimulationStore((state) => state.updateField);
+  return { inputs, setInputs, updateField };
 }
 
 /**
  * Granular selector hook for simulation outputs only.
  */
 export function useSimulationResults() {
-  const { yearlyResults, summary, isCalculating } = useSimulation();
-  return useMemo(
-    () => ({ yearlyResults, summary, isCalculating }),
-    [yearlyResults, summary, isCalculating]
-  );
+  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const summary = useSimulationStore((state) => state.summary);
+  const isCalculating = useSimulationStore((state) => state.isCalculating);
+  return { yearlyResults, summary, isCalculating };
 }
 
 /**
  * Granular selector hook for stable action dispatches only.
  */
 export function useSimulationActions() {
-  const {
+  const selectPreset = useSimulationStore((state) => state.selectPreset);
+  const resetToDefault = useSimulationStore((state) => state.resetToDefault);
+  const applyRetirementAge = useSimulationStore((state) => state.applyRetirementAge);
+  const applyProvince = useSimulationStore((state) => state.applyProvince);
+  const applyMonthlyBoost = useSimulationStore((state) => state.applyMonthlyBoost);
+  const applyAIPersona = useSimulationStore((state) => state.applyAIPersona);
+  const updateExpatInputs = useSimulationStore((state) => state.updateExpatInputs);
+  const exportPdf = useSimulationStore((state) => state.exportPdf);
+
+  return {
     selectPreset,
     resetToDefault,
     applyRetirementAge,
@@ -313,28 +120,5 @@ export function useSimulationActions() {
     applyAIPersona,
     updateExpatInputs,
     exportPdf
-  } = useSimulation();
-
-  return useMemo(
-    () => ({
-      selectPreset,
-      resetToDefault,
-      applyRetirementAge,
-      applyProvince,
-      applyMonthlyBoost,
-      applyAIPersona,
-      updateExpatInputs,
-      exportPdf
-    }),
-    [
-      selectPreset,
-      resetToDefault,
-      applyRetirementAge,
-      applyProvince,
-      applyMonthlyBoost,
-      applyAIPersona,
-      updateExpatInputs,
-      exportPdf
-    ]
-  );
+  };
 }

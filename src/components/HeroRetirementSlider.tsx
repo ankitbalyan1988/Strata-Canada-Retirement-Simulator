@@ -13,7 +13,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface HeroRetirementSliderProps {
   inputs?: RetirementInputs;
@@ -22,13 +22,26 @@ export interface HeroRetirementSliderProps {
 }
 
 export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props) => {
-  const sim = useSimulation();
-  const inputs = props.inputs ?? sim.inputs;
-  const summary = props.summary ?? sim.summary;
-  const onChangeRetirementAge = props.onChangeRetirementAge ?? sim.applyRetirementAge;
+  // Targeted Zustand slice subscriptions
+  const storeCurrentAge = useSimulationStore((state) => state.inputs.currentAge);
+  const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const storeLifeExpectancy = useSimulationStore((state) => state.inputs.lifeExpectancy);
+  const storeMaritalStatus = useSimulationStore((state) => state.inputs.maritalStatus);
+  const storeSpouse = useSimulationStore((state) => state.inputs.spouse);
+  const storeTargetSpending = useSimulationStore((state) => state.inputs.targetRetirementSpendingToday);
+  const storeSummary = useSimulationStore((state) => state.summary);
+  const applyRetirementAge = useSimulationStore((state) => state.applyRetirementAge);
+
+  const currentAge = props.inputs?.currentAge ?? storeCurrentAge;
+  const retirementAge = props.inputs?.retirementAge ?? storeRetirementAge;
+  const lifeExpectancy = props.inputs?.lifeExpectancy ?? storeLifeExpectancy;
+  const maritalStatus = props.inputs?.maritalStatus ?? storeMaritalStatus;
+  const spouse = props.inputs?.spouse ?? storeSpouse;
+  const targetSpending = props.inputs?.targetRetirementSpendingToday ?? storeTargetSpending;
+  const summary = props.summary ?? storeSummary;
+  const onChangeRetirementAge = props.onChangeRetirementAge ?? applyRetirementAge;
 
   const [isExpanded, setIsExpanded] = useState(true);
-  const { currentAge, retirementAge, lifeExpectancy } = inputs;
   const yearsToRetire = Math.max(0, retirementAge - currentAge);
   const yearsInRetirement = Math.max(0, lifeExpectancy - retirementAge);
 
@@ -61,12 +74,12 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
                 <Calendar className="w-3.5 h-3.5" /> Target Retirement Age Simulator
               </span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                inputs.maritalStatus === 'married'
+                maritalStatus === 'married'
                   ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
                   : 'bg-slate-700/60 text-slate-300 border-slate-600'
               }`}>
-                {inputs.maritalStatus === 'married'
-                  ? `Couple Plan (Spouse: ${inputs.spouse?.name || 'Spouse'} @ ${inputs.spouse?.retirementAge || '63'})`
+                {maritalStatus === 'married'
+                  ? `Couple Plan (Spouse: ${spouse?.name || 'Spouse'} @ ${spouse?.retirementAge || '63'})`
                   : 'Individual Plan (Single / Divorced)'}
               </span>
             </div>
@@ -219,7 +232,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
               ${Math.round(summary.averageAnnualRetirementSpendNominal / 12).toLocaleString()} /mo
             </span>
             <span className="text-[10px] text-slate-400 mt-0.5">
-              Today's $: ${Math.round(inputs.targetRetirementSpendingToday / 12).toLocaleString()} /mo
+              Today's $: ${Math.round(targetSpending / 12).toLocaleString()} /mo
             </span>
           </div>
 

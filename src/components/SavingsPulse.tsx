@@ -17,25 +17,32 @@ import {
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 import { calculateSavingsPulse, SavingsPulseResult } from '../utils/simulator';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface SavingsPulseProps {
   inputs?: RetirementInputs;
   summary?: SimulationSummary;
+  pulse?: SavingsPulseResult;
   onApplyMonthlyBoost?: (additionalMonthly: number) => void;
 }
 
 export const SavingsPulse: React.FC<SavingsPulseProps> = (props) => {
-  const sim = useSimulation();
-  const inputs = props.inputs ?? sim.inputs;
-  const summary = props.summary ?? sim.summary;
-  const onApplyMonthlyBoost = props.onApplyMonthlyBoost ?? sim.applyMonthlyBoost;
+  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeSummary = useSimulationStore((state) => state.summary);
+  const storePulse = useSimulationStore((state) => state.pulse);
+  const storeApplyMonthlyBoost = useSimulationStore((state) => state.applyMonthlyBoost);
+  const isCalculating = useSimulationStore((state) => state.isCalculating);
+
+  const inputs = props.inputs ?? storeInputs;
+  const summary = props.summary ?? storeSummary;
+  const onApplyMonthlyBoost = props.onApplyMonthlyBoost ?? storeApplyMonthlyBoost;
 
   const [isExpanded, setIsExpanded] = useState(true);
-  const pulse: SavingsPulseResult = useMemo(
-    () => calculateSavingsPulse(inputs, summary),
-    [inputs, summary]
-  );
+  const pulse: SavingsPulseResult = useMemo(() => {
+    if (props.pulse) return props.pulse;
+    if (storePulse && typeof storePulse.currentMonthlySavings === 'number') return storePulse;
+    return calculateSavingsPulse(inputs, summary);
+  }, [props.pulse, storePulse, inputs, summary]);
 
   const formatCur = (val: number) => `$${Math.round(val).toLocaleString()}`;
 
@@ -107,6 +114,12 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = (props) => {
               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${statusConfig.badgeColor}`}>
                 {statusConfig.badge}
               </span>
+              {isCalculating && (
+                <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping"></span>
+                  Recalculating...
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Live monthly pacing check to sustain your lifestyle through Age {inputs.lifeExpectancy}

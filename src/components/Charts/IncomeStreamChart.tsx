@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { YearSimulationResult } from '../../types/retirement';
 import { Wallet, AlertCircle, TrendingDown } from 'lucide-react';
 
@@ -14,32 +14,33 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
   const [hoveredAge, setHoveredAge] = useState<number | null>(null);
 
   // Filter to retirement years only
-  const retirementData = yearlyResults.filter((y) => y.isRetired);
-
-  if (retirementData.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center text-slate-500 text-sm">
-        Select a retirement age below life expectancy to view post-retirement cash flow breakdown.
-      </div>
-    );
-  }
-
-  // Find max gross income for scale
-  const maxIncome = Math.max(
-    50000,
-    ...retirementData.map((d) => {
-      return (
-        d.cppIncome +
-        d.oasNetIncome +
-        d.rrspWithdrawal +
-        d.tfsaWithdrawal +
-        d.nonRegWithdrawal
-      );
-    }),
-    ...retirementData.map((d) => d.targetSpendingNominal)
+  const retirementData = useMemo(
+    () => yearlyResults.filter((y) => y.isRetired),
+    [yearlyResults]
   );
 
-  const yDomainMax = Math.ceil((maxIncome * 1.15) / 10000) * 10000;
+  // Find max gross income for scale
+  const maxIncome = useMemo(() => {
+    if (retirementData.length === 0) return 50000;
+    return Math.max(
+      50000,
+      ...retirementData.map((d) => {
+        return (
+          d.cppIncome +
+          d.oasNetIncome +
+          d.rrspWithdrawal +
+          d.tfsaWithdrawal +
+          d.nonRegWithdrawal
+        );
+      }),
+      ...retirementData.map((d) => d.targetSpendingNominal)
+    );
+  }, [retirementData]);
+
+  // Add 15% headroom
+  const yDomainMax = useMemo(() => {
+    return Math.ceil((maxIncome * 1.15) / 10000) * 10000;
+  }, [maxIncome]);
 
   // SVG dimensions
   const svgWidth = 860;
@@ -48,35 +49,56 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
-  const minAge = retirementData[0].age;
-  const maxAge = retirementData[retirementData.length - 1].age;
+  const minAge = retirementData[0]?.age ?? retirementAge;
+  const maxAge = retirementData[retirementData.length - 1]?.age ?? retirementAge;
   const ageSpan = Math.max(1, maxAge - minAge);
 
-  const getX = (age: number) => {
-    return padding.left + ((age - minAge) / ageSpan) * chartWidth;
-  };
-
-  const getY = (value: number) => {
-    const clamped = Math.max(0, value);
-    return padding.top + chartHeight - (clamped / yDomainMax) * chartHeight;
-  };
-
-  // Target spending reference line path
-  const targetSpendingPoints = retirementData
-    .map((d) => `${getX(d.age)},${getY(d.targetSpendingNominal)}`)
-    .join(' ');
-
-  const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map((frac) => frac * yDomainMax);
-  const xTicks = retirementData.filter(
-    (d) => d.age % 5 === 0 || d.age === minAge || d.age === maxAge
+  const getX = useCallback(
+    (age: number) => padding.left + ((age - minAge) / ageSpan) * chartWidth,
+    [minAge, ageSpan, chartWidth, padding.left]
   );
 
-  const hoveredItem = hoveredAge !== null ? retirementData.find(d => d.age === hoveredAge) : null;
+  const getY = useCallback(
+    (value: number) => {
+      const clamped = Math.max(0, value);
+      return padding.top + chartHeight - (clamped / yDomainMax) * chartHeight;
+    },
+    [yDomainMax, chartHeight, padding.top]
+  );
+
+  // Target spending reference line path
+  const targetSpendingPoints = useMemo(() => {
+    return retirementData
+      .map((d) => `${getX(d.age)},${getY(d.targetSpendingNominal)}`)
+      .join(' ');
+  }, [retirementData, getX, getY]);
+
+  const yTicks = useMemo(() => {
+    return [0, 0.25, 0.5, 0.75, 1.0].map((frac) => frac * yDomainMax);
+  }, [yDomainMax]);
+
+  const xTicks = useMemo(() => {
+    return retirementData.filter(
+      (d) => d.age % 5 === 0 || d.age === minAge || d.age === maxAge
+    );
+  }, [retirementData, minAge, maxAge]);
+
+  const hoveredItem = useMemo(() => {
+    return hoveredAge !== null ? retirementData.find((d) => d.age === hoveredAge) ?? null : null;
+  }, [hoveredAge, retirementData]);
 
   const formatCur = (val: number) => {
     if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
     return `$${Math.round(val / 1000)}k`;
   };
+
+  if (retirementData.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center text-slate-500 text-sm">
+        Select a retirement age below life expectancy to view post-retirement cash flow breakdown.
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col gap-4 transition-colors">

@@ -10,7 +10,7 @@ import { MilestoneTable } from './components/MilestoneTable';
 import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { CanadianPlanningTips } from './components/CanadianPlanningTips';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
-import { SimulationProvider, useSimulation } from './context/SimulationContext';
+import { useSimulationStore } from './store/useSimulationStore';
 import { Layers, Wallet } from 'lucide-react';
 
 // Dynamic lazy-loaded modules and modals to optimize critical rendering path
@@ -24,20 +24,18 @@ const AIPersonaModal = React.lazy(() =>
   import('./components/AIPersonaModal').then((m) => ({ default: m.AIPersonaModal }))
 );
 
-function MainAppContent() {
-  const {
-    inputs,
-    yearlyResults,
-    isStressTestActive,
-    setIsStressTestActive,
-    stressTiming,
-    setStressTiming,
-    stressSimulation,
-    activeChartTab,
-    setActiveChartTab,
-    isCompareModalOpen,
-    isAIPersonaModalOpen
-  } = useSimulation();
+export default function App() {
+  const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
+  const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
+  const stressTiming = useSimulationStore((state) => state.stressTiming);
+  const setStressTiming = useSimulationStore((state) => state.setStressTiming);
+  const stressSimulation = useSimulationStore((state) => state.stressSimulation);
+  const activeChartTab = useSimulationStore((state) => state.activeChartTab);
+  const setActiveChartTab = useSimulationStore((state) => state.setActiveChartTab);
+  const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
+  const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans selection:bg-rose-500 selection:text-white">
@@ -115,7 +113,7 @@ function MainAppContent() {
             <NetWorthChart
               yearlyResults={yearlyResults}
               stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
-              retirementAge={inputs.retirementAge}
+              retirementAge={retirementAge}
               isStressTestActive={isStressTestActive}
               onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
               stressTiming={stressTiming}
@@ -124,7 +122,7 @@ function MainAppContent() {
           ) : (
             <IncomeStreamChart
               yearlyResults={yearlyResults}
-              retirementAge={inputs.retirementAge}
+              retirementAge={retirementAge}
             />
           )}
         </div>
@@ -175,13 +173,5 @@ function MainAppContent() {
         </div>
       </footer>
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <SimulationProvider>
-      <MainAppContent />
-    </SimulationProvider>
   );
 }

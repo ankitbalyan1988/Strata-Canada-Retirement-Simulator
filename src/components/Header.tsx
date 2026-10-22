@@ -14,10 +14,10 @@ import { PRESETS } from '../utils/presets';
 import { CanadianProvince, RetirementInputs, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { PersonaHoverCard } from './PersonaHoverCard';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface HeaderProps {
-  inputs?: RetirementInputs;
+  province?: CanadianProvince;
   activePresetId?: string;
   onSelectPreset?: (preset: ScenarioPreset) => void;
   onReset?: () => void;
@@ -29,17 +29,27 @@ export interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = (props) => {
-  const sim = useSimulation();
+  // Targeted Zustand slice subscriptions
+  const storeProvince = useSimulationStore((state) => state.inputs.province);
+  const storeActivePresetId = useSimulationStore((state) => state.activePresetId);
+  const storeIsExportingPdf = useSimulationStore((state) => state.isExportingPdf);
+  const isCalculating = useSimulationStore((state) => state.isCalculating);
+  const selectPreset = useSimulationStore((state) => state.selectPreset);
+  const resetToDefault = useSimulationStore((state) => state.resetToDefault);
+  const exportPdf = useSimulationStore((state) => state.exportPdf);
+  const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
+  const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
+  const applyProvince = useSimulationStore((state) => state.applyProvince);
 
-  const inputs = props.inputs ?? sim.inputs;
-  const activePresetId = props.activePresetId ?? sim.activePresetId;
-  const onSelectPreset = props.onSelectPreset ?? sim.selectPreset;
-  const onReset = props.onReset ?? sim.resetToDefault;
-  const onExportPdf = props.onExportPdf ?? sim.exportPdf;
-  const isExportingPdf = props.isExportingPdf ?? sim.isExportingPdf;
-  const onOpenCompare = props.onOpenCompare ?? (() => sim.setIsCompareModalOpen(true));
-  const onOpenAIPersonaModal = props.onOpenAIPersonaModal ?? (() => sim.setIsAIPersonaModalOpen(true));
-  const onProvinceChange = props.onProvinceChange ?? sim.applyProvince;
+  const province = props.province ?? storeProvince;
+  const activePresetId = props.activePresetId ?? storeActivePresetId;
+  const onSelectPreset = props.onSelectPreset ?? selectPreset;
+  const onReset = props.onReset ?? resetToDefault;
+  const onExportPdf = props.onExportPdf ?? exportPdf;
+  const isExportingPdf = props.isExportingPdf ?? storeIsExportingPdf;
+  const onOpenCompare = props.onOpenCompare ?? (() => setIsCompareModalOpen(true));
+  const onOpenAIPersonaModal = props.onOpenAIPersonaModal ?? (() => setIsAIPersonaModalOpen(true));
+  const onProvinceChange = props.onProvinceChange ?? applyProvince;
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -58,6 +68,12 @@ export const Header: React.FC<HeaderProps> = (props) => {
                   <span className="text-xs font-semibold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30">
                     Canada
                   </span>
+                  {isCalculating && (
+                    <span className="text-[10px] font-medium text-rose-300 bg-rose-950/60 border border-rose-800/50 px-2 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span>
+                      Updating...
+                    </span>
+                  )}
                 </h1>
               </div>
               <p className="text-xs text-slate-400">
@@ -74,7 +90,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
               <MapPin className="w-3.5 h-3.5 text-rose-400 mr-1.5 shrink-0" />
               <span className="text-slate-400 mr-1.5 hidden sm:inline">Province:</span>
               <select
-                value={inputs.province}
+                value={province}
                 onChange={(e) => onProvinceChange(e.target.value as CanadianProvince)}
                 className="bg-transparent text-slate-100 font-medium focus:outline-none cursor-pointer text-xs"
               >

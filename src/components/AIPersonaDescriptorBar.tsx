@@ -14,7 +14,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { RetirementInputs } from '../types/retirement';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 import { triggerConfetti } from '../utils/confettiHelper';
 
 export interface AIPersonaDescriptorBarProps {
@@ -23,9 +23,11 @@ export interface AIPersonaDescriptorBarProps {
 }
 
 export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (props) => {
-  const sim = useSimulation();
-  const onApplyPersona = props.onApplyPersona ?? sim.applyAIPersona;
-  const activeProvince = props.activeProvince ?? sim.inputs.province;
+  const storeApplyAIPersona = useSimulationStore((state) => state.applyAIPersona);
+  const storeProvince = useSimulationStore((state) => state.inputs.province);
+
+  const onApplyPersona = props.onApplyPersona ?? storeApplyAIPersona;
+  const activeProvince = props.activeProvince ?? storeProvince;
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

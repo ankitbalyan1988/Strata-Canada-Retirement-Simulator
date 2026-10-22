@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { YearSimulationResult } from '../../types/retirement';
 import { 
   Layers, 
@@ -41,15 +41,6 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
 
   if (!yearlyResults || yearlyResults.length === 0) return null;
 
-  // Find max net worth for Y scale (considering both baseline and stress)
-  const maxNetWorth = Math.max(
-    100000,
-    ...yearlyResults.map((y) => y.totalNetWorth),
-    ...(stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : [])
-  );
-  // Add 10% headroom
-  const yDomainMax = Math.ceil((maxNetWorth * 1.1) / 100000) * 100000;
-
   // Chart Dimensions
   const svgWidth = 860;
   const svgHeight = 350;
@@ -57,44 +48,79 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
+  // Memoized Y domain scale (considering baseline and stress)
+  const yDomainMax = useMemo(() => {
+    const maxNetWorth = Math.max(
+      100000,
+      ...yearlyResults.map((y) => y.totalNetWorth),
+      ...(stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : [])
+    );
+    return Math.ceil((maxNetWorth * 1.1) / 100000) * 100000;
+  }, [yearlyResults, stressYearlyResults]);
+
   const minAge = yearlyResults[0].age;
   const maxAge = yearlyResults[yearlyResults.length - 1].age;
   const ageSpan = Math.max(1, maxAge - minAge);
 
-  const getX = (age: number) => {
-    return padding.left + ((age - minAge) / ageSpan) * chartWidth;
-  };
+  const getX = useCallback(
+    (age: number) => padding.left + ((age - minAge) / ageSpan) * chartWidth,
+    [minAge, ageSpan, chartWidth, padding.left]
+  );
 
-  const getY = (value: number) => {
-    const clamped = Math.max(0, value);
-    return padding.top + chartHeight - (clamped / yDomainMax) * chartHeight;
-  };
+  const getY = useCallback(
+    (value: number) => {
+      const clamped = Math.max(0, value);
+      return padding.top + chartHeight - (clamped / yDomainMax) * chartHeight;
+    },
+    [yDomainMax, chartHeight, padding.top]
+  );
 
-  // Build SVG path for Baseline Total Net Worth
-  const linePoints = yearlyResults
-    .map((d) => `${getX(d.age)},${getY(d.totalNetWorth)}`)
-    .join(' ');
+  // Memoized SVG polyline points for Baseline Total Net Worth
+  const linePoints = useMemo(() => {
+    return yearlyResults
+      .map((d) => `${getX(d.age)},${getY(d.totalNetWorth)}`)
+      .join(' ');
+  }, [yearlyResults, getX, getY]);
 
-  // Build SVG path for Stress-Tested Net Worth
-  const stressLinePoints = stressYearlyResults
-    ? stressYearlyResults.map((d) => `${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ')
-    : '';
+  // Memoized SVG polyline points for Stress-Tested Net Worth
+  const stressLinePoints = useMemo(() => {
+    if (!stressYearlyResults) return '';
+    return stressYearlyResults
+      .map((d) => `${getX(d.age)},${getY(d.totalNetWorth)}`)
+      .join(' ');
+  }, [stressYearlyResults, getX, getY]);
 
-  // Area band between baseline and stress line
-  let stressBandPath = '';
-  if (isStressTestActive && stressYearlyResults && stressYearlyResults.length === yearlyResults.length) {
+  // Memoized area band path between baseline and stress line
+  const stressBandPath = useMemo(() => {
+    if (!isStressTestActive || !stressYearlyResults || stressYearlyResults.length !== yearlyResults.length) {
+      return '';
+    }
     const forward = yearlyResults.map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ');
     const backward = [...stressYearlyResults].reverse().map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ');
-    stressBandPath = `M ${getX(yearlyResults[0].age)},${getY(yearlyResults[0].totalNetWorth)} ${forward} ${backward} Z`;
-  }
+    return `M ${getX(yearlyResults[0].age)},${getY(yearlyResults[0].totalNetWorth)} ${forward} ${backward} Z`;
+  }, [yearlyResults, stressYearlyResults, isStressTestActive, getX, getY]);
 
-  // Y-axis ticks (5 ticks)
-  const yTicks = [0, 0.25, 0.5, 0.75, 1.0].map((frac) => frac * yDomainMax);
+  // Memoized baseline gradient area path
+  const baselineAreaPath = useMemo(() => {
+    if (yearlyResults.length === 0) return '';
+    const startX = getX(yearlyResults[0].age);
+    const endX = getX(yearlyResults[yearlyResults.length - 1].age);
+    const bottomY = padding.top + chartHeight;
+    const forward = yearlyResults.map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)} `).join('');
+    return `M ${startX},${bottomY} ${forward} L ${endX},${bottomY} Z`;
+  }, [yearlyResults, getX, getY, chartHeight, padding.top]);
 
-  // X-axis ticks (every 5 or 10 years)
-  const xTicks = yearlyResults.filter(
-    (d) => d.age % 5 === 0 || d.age === minAge || d.age === maxAge
-  );
+  // Memoized Y-axis ticks
+  const yTicks = useMemo(() => {
+    return [0, 0.25, 0.5, 0.75, 1.0].map((frac) => frac * yDomainMax);
+  }, [yDomainMax]);
+
+  // Memoized X-axis ticks
+  const xTicks = useMemo(() => {
+    return yearlyResults.filter(
+      (d) => d.age % 5 === 0 || d.age === minAge || d.age === maxAge
+    );
+  }, [yearlyResults, minAge, maxAge]);
 
   const hoveredData = hoveredIndex !== null ? yearlyResults[hoveredIndex] : null;
   const hoveredStressData = (isStressTestActive && stressYearlyResults && hoveredIndex !== null)
@@ -106,16 +132,34 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
     return `$${Math.round(val / 1000)}k`;
   };
 
-  // Calculate stress test impact metrics
-  const baselineRetireNW = yearlyResults.find(y => y.age === retirementAge)?.totalNetWorth || 0;
-  const stressRetireNW = stressYearlyResults?.find(y => y.age === retirementAge)?.totalNetWorth || 0;
+  // Memoized stress test impact metrics
+  const baselineRetireNW = useMemo(
+    () => yearlyResults.find((y) => y.age === retirementAge)?.totalNetWorth || 0,
+    [yearlyResults, retirementAge]
+  );
+  const stressRetireNW = useMemo(
+    () => stressYearlyResults?.find((y) => y.age === retirementAge)?.totalNetWorth || 0,
+    [stressYearlyResults, retirementAge]
+  );
   const retireDelta = stressRetireNW - baselineRetireNW;
 
-  const baselineEndNW = yearlyResults[yearlyResults.length - 1]?.totalNetWorth || 0;
-  const stressEndNW = stressYearlyResults ? stressYearlyResults[stressYearlyResults.length - 1]?.totalNetWorth || 0 : 0;
+  const baselineEndNW = useMemo(
+    () => yearlyResults[yearlyResults.length - 1]?.totalNetWorth || 0,
+    [yearlyResults]
+  );
+  const stressEndNW = useMemo(
+    () => (stressYearlyResults ? stressYearlyResults[stressYearlyResults.length - 1]?.totalNetWorth || 0 : 0),
+    [stressYearlyResults]
+  );
 
-  const stressDepletionYear = stressYearlyResults?.find(y => y.isRetired && y.totalNetWorth <= 0)?.age || null;
-  const baselineDepletionYear = yearlyResults.find(y => y.isRetired && y.totalNetWorth <= 0)?.age || null;
+  const stressDepletionYear = useMemo(
+    () => stressYearlyResults?.find((y) => y.isRetired && y.totalNetWorth <= 0)?.age || null,
+    [stressYearlyResults]
+  );
+  const baselineDepletionYear = useMemo(
+    () => yearlyResults.find((y) => y.isRetired && y.totalNetWorth <= 0)?.age || null,
+    [yearlyResults]
+  );
 
   const passesStressTest = stressDepletionYear === null && stressEndNW >= 0;
 
@@ -616,11 +660,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
           {visibleAccounts.totalLine && (
             <g pointerEvents="none">
               <path
-                d={`M ${getX(yearlyResults[0].age)},${padding.top + chartHeight} ` +
-                  yearlyResults
-                    .map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)} `)
-                    .join('') +
-                  `L ${getX(yearlyResults[yearlyResults.length - 1].age)},${padding.top + chartHeight} Z`}
+                d={baselineAreaPath}
                 fill="url(#totalNetWorthGrad)"
               />
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { YearSimulationResult, RetirementInputs, CanadianProvince, SimulationSummary } from '../types/retirement';
 import { 
   Table, 
@@ -25,7 +26,7 @@ import {
   DollarSign,
   ArrowUpRight
 } from 'lucide-react';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 interface LedgerAiExplanation {
   summary: string;
@@ -45,12 +46,17 @@ export interface MilestoneTableProps {
 }
 
 export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
-  const sim = useSimulation();
-  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
-  const retirementAge = props.retirementAge ?? sim.inputs.retirementAge;
-  const province = props.province ?? sim.inputs.province;
-  const inputs = props.inputs ?? sim.inputs;
-  const summary = props.summary ?? sim.summary;
+  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const storeProvince = useSimulationStore((state) => state.inputs.province);
+  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeSummary = useSimulationStore((state) => state.summary);
+
+  const yearlyResults = props.yearlyResults ?? storeYearlyResults;
+  const retirementAge = props.retirementAge ?? storeRetirementAge;
+  const province = props.province ?? storeProvince;
+  const inputs = props.inputs ?? storeInputs;
+  const summary = props.summary ?? storeSummary;
 
   const [filterMode, setFilterMode] = useState<'milestones' | 'retirement' | 'all'>('milestones');
   const [searchTerm, setSearchTerm] = useState('');
@@ -72,17 +78,88 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
     return `$${Math.round(val).toLocaleString()}`;
   };
 
+  // Filtered dataset memoized for stable virtualization
+  const filteredData = useMemo(() => {
+    return yearlyResults.filter((yr) => {
+      // Search filter
+      if (searchTerm) {
+        const matchAge = String(yr.age).includes(searchTerm);
+        const matchNotes = yr.notes.some((n) => n.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchBadges = yr.milestoneBadges?.some(
+          (b) =>
+            b.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            b.shortLabel.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (!matchAge && !matchNotes && !matchBadges) return false;
+      }
+
+      if (filterMode === 'retirement') {
+        return yr.isRetired;
+      }
+
+      if (filterMode === 'milestones') {
+        return (
+          yr.age === yearlyResults[0]?.age ||
+          yr.age === retirementAge ||
+          yr.isCrossoverMilestone ||
+          yr.isCoastFireMilestone ||
+          yr.isMillionaireMilestone ||
+          yr.isMortgageFreeMilestone ||
+          yr.isPeakWealthMilestone ||
+          yr.age === summary?.crossoverAge ||
+          yr.age === summary?.coastFireAge ||
+          yr.age === summary?.millionaireAge ||
+          yr.age === summary?.mortgagePayoffAge ||
+          yr.age === summary?.peakNetWorthAge ||
+          yr.age === 60 ||
+          yr.age === 65 ||
+          yr.age === 70 ||
+          yr.age === 71 ||
+          yr.age === 72 ||
+          yr.age === 75 ||
+          yr.age === 80 ||
+          yr.age === 85 ||
+          yr.age === 90 ||
+          yr.age === yearlyResults[yearlyResults.length - 1]?.age ||
+          yr.homeSoldThisYear ||
+          yr.notes.length > 0 ||
+          (yr.milestoneBadges && yr.milestoneBadges.length > 0)
+        );
+      }
+
+      return true; // 'all'
+    });
+  }, [yearlyResults, searchTerm, filterMode, retirementAge, summary]);
+
+  // DOM Virtualizer for 80+ dynamic simulation rows
+  const rowVirtualizer = useVirtualizer({
+    count: filteredData.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 8,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom = virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
+
   const scrollToAge = (age: number) => {
     setHighlightedAge(age);
     if (filterMode !== 'all' && filterMode !== 'milestones') {
       setFilterMode('all');
     }
-    setTimeout(() => {
-      const el = document.getElementById(`row-age-${age}`);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
+    const targetIdx = filteredData.findIndex((r) => r.age === age);
+    if (targetIdx !== -1) {
+      rowVirtualizer.scrollToIndex(targetIdx, { align: 'center', behavior: 'smooth' });
+    } else {
+      setTimeout(() => {
+        const el = document.getElementById(`row-age-${age}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
     setTimeout(() => {
       setHighlightedAge(null);
     }, 3500);
@@ -244,52 +321,6 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
     setAiQuestion(q);
     handleAskAi(q, age, metricName);
   };
-
-  const filteredData = yearlyResults.filter((yr) => {
-    // Search filter
-    if (searchTerm) {
-      const matchAge = String(yr.age).includes(searchTerm);
-      const matchNotes = yr.notes.some(n => n.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchBadges = yr.milestoneBadges?.some(b => b.label.toLowerCase().includes(searchTerm.toLowerCase()) || b.shortLabel.toLowerCase().includes(searchTerm.toLowerCase()));
-      if (!matchAge && !matchNotes && !matchBadges) return false;
-    }
-
-    if (filterMode === 'retirement') {
-      return yr.isRetired;
-    }
-
-    if (filterMode === 'milestones') {
-      return (
-        yr.age === yearlyResults[0].age ||
-        yr.age === retirementAge ||
-        yr.isCrossoverMilestone ||
-        yr.isCoastFireMilestone ||
-        yr.isMillionaireMilestone ||
-        yr.isMortgageFreeMilestone ||
-        yr.isPeakWealthMilestone ||
-        yr.age === summary?.crossoverAge ||
-        yr.age === summary?.coastFireAge ||
-        yr.age === summary?.millionaireAge ||
-        yr.age === summary?.mortgagePayoffAge ||
-        yr.age === summary?.peakNetWorthAge ||
-        yr.age === 60 ||
-        yr.age === 65 ||
-        yr.age === 70 ||
-        yr.age === 71 ||
-        yr.age === 72 ||
-        yr.age === 75 ||
-        yr.age === 80 ||
-        yr.age === 85 ||
-        yr.age === 90 ||
-        yr.age === yearlyResults[yearlyResults.length - 1].age ||
-        yr.homeSoldThisYear ||
-        yr.notes.length > 0 ||
-        (yr.milestoneBadges && yr.milestoneBadges.length > 0)
-      );
-    }
-
-    return true; // 'all'
-  });
 
   const handleExportExcel = async () => {
     try {
@@ -903,7 +934,23 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
-            {filteredData.map((row) => {
+            {filteredData.length === 0 ? (
+              <tr>
+                <td colSpan={15} className="py-8 text-center text-slate-400 font-sans text-xs">
+                  No simulation years match the current search or filter criteria.
+                </td>
+              </tr>
+            ) : null}
+
+            {paddingTop > 0 && (
+              <tr>
+                <td style={{ height: `${paddingTop}px` }} colSpan={15} />
+              </tr>
+            )}
+
+            {virtualRows.map((virtualRow) => {
+              const row = filteredData[virtualRow.index];
+              if (!row) return null;
               const isRetirementMilestone = row.age === retirementAge;
               const isRrifMandatory = row.age === 71 || row.age === 72;
               const hasNotes = row.notes.length > 0;
@@ -912,7 +959,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               return (
                 <tr
                   id={`row-age-${row.age}`}
-                  key={row.age}
+                  key={virtualRow.key}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
                   className={`hover:bg-slate-50/80 transition-all ${
                     isHighlighted
                       ? 'bg-indigo-100/90 ring-2 ring-indigo-500 z-10'
@@ -1193,6 +1242,11 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                 </tr>
               );
             })}
+            {paddingBottom > 0 && (
+              <tr>
+                <td style={{ height: `${paddingBottom}px` }} colSpan={15} />
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

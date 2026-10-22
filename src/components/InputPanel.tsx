@@ -50,7 +50,7 @@ import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface InputPanelProps {
   inputs?: RetirementInputs;
@@ -58,9 +58,11 @@ export interface InputPanelProps {
 }
 
 export const InputPanel: React.FC<InputPanelProps> = (props) => {
-  const sim = useSimulation();
-  const inputs = props.inputs ?? sim.inputs;
-  const onChange = props.onChange ?? sim.setInputs;
+  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeSetInputs = useSimulationStore((state) => state.setInputs);
+
+  const inputs = props.inputs ?? storeInputs;
+  const onChange = props.onChange ?? storeSetInputs;
   const isMarried = inputs.maritalStatus === 'married';
   const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
   const [isExpanded, setIsExpanded] = useState(true);

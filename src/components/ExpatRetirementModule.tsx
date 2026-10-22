@@ -40,7 +40,7 @@ import {
   Sun
 } from 'lucide-react';
 
-import { useSimulation } from '../context/SimulationContext';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface ExpatRetirementModuleProps {
   retirementInputs?: RetirementInputs;
@@ -50,11 +50,15 @@ export interface ExpatRetirementModuleProps {
 }
 
 export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (props) => {
-  const sim = useSimulation();
-  const retirementInputs = props.retirementInputs ?? sim.inputs;
-  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
-  const summary = props.summary ?? sim.summary;
-  const onUpdateExpatInputs = props.onUpdateExpatInputs ?? sim.updateExpatInputs;
+  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const storeSummary = useSimulationStore((state) => state.summary);
+  const storeUpdateExpatInputs = useSimulationStore((state) => state.updateExpatInputs);
+
+  const retirementInputs = props.retirementInputs ?? storeInputs;
+  const yearlyResults = props.yearlyResults ?? storeYearlyResults;
+  const summary = props.summary ?? storeSummary;
+  const onUpdateExpatInputs = props.onUpdateExpatInputs ?? storeUpdateExpatInputs;
   const defaultExpat = useMemo<ExpatInputs>(() => ({
     ...DEFAULT_EXPAT_INPUTS,
     emigrationAge: Math.max(retirementInputs.currentAge + 1, retirementInputs.retirementAge - 2),
