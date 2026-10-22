@@ -1,5 +1,4 @@
-import React, { useState, useMemo } from 'react';
-import confetti from 'canvas-confetti';
+import React, { Suspense } from 'react';
 import { Header } from './components/Header';
 import { HeroRetirementSlider } from './components/HeroRetirementSlider';
 import { RetirementScorecard } from './components/RetirementScorecard';
@@ -8,166 +7,45 @@ import { NetWorthChart } from './components/Charts/NetWorthChart';
 import { IncomeStreamChart } from './components/Charts/IncomeStreamChart';
 import { InputPanel } from './components/InputPanel';
 import { MilestoneTable } from './components/MilestoneTable';
-import { EstatePlanningModule } from './components/EstatePlanningModule';
 import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { CanadianPlanningTips } from './components/CanadianPlanningTips';
-import { ScenarioComparisonModal } from './components/ScenarioComparisonModal';
-import { AIPersonaModal } from './components/AIPersonaModal';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
-import { DEFAULT_INPUTS, PRESETS } from './utils/presets';
-import { CanadianProvince, RetirementInputs, ScenarioPreset } from './types/retirement';
-import { ExpatInputs } from './types/expat';
-import { runRetirementSimulation } from './utils/simulator';
-import { generateRetirementPdfReport } from './utils/pdfExport';
-import { Layers, Wallet, Sparkles, ShieldCheck } from 'lucide-react';
+import { SimulationProvider, useSimulation } from './context/SimulationContext';
+import { Layers, Wallet } from 'lucide-react';
 
-export default function App() {
-  const [inputs, setInputs] = useState<RetirementInputs>(DEFAULT_INPUTS);
-  const [activePresetId, setActivePresetId] = useState<string>('canadian_average');
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
-  const [isAIPersonaModalOpen, setIsAIPersonaModalOpen] = useState(false);
-  const [isStressTestActive, setIsStressTestActive] = useState(false);
-  const [stressTiming, setStressTiming] = useState<'at_retirement' | 'immediate'>('at_retirement');
-  const [activeChartTab, setActiveChartTab] = useState<'networth' | 'cashflow'>('networth');
+// Dynamic lazy-loaded modules and modals to optimize critical rendering path
+const EstatePlanningModule = React.lazy(() =>
+  import('./components/EstatePlanningModule').then((m) => ({ default: m.EstatePlanningModule }))
+);
+const ScenarioComparisonModal = React.lazy(() =>
+  import('./components/ScenarioComparisonModal').then((m) => ({ default: m.ScenarioComparisonModal }))
+);
+const AIPersonaModal = React.lazy(() =>
+  import('./components/AIPersonaModal').then((m) => ({ default: m.AIPersonaModal }))
+);
 
-  // Run the full baseline simulation calculation engine
-  const { yearlyResults, summary } = useMemo(() => {
-    return runRetirementSimulation(inputs);
-  }, [inputs]);
-
-  // Run the 10% market stress test simulation when active
-  const stressSimulation = useMemo(() => {
-    if (!isStressTestActive) return null;
-    return runRetirementSimulation(inputs, {
-      enabled: true,
-      dropPercent: 10,
-      timing: stressTiming
-    });
-  }, [inputs, isStressTestActive, stressTiming]);
-
-  // Handlers
-  const handleSelectPreset = (preset: ScenarioPreset) => {
-    setInputs(preset.inputs);
-    setActivePresetId(preset.id);
-  };
-
-  const handleUpdateExpatInputs = (newExpat: ExpatInputs) => {
-    setInputs(prev => ({
-      ...prev,
-      expat: newExpat
-    }));
-  };
-
-  const handleReset = () => {
-    setInputs(DEFAULT_INPUTS);
-    setActivePresetId('canadian_average');
-  };
-
-  const handleApplyAIPersona = (newInputs: RetirementInputs) => {
-    setInputs(newInputs);
-    setActivePresetId('custom_ai');
-    try {
-      confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const handleRetirementAgeChange = (newAge: number) => {
-    const updated = {
-      ...inputs,
-      retirementAge: newAge
-    };
-    setInputs(updated);
-
-    // If fully funded, celebratory confetti burst
-    const testSim = runRetirementSimulation(updated);
-    if (testSim.summary.isFullyFunded && !summary.isFullyFunded) {
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 }
-        });
-      } catch (e) {
-        // ignore in non-browser env
-      }
-    }
-  };
-
-  const handleProvinceChange = (province: CanadianProvince) => {
-    setInputs(prev => ({
-      ...prev,
-      province
-    }));
-  };
-
-  const handleApplyMonthlyBoost = (additionalMonthly: number) => {
-    const annualAddition = additionalMonthly * 12;
-    // Direct preferentially to RRSP up to annual room, then TFSA, then Non-Reg
-    const rrspRoomLeft = Math.max(0, 32490 - inputs.rrspAnnualContribution);
-    const toRrsp = Math.min(annualAddition, rrspRoomLeft);
-    const remainder = annualAddition - toRrsp;
-    const tfsaRoomLeft = Math.max(0, 7000 - inputs.tfsaAnnualContribution);
-    const toTfsa = Math.min(remainder, tfsaRoomLeft);
-    const toNonReg = remainder - toTfsa;
-
-    setInputs(prev => ({
-      ...prev,
-      rrspAnnualContribution: prev.rrspAnnualContribution + toRrsp,
-      tfsaAnnualContribution: prev.tfsaAnnualContribution + toTfsa,
-      nonRegAnnualContribution: prev.nonRegAnnualContribution + toNonReg
-    }));
-
-    try {
-      confetti({
-        particleCount: 55,
-        spread: 65,
-        origin: { y: 0.6 }
-      });
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const handleExportPdf = async () => {
-    try {
-      setIsExportingPdf(true);
-      // Allow UI to render spinner
-      setTimeout(() => {
-        generateRetirementPdfReport(inputs, summary, yearlyResults);
-        setIsExportingPdf(false);
-      }, 150);
-    } catch (err) {
-      console.error('PDF export error:', err);
-      setIsExportingPdf(false);
-    }
-  };
+function MainAppContent() {
+  const {
+    inputs,
+    yearlyResults,
+    isStressTestActive,
+    setIsStressTestActive,
+    stressTiming,
+    setStressTiming,
+    stressSimulation,
+    activeChartTab,
+    setActiveChartTab,
+    isCompareModalOpen,
+    isAIPersonaModalOpen
+  } = useSimulation();
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col font-sans selection:bg-rose-500 selection:text-white">
-      
       {/* Top Navigation */}
-      <Header
-        inputs={inputs}
-        activePresetId={activePresetId}
-        onSelectPreset={handleSelectPreset}
-        onReset={handleReset}
-        onExportPdf={handleExportPdf}
-        isExportingPdf={isExportingPdf}
-        onOpenCompare={() => setIsCompareModalOpen(true)}
-        onOpenAIPersonaModal={() => setIsAIPersonaModalOpen(true)}
-        onProvinceChange={handleProvinceChange}
-      />
+      <Header />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
-        
         {/* CRA & StatCan National Benchmark Banner */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 px-4 text-xs text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
           <div className="flex items-center gap-2 flex-wrap">
@@ -183,37 +61,19 @@ export default function App() {
         </div>
 
         {/* AI Persona Descriptor Bar */}
-        <AIPersonaDescriptorBar
-          onApplyPersona={handleApplyAIPersona}
-          activeProvince={inputs.province}
-        />
+        <AIPersonaDescriptorBar />
 
         {/* User Inputs & Controls Panel (Household Planning Structure) */}
-        <InputPanel
-          inputs={inputs}
-          onChange={setInputs}
-        />
+        <InputPanel />
 
         {/* Hero Interactive Retirement Age Simulator */}
-        <HeroRetirementSlider
-          inputs={inputs}
-          summary={summary}
-          onChangeRetirementAge={handleRetirementAgeChange}
-        />
+        <HeroRetirementSlider />
 
         {/* Financial KPI Scorecard */}
-        <RetirementScorecard
-          inputs={inputs}
-          summary={summary}
-          yearlyResults={yearlyResults}
-        />
+        <RetirementScorecard />
 
         {/* Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
-        <SavingsPulse
-          inputs={inputs}
-          summary={summary}
-          onApplyMonthlyBoost={handleApplyMonthlyBoost}
-        />
+        <SavingsPulse />
 
         {/* Visual Charts Container with Tabs */}
         <div className="flex flex-col gap-3">
@@ -254,10 +114,10 @@ export default function App() {
           {activeChartTab === 'networth' ? (
             <NetWorthChart
               yearlyResults={yearlyResults}
-              stressYearlyResults={stressSimulation?.yearlyResults}
+              stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
               retirementAge={inputs.retirementAge}
               isStressTestActive={isStressTestActive}
-              onToggleStressTest={() => setIsStressTestActive(prev => !prev)}
+              onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
               stressTiming={stressTiming}
               onChangeStressTiming={setStressTiming}
             />
@@ -270,48 +130,35 @@ export default function App() {
         </div>
 
         {/* Annual Simulation Ledger Table */}
-        <MilestoneTable
-          yearlyResults={yearlyResults}
-          retirementAge={inputs.retirementAge}
-          province={inputs.province}
-          inputs={inputs}
-          summary={summary}
-        />
+        <MilestoneTable />
 
-        {/* Canadian Estate Planning & Pending Reserves Liquidation Module */}
-        <EstatePlanningModule
-          retirementInputs={inputs}
-          yearlyResults={yearlyResults}
-          summary={summary}
-        />
+        {/* Canadian Estate Planning & Pending Reserves Liquidation Module (Lazy Loaded) */}
+        <Suspense
+          fallback={
+            <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-sm animate-pulse min-h-[140px] flex items-center justify-center text-slate-400 text-sm">
+              Loading Canadian Estate Planning Module...
+            </div>
+          }
+        >
+          <EstatePlanningModule />
+        </Suspense>
 
         {/* Canadian Expat & Non-Resident Retirement Planning Module */}
-        <ExpatRetirementModule
-          retirementInputs={inputs}
-          yearlyResults={yearlyResults}
-          summary={summary}
-          onUpdateExpatInputs={handleUpdateExpatInputs}
-        />
+        <ExpatRetirementModule />
 
         {/* Canadian Educational Planning Guide */}
         <CanadianPlanningTips />
-
       </main>
 
-      {/* Scenario Comparison Modal */}
-      <ScenarioComparisonModal
-        isOpen={isCompareModalOpen}
-        onClose={() => setIsCompareModalOpen(false)}
-        baseInputs={inputs}
-        onApplyRetirementAge={handleRetirementAgeChange}
-      />
+      {/* Scenario Comparison Modal (Lazy Loaded) */}
+      <Suspense fallback={null}>
+        {isCompareModalOpen && <ScenarioComparisonModal />}
+      </Suspense>
 
-      {/* AI Persona Generator Modal */}
-      <AIPersonaModal
-        isOpen={isAIPersonaModalOpen}
-        onClose={() => setIsAIPersonaModalOpen(false)}
-        onApplyPersona={handleApplyAIPersona}
-      />
+      {/* AI Persona Generator Modal (Lazy Loaded) */}
+      <Suspense fallback={null}>
+        {isAIPersonaModalOpen && <AIPersonaModal />}
+      </Suspense>
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-6 text-slate-500 text-xs">
@@ -327,7 +174,14 @@ export default function App() {
           </div>
         </div>
       </footer>
-
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <SimulationProvider>
+      <MainAppContent />
+    </SimulationProvider>
   );
 }

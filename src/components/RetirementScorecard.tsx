@@ -12,18 +12,19 @@ import {
   Anchor
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary, YearSimulationResult } from '../types/retirement';
+import { useSimulation } from '../context/SimulationContext';
 
-interface RetirementScorecardProps {
-  inputs: RetirementInputs;
-  summary: SimulationSummary;
-  yearlyResults: YearSimulationResult[];
+export interface RetirementScorecardProps {
+  inputs?: RetirementInputs;
+  summary?: SimulationSummary;
+  yearlyResults?: YearSimulationResult[];
 }
 
-export const RetirementScorecard: React.FC<RetirementScorecardProps> = ({
-  inputs,
-  summary,
-  yearlyResults
-}) => {
+export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) => {
+  const sim = useSimulation();
+  const inputs = props.inputs ?? sim.inputs;
+  const summary = props.summary ?? sim.summary;
+  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
   const formatCur = (val: number) => {
     if (Math.abs(val) >= 1000000) {
       return `$${(val / 1000000).toFixed(2)}M`;

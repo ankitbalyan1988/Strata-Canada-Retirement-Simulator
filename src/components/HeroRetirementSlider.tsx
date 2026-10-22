@@ -13,18 +13,20 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
+import { useSimulation } from '../context/SimulationContext';
 
-interface HeroRetirementSliderProps {
-  inputs: RetirementInputs;
-  summary: SimulationSummary;
-  onChangeRetirementAge: (age: number) => void;
+export interface HeroRetirementSliderProps {
+  inputs?: RetirementInputs;
+  summary?: SimulationSummary;
+  onChangeRetirementAge?: (age: number) => void;
 }
 
-export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = ({
-  inputs,
-  summary,
-  onChangeRetirementAge
-}) => {
+export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props) => {
+  const sim = useSimulation();
+  const inputs = props.inputs ?? sim.inputs;
+  const summary = props.summary ?? sim.summary;
+  const onChangeRetirementAge = props.onChangeRetirementAge ?? sim.applyRetirementAge;
+
   const [isExpanded, setIsExpanded] = useState(true);
   const { currentAge, retirementAge, lifeExpectancy } = inputs;
   const yearsToRetire = Math.max(0, retirementAge - currentAge);

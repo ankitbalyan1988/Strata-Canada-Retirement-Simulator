@@ -46,17 +46,19 @@ import {
   Bot
 } from 'lucide-react';
 
-interface EstatePlanningModuleProps {
-  retirementInputs: RetirementInputs;
-  yearlyResults: YearSimulationResult[];
-  summary: SimulationSummary;
+import { useSimulation } from '../context/SimulationContext';
+
+export interface EstatePlanningModuleProps {
+  retirementInputs?: RetirementInputs;
+  yearlyResults?: YearSimulationResult[];
+  summary?: SimulationSummary;
 }
 
-export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = ({
-  retirementInputs,
-  yearlyResults,
-  summary
-}) => {
+export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props) => {
+  const sim = useSimulation();
+  const retirementInputs = props.retirementInputs ?? sim.inputs;
+  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
+  const summary = props.summary ?? sim.summary;
   const [estateInputs, setEstateInputs] = useState<EstatePlanningInputs>({
     ...DEFAULT_ESTATE_INPUTS,
     passingAge: retirementInputs.lifeExpectancy || 85,

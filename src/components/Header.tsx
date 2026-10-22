@@ -14,30 +14,32 @@ import { PRESETS } from '../utils/presets';
 import { CanadianProvince, RetirementInputs, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { PersonaHoverCard } from './PersonaHoverCard';
+import { useSimulation } from '../context/SimulationContext';
 
-interface HeaderProps {
-  inputs: RetirementInputs;
-  activePresetId: string;
-  onSelectPreset: (preset: ScenarioPreset) => void;
-  onReset: () => void;
-  onExportPdf: () => void;
-  isExportingPdf: boolean;
-  onOpenCompare: () => void;
-  onOpenAIPersonaModal: () => void;
-  onProvinceChange: (province: CanadianProvince) => void;
+export interface HeaderProps {
+  inputs?: RetirementInputs;
+  activePresetId?: string;
+  onSelectPreset?: (preset: ScenarioPreset) => void;
+  onReset?: () => void;
+  onExportPdf?: () => void;
+  isExportingPdf?: boolean;
+  onOpenCompare?: () => void;
+  onOpenAIPersonaModal?: () => void;
+  onProvinceChange?: (province: CanadianProvince) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  inputs,
-  activePresetId,
-  onSelectPreset,
-  onReset,
-  onExportPdf,
-  isExportingPdf,
-  onOpenCompare,
-  onOpenAIPersonaModal,
-  onProvinceChange
-}) => {
+export const Header: React.FC<HeaderProps> = (props) => {
+  const sim = useSimulation();
+
+  const inputs = props.inputs ?? sim.inputs;
+  const activePresetId = props.activePresetId ?? sim.activePresetId;
+  const onSelectPreset = props.onSelectPreset ?? sim.selectPreset;
+  const onReset = props.onReset ?? sim.resetToDefault;
+  const onExportPdf = props.onExportPdf ?? sim.exportPdf;
+  const isExportingPdf = props.isExportingPdf ?? sim.isExportingPdf;
+  const onOpenCompare = props.onOpenCompare ?? (() => sim.setIsCompareModalOpen(true));
+  const onOpenAIPersonaModal = props.onOpenAIPersonaModal ?? (() => sim.setIsAIPersonaModalOpen(true));
+  const onProvinceChange = props.onProvinceChange ?? sim.applyProvince;
   return (
     <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-40 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

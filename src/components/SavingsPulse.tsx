@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Activity, 
   ArrowRight, 
@@ -17,20 +17,25 @@ import {
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 import { calculateSavingsPulse, SavingsPulseResult } from '../utils/simulator';
+import { useSimulation } from '../context/SimulationContext';
 
-interface SavingsPulseProps {
-  inputs: RetirementInputs;
-  summary: SimulationSummary;
+export interface SavingsPulseProps {
+  inputs?: RetirementInputs;
+  summary?: SimulationSummary;
   onApplyMonthlyBoost?: (additionalMonthly: number) => void;
 }
 
-export const SavingsPulse: React.FC<SavingsPulseProps> = ({
-  inputs,
-  summary,
-  onApplyMonthlyBoost
-}) => {
+export const SavingsPulse: React.FC<SavingsPulseProps> = (props) => {
+  const sim = useSimulation();
+  const inputs = props.inputs ?? sim.inputs;
+  const summary = props.summary ?? sim.summary;
+  const onApplyMonthlyBoost = props.onApplyMonthlyBoost ?? sim.applyMonthlyBoost;
+
   const [isExpanded, setIsExpanded] = useState(true);
-  const pulse: SavingsPulseResult = calculateSavingsPulse(inputs, summary);
+  const pulse: SavingsPulseResult = useMemo(
+    () => calculateSavingsPulse(inputs, summary),
+    [inputs, summary]
+  );
 
   const formatCur = (val: number) => `$${Math.round(val).toLocaleString()}`;
 

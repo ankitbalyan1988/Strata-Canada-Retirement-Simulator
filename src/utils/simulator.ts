@@ -2,26 +2,40 @@ import {
   RetirementInputs,
   YearSimulationResult,
   SimulationSummary,
-  DrawdownStrategyType,
-  SpouseInputs,
   StressTestOptions
 } from '../types/retirement';
+import { calculateCanadianTax } from './canadianTax';
 import {
-  calculateCanadianTax,
-  calculateCppAnnualBenefit,
-  calculateOasGrossBenefit,
-  calculateOasClawback,
-  getRrifMinimumRate,
-  TFSA_ANNUAL_LIMIT,
-  FHSA_ANNUAL_LIMIT,
-  FHSA_LIFETIME_LIMIT
-} from './canadianTax';
+  initializeMortgageAndHousingParams,
+  calculateMortgageAndHousingForYear,
+  HousingYearState
+} from './engine/calculateMortgageAndHousing';
+import {
+  calculateContributionsForYear,
+  ContributionYearState,
+  CustomAccountState
+} from './engine/calculateContributions';
+import { calculateInvestmentReturnsForYear } from './engine/calculateInvestmentReturns';
+import { calculateDecumulationForYear } from './engine/calculateDecumulation';
+import {
+  calculateGovernmentPensionsForYear,
+  calculateRetirementTaxesAndCashflow,
+  GovernmentPensionsResult
+} from './engine/calculatePensionsAndTaxes';
+import {
+  evaluateSimulationMilestones,
+  MilestoneSimulationOptions
+} from './engine/evaluateSimulationMilestones';
+import { fastSimulateEndNetWorth, FastSimulationResult } from './engine/fastSimulator';
 
-export interface SimulationOptions {
-  stopContributionsAge?: number;
-  isCoastCheck?: boolean;
-}
+export { fastSimulateEndNetWorth };
+export type { FastSimulationResult };
 
+export interface SimulationOptions extends MilestoneSimulationOptions {}
+
+/**
+ * Executes multi-year Canadian retirement projection simulation using modular engine sub-routines.
+ */
 export function runRetirementSimulation(
   inputs: RetirementInputs,
   stressTest?: StressTestOptions,
@@ -39,111 +53,24 @@ export function runRetirementSimulation(
     lifeExpectancy,
     province,
     currentAnnualIncome,
-    incomeGrowthRate,
     targetRetirementSpendingToday,
     rrspBalance: initialRrsp,
     tfsaBalance: initialTfsa,
     fhsaBalance: initialFhsa,
     nonRegBalance: initialNonReg,
-    rrspAnnualContribution,
-    tfsaAnnualContribution,
-    fhsaAnnualContribution,
-    nonRegAnnualContribution,
-    fhsaOpenYear = inputs.fhsaOpenYear || 2023,
-    fhsaIntent,
-    fhsaHomePurchaseAge,
-    cppStartAge,
-    cppEstimatedPercentOfMax,
-    oasStartAge,
-    oasEligibleYearsInCanada,
     inflationRate,
-    nonRegYieldTaxRate,
     drawdownStrategy
   } = inputs;
 
   const totalYears = Math.max(1, lifeExpectancy - currentAge + 1);
   const yearlyResults: YearSimulationResult[] = [];
 
-  // Real Estate Setup
-  const re = inputs.realEstate;
-  const ownsHome = Boolean(re && re.ownsHome);
-  const purchaseType = re?.purchaseType ?? (ownsHome ? 'current' : 'rent');
-  const isFuturePurchase = Boolean(ownsHome && purchaseType === 'future');
-  const futurePurchaseAge = Math.max(currentAge + 1, re?.futurePurchaseAge ?? (currentAge + 5));
-  const yearsToPurchase = Math.max(1, futurePurchaseAge - currentAge);
-  const futurePurchaseYear = 2026 + yearsToPurchase;
-  const fundWithFhsa = re?.fundWithFhsa !== false;
-  const fundWithHbp = re?.fundWithHbp !== false && re?.useHbp !== false;
-  const fundWithTfsa = re?.fundWithTfsa !== false;
-  const fundWithNonReg = re?.fundWithNonReg !== false;
-  const useHbp = fundWithHbp;
+  // 1. Initialize Real Estate & Housing Engine Params
+  const housingParams = initializeMortgageAndHousingParams(inputs, isCouple);
 
-  const homeCost = re?.costOfHome ?? 650000;
-  const currentHomeMarketVal = re?.currentMarketValue ?? homeCost;
-  const downPayment = re?.downPayment ?? 130000;
-  const downPaymentRatio = homeCost > 0 ? Math.min(0.9, Math.max(0.05, downPayment / homeCost)) : 0.20;
-  const mortgageRate = (re?.mortgageInterestRate ?? 4.79) / 100;
-  const mortgageTermYears = re?.mortgageTermYears ?? 25;
-  const mortgageStartYear = re?.mortgageStartYear ?? 2021;
-  const ownershipShare = (re?.ownershipSharePercent ?? (isCouple ? 50 : 100)) / 100;
-  const appreciationRate = (re?.annualAppreciationRate ?? 3.2) / 100;
-  const planToSell = Boolean(re?.planToSellHome);
-  const sellAge = re?.sellHomeAge ?? 72;
-  const sellingCostRate = (re?.sellingCostPercent ?? 4.5) / 100;
-
-  // Canadian Mortgage Amortization math (semi-annual compounding converted to monthly)
-  const initialMortgagePrincipal = Math.max(0, homeCost - downPayment);
-  const semiAnnualRate = mortgageRate / 2;
-  const monthlyRate = mortgageRate > 0 ? Math.pow(1 + semiAnnualRate, 2 / 12) - 1 : 0;
-  const totalMortgageMonths = mortgageTermYears * 12;
-  const monthlyMortgagePmt = (initialMortgagePrincipal > 0 && totalMortgageMonths > 0)
-    ? (monthlyRate > 0 
-        ? (initialMortgagePrincipal * monthlyRate * Math.pow(1 + monthlyRate, totalMortgageMonths)) / (Math.pow(1 + monthlyRate, totalMortgageMonths) - 1)
-        : initialMortgagePrincipal / totalMortgageMonths)
-    : 0;
-
-  // Future purchase financial projections
-  const nominalPurchasePrice = Math.round(homeCost * Math.pow(1 + appreciationRate, yearsToPurchase));
-  const targetFutureDownPayment = Math.round(nominalPurchasePrice * downPaymentRatio);
-  const projectedFutureLoan = Math.max(0, nominalPurchasePrice - targetFutureDownPayment);
-
-  const calcMonthlyPmtForLoan = (loan: number) => {
-    if (loan <= 0 || totalMortgageMonths <= 0) return 0;
-    return monthlyRate > 0
-      ? (loan * monthlyRate * Math.pow(1 + monthlyRate, totalMortgageMonths)) / (Math.pow(1 + monthlyRate, totalMortgageMonths) - 1)
-      : loan / totalMortgageMonths;
-  };
-
-  let futureActualLoanPrincipal = projectedFutureLoan;
-  let futureActualMonthlyPmt = calcMonthlyPmtForLoan(projectedFutureLoan);
-  let futurePurchaseExecuted = false;
-  let totalDownPaymentFunded = 0;
-
-  // Baseline Living Expenses (Today's Dollars)
-  const me = inputs.monthlyExpenses;
-  const currentRentMonthly = (re?.rentOverridden && re?.currentRent !== undefined)
-    ? re.currentRent
-    : (me?.rentOrMortgage ?? re?.currentRent ?? 2200);
-  const nonHousingMonthly = (me?.utilities || 0) + (me?.creditCard || 0) + (me?.otherExpenses || 0);
-  const initialMonthlyExpenses = me
-    ? (me.rentOrMortgage || 0) + nonHousingMonthly
-    : Math.round((inputs.targetRetirementSpendingToday / 12) * 1.25);
-  const initialAnnualExpenses = initialMonthlyExpenses * 12;
-
-  let homeSold = false;
-  let homeSoldAge: number | null = null;
-  let homeNetProceedsAtSale = 0;
-  let homeEquityAtRetirement = 0;
-  let liquidNetWorthAtRetirement = 0;
-
-  // Primary account balances
-  let pRrsp = Math.max(0, initialRrsp);
-  let pTfsa = Math.max(0, initialTfsa);
-  let pFhsa = Math.max(0, initialFhsa);
-  let pNonReg = Math.max(0, initialNonReg);
-
+  // 2. Initialize Liquid Balances & Custom Accounts
   const hasCustomNonReg = Boolean(inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0);
-  const customAccountsState = hasCustomNonReg
+  const customAccountsState: CustomAccountState[] = hasCustomNonReg
     ? inputs.nonRegCustomAccounts!.map((acc) => ({
         id: acc.id,
         name: acc.name,
@@ -157,31 +84,60 @@ export function runRetirementSimulation(
       }))
     : [];
 
-  if (hasCustomNonReg) {
-    pNonReg = customAccountsState.reduce((sum, a) => sum + a.balance, 0);
-  }
+  const initialNonRegCalculated = hasCustomNonReg
+    ? customAccountsState.reduce((sum, a) => sum + a.balance, 0)
+    : Math.max(0, initialNonReg);
 
-  let pCumulativeFhsa = Math.min(FHSA_LIFETIME_LIMIT, initialFhsa);
-  let pFhsaActive = pFhsa > 0 || (fhsaAnnualContribution > 0 && currentAge < 71);
+  const balances = {
+    pRrsp: Math.max(0, initialRrsp),
+    pTfsa: Math.max(0, initialTfsa),
+    pFhsa: Math.max(0, initialFhsa),
+    pNonReg: initialNonRegCalculated,
+    sRrsp: isCouple && spouse ? Math.max(0, spouse.rrspBalance) : 0,
+    sTfsa: isCouple && spouse ? Math.max(0, spouse.tfsaBalance) : 0,
+    sFhsa: isCouple && spouse ? Math.max(0, spouse.fhsaBalance) : 0,
+    sNonReg: isCouple && spouse ? Math.max(0, spouse.nonRegBalance) : 0,
+    customAccountsState
+  };
 
-  // Spouse account balances (if couple)
-  let sRrsp = isCouple && spouse ? Math.max(0, spouse.rrspBalance) : 0;
-  let sTfsa = isCouple && spouse ? Math.max(0, spouse.tfsaBalance) : 0;
-  let sFhsa = isCouple && spouse ? Math.max(0, spouse.fhsaBalance) : 0;
-  let sNonReg = isCouple && spouse ? Math.max(0, spouse.nonRegBalance) : 0;
+  const pFhsaActive = balances.pFhsa > 0 || (inputs.fhsaAnnualContribution > 0 && currentAge < 71);
+  const sFhsaActive = isCouple && spouse ? (balances.sFhsa > 0 || (spouse.fhsaAnnualContribution > 0 && spouse.currentAge < 71)) : false;
 
-  let sCumulativeFhsa = isCouple && spouse ? Math.min(FHSA_LIFETIME_LIMIT, spouse.fhsaBalance) : 0;
-  let sFhsaActive = isCouple && spouse ? (sFhsa > 0 || (spouse.fhsaAnnualContribution > 0 && spouse.currentAge < 71)) : false;
+  // 3. Engine States
+  const housingState: HousingYearState = {
+    homeSold: false,
+    homeSoldAge: null,
+    homeNetProceedsAtSale: 0,
+    futurePurchaseExecuted: false,
+    futureActualLoanPrincipal: housingParams.targetFutureDownPayment > 0
+      ? Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
+      : 0,
+    futureActualMonthlyPmt: housingParams.calcMonthlyPmtForLoan(
+      Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
+    ),
+    totalDownPaymentFunded: 0,
+    pFhsaActive,
+    sFhsaActive
+  };
 
-  let pEmploymentIncome = currentAnnualIncome;
-  let sEmploymentIncome = isCouple && spouse ? spouse.annualIncome : 0;
+  const contributionState: ContributionYearState = {
+    pEmploymentIncome: currentAnnualIncome,
+    sEmploymentIncome: isCouple && spouse ? spouse.annualIncome : 0,
+    pCumulativeFhsa: Math.min(40000, initialFhsa),
+    sCumulativeFhsa: isCouple && spouse ? Math.min(40000, spouse.fhsaBalance) : 0,
+    pFhsaActive,
+    sFhsaActive,
+    lifetimeEmploymentIncome: 0
+  };
 
+  // Lifetime & milestone tracking metrics
   let depletionAge: number | null = null;
   let peakNetWorth = 0;
   let peakNetWorthAge = currentAge;
   let netWorthAtRetirement = 0;
+  let homeEquityAtRetirement = 0;
+  let liquidNetWorthAtRetirement = 0;
 
-  let lifetimeEmploymentIncome = 0;
   let lifetimeCppReceived = 0;
   let lifetimeOasReceived = 0;
   let lifetimeTaxesPaid = 0;
@@ -190,898 +146,196 @@ export function runRetirementSimulation(
   let sumAnnualRetirementSpend = 0;
   let sumEffectiveTaxInRetirement = 0;
 
+  // 4. Primary Multi-Year Simulation Loop
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;
     const spouseAge = isCouple && spouse ? spouse.currentAge + i : undefined;
     const yearNumber = i + 1;
     const isPrimaryRetired = age >= retirementAge;
     const isSpouseRetired = isCouple && spouse ? (spouseAge! >= spouse.retirementAge) : true;
-    const isRetired = isPrimaryRetired; // Household enters retirement phase when primary targets retirement
-    const notes: string[] = [];
+    const isRetired = isPrimaryRetired;
+    const yearNotes: string[] = [];
 
-    // Inflation index
     const inflationFactor = Math.pow(1 + inflationRate / 100, i);
 
-    // Per-Account Expected Return Rates (compounds independently for each vehicle)
-    const ar = inputs.accountReturns;
+    // Sub-Routine 1: Mortgage & Real Estate
+    const housingResult = calculateMortgageAndHousingForYear(
+      age,
+      spouseAge,
+      i,
+      housingParams,
+      housingState,
+      balances,
+      isCouple
+    );
+    yearNotes.push(...housingResult.notes);
 
-    let rrspRate = (isRetired ? (ar?.rrspPostReturn ?? ar?.rrspReturn ?? 6.5) : (ar?.rrspReturn ?? 6.5)) / 100;
-    let tfsaRate = (isRetired ? (ar?.tfsaPostReturn ?? ar?.tfsaReturn ?? 7.0) : (ar?.tfsaReturn ?? 7.0)) / 100;
-    let fhsaRate = (ar?.fhsaReturn ?? 6.0) / 100;
-    let nonRegBaseRate = (isRetired ? (ar?.nonRegPostReturn ?? ar?.nonRegReturn ?? 5.5) : (ar?.nonRegReturn ?? 5.5)) / 100;
+    // Sync FHSA active status if down payment drained account
+    contributionState.pFhsaActive = housingState.pFhsaActive;
+    contributionState.sFhsaActive = housingState.sFhsaActive;
 
-    // Apply Market Stress Test (-10% downturn shock)
-    if (stressTest?.enabled) {
-      const drop = (stressTest.dropPercent || 10) / 100;
-      if (stressTest.timing === 'at_retirement' && age === retirementAge) {
-        rrspRate = -drop;
-        tfsaRate = -drop;
-        fhsaRate = -drop;
-        nonRegBaseRate = -drop;
-        notes.push(`🚨 Stress Test: -${stressTest.dropPercent}% market shock simulated at retirement.`);
-      } else if (stressTest.timing === 'immediate' && i === 0) {
-        rrspRate = -drop;
-        tfsaRate = -drop;
-        fhsaRate = -drop;
-        nonRegBaseRate = -drop;
-        notes.push(`🚨 Stress Test: -${stressTest.dropPercent}% immediate market downturn simulated.`);
-      }
-    }
+    // Sub-Routine 2: Contributions, Wage Growth & Pre-Retirement Deductions
+    const contributionResult = calculateContributionsForYear(
+      age,
+      spouseAge,
+      i,
+      inputs,
+      contributionState,
+      balances,
+      isCouple,
+      spouse,
+      inflationFactor,
+      isPrimaryRetired,
+      isSpouseRetired,
+      housingParams.initialAnnualExpenses,
+      simulationOptions?.stopContributionsAge
+    );
+    yearNotes.push(...contributionResult.notes);
 
-    // Real Estate Asset & Mortgage Calculation for Year i
-    let yearHomeValue = 0;
-    let remainingMortgage = 0;
-    let yearHomeEquity = 0;
-    let userRealEstateShare = 0;
-    let homeSoldThisYear = false;
-    let homeSaleProceeds = 0;
-    let isHomePurchasedThisYear = false;
-    let downPaymentPaidThisYear = 0;
-    let yearFhsaWithdrawalOrTransfer = 0;
-    let housingStatus: 'renting' | 'mortgage' | 'mortgage_free' = ownsHome ? 'mortgage' : 'renting';
+    // Sub-Routine 3: Investment Returns, Yield Drag, GIC Maturity & Stress Testing
+    const investmentResult = calculateInvestmentReturnsForYear(
+      age,
+      retirementAge,
+      i,
+      inputs,
+      balances,
+      {
+        pRrspContrib: contributionResult.pRrspContrib,
+        pTfsaContrib: contributionResult.pTfsaContrib,
+        pFhsaContrib: contributionResult.pFhsaContrib,
+        pNonRegContrib: contributionResult.pNonRegContrib,
+        sRrspContrib: contributionResult.sRrspContrib,
+        sTfsaContrib: contributionResult.sTfsaContrib,
+        sFhsaContrib: contributionResult.sFhsaContrib,
+        sNonRegContrib: contributionResult.sNonRegContrib
+      },
+      isRetired,
+      isPrimaryRetired,
+      stressTest
+    );
+    yearNotes.push(...investmentResult.notes);
+    lifetimeInvestmentGrowth += investmentResult.totalGrowth;
 
-    if (!ownsHome) {
-      housingStatus = 'renting';
-      yearHomeValue = 0;
-      remainingMortgage = 0;
-      yearHomeEquity = 0;
-      userRealEstateShare = 0;
-    } else if (!isFuturePurchase) {
-      // CURRENT HOMEOWNER (Purchased in past)
-      if (!homeSold) {
-        const currentSimYear = 2026 + i;
-        const elapsedMonths = Math.max(0, (currentSimYear - mortgageStartYear) * 12);
-        if (initialMortgagePrincipal <= 0 || elapsedMonths >= totalMortgageMonths) {
-          remainingMortgage = 0;
-          housingStatus = 'mortgage_free';
-        } else {
-          remainingMortgage = Math.max(
-            0,
-            initialMortgagePrincipal * Math.pow(1 + monthlyRate, elapsedMonths) -
-              monthlyMortgagePmt * ((Math.pow(1 + monthlyRate, elapsedMonths) - 1) / (monthlyRate || 1))
-          );
-          housingStatus = 'mortgage';
-        }
-
-        // Current year home market value with compounding appreciation
-        yearHomeValue = currentHomeMarketVal * Math.pow(1 + appreciationRate, i);
-        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
-        userRealEstateShare = yearHomeEquity * ownershipShare;
-
-        // Disposition / Sale at specified target age
-        if (planToSell && age === sellAge) {
-          homeSoldThisYear = true;
-          homeSold = true;
-          homeSoldAge = age;
-
-          const grossSalePrice = yearHomeValue;
-          const netAfterClosing = grossSalePrice * (1 - sellingCostRate);
-          const equityProceeds = Math.max(0, netAfterClosing - remainingMortgage);
-          homeSaleProceeds = equityProceeds * ownershipShare;
-          homeNetProceedsAtSale = homeSaleProceeds;
-
-          // Deposited into taxable (non-registered) investment account
-          pNonReg += homeSaleProceeds;
-          if (hasCustomNonReg && customAccountsState.length > 0) {
-            const targetAcc =
-              customAccountsState.find((a) => a.category === 'investment') ||
-              customAccountsState.find((a) => a.category === 'savings') ||
-              customAccountsState[0];
-            if (targetAcc) {
-              targetAcc.balance += homeSaleProceeds;
-            }
-          }
-
-          // Disposed from physical real estate holding
-          yearHomeValue = 0;
-          remainingMortgage = 0;
-          yearHomeEquity = 0;
-          userRealEstateShare = 0;
-
-          notes.push(
-            `🏡 Age ${age}: Home sold for $${Math.round(grossSalePrice).toLocaleString()}! Net equity proceeds of $${Math.round(
-              homeSaleProceeds
-            ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
-          );
-        }
+    // Determine Annual Living Expenses
+    let currentLivingExpensesNominal: number;
+    if (isRetired) {
+      currentLivingExpensesNominal = targetRetirementSpendingToday * inflationFactor;
+      if (housingResult.remainingMortgage > 0) {
+        const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
+        currentLivingExpensesNominal += annualMortgage * inflationFactor;
       }
     } else {
-      // FUTURE HOME PURCHASE (Currently renting, buying at futurePurchaseAge)
-      if (age < futurePurchaseAge) {
-        housingStatus = 'renting';
-        yearHomeValue = 0;
-        remainingMortgage = 0;
-        yearHomeEquity = 0;
-        userRealEstateShare = 0;
-
-        if (i === 0) {
-          notes.push(
-            `🏢 Currently Renting: Paying $${Math.round(currentRentMonthly).toLocaleString()}/month while saving toward planned home purchase at Age ${futurePurchaseAge} (Year ${futurePurchaseYear}).`
-          );
-        }
-      } else if (age === futurePurchaseAge && !futurePurchaseExecuted) {
-        // PURCHASE YEAR!
-        futurePurchaseExecuted = true;
-        isHomePurchasedThisYear = true;
-        housingStatus = 'mortgage';
-
-        let downPaymentNeeded = targetFutureDownPayment;
-        totalDownPaymentFunded = 0;
-
-        // 1. Primary FHSA qualifying withdrawal (if selected)
-        if (fundWithFhsa && pFhsa > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(pFhsa, downPaymentNeeded);
-          pFhsa -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-          pFhsaActive = false;
-          yearFhsaWithdrawalOrTransfer += used;
-          notes.push(`🏠 Age ${age}: First Home Savings Account (FHSA) fully deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
-        }
-
-        // 2. Spouse FHSA (if couple and selected)
-        if (fundWithFhsa && isCouple && spouse && sFhsa > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(sFhsa, downPaymentNeeded);
-          sFhsa -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-          sFhsaActive = false;
-          yearFhsaWithdrawalOrTransfer += used;
-          notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
-        }
-
-        // 3. RRSP Home Buyers' Plan (HBP) withdrawal (CRA max $60,000 per person) (if selected)
-        if (fundWithHbp && pRrsp > 0 && downPaymentNeeded > 0) {
-          const hbp = Math.min(60000, pRrsp, downPaymentNeeded);
-          pRrsp -= hbp;
-          downPaymentNeeded -= hbp;
-          totalDownPaymentFunded += hbp;
-          notes.push(`🍁 Age ${age}: CRA Home Buyers' Plan (HBP) tax-free RRSP withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
-        }
-        if (fundWithHbp && isCouple && spouse && sRrsp > 0 && downPaymentNeeded > 0) {
-          const hbp = Math.min(60000, sRrsp, downPaymentNeeded);
-          sRrsp -= hbp;
-          downPaymentNeeded -= hbp;
-          totalDownPaymentFunded += hbp;
-          notes.push(`🍁 Spouse Age ${spouseAge}: Spouse CRA Home Buyers' Plan (HBP) withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
-        }
-
-        // 4. Non-Registered taxable savings (if selected)
-        if (fundWithNonReg && pNonReg > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(pNonReg, downPaymentNeeded);
-          pNonReg -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-          if (hasCustomNonReg && customAccountsState.length > 0) {
-            let rem = used;
-            for (const acc of customAccountsState) {
-              const deduct = Math.min(acc.balance, rem);
-              acc.balance -= deduct;
-              rem -= deduct;
-              if (rem <= 0) break;
-            }
-          }
-          notes.push(`💵 Age ${age}: Deployed $${Math.round(used).toLocaleString()} from Non-Registered taxable savings for down payment.`);
-        }
-        if (fundWithNonReg && isCouple && spouse && sNonReg > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(sNonReg, downPaymentNeeded);
-          sNonReg -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-        }
-
-        // 5. TFSA savings (if selected)
-        if (fundWithTfsa && pTfsa > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(pTfsa, downPaymentNeeded);
-          pTfsa -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-          notes.push(`🛡️ Age ${age}: Deployed $${Math.round(used).toLocaleString()} from TFSA tax-free for down payment.`);
-        }
-        if (fundWithTfsa && isCouple && spouse && sTfsa > 0 && downPaymentNeeded > 0) {
-          const used = Math.min(sTfsa, downPaymentNeeded);
-          sTfsa -= used;
-          downPaymentNeeded -= used;
-          totalDownPaymentFunded += used;
-        }
-
-        downPaymentPaidThisYear = totalDownPaymentFunded;
-        futureActualLoanPrincipal = Math.max(0, nominalPurchasePrice - totalDownPaymentFunded);
-        futureActualMonthlyPmt = calcMonthlyPmtForLoan(futureActualLoanPrincipal);
-
-        remainingMortgage = futureActualLoanPrincipal;
-        yearHomeValue = nominalPurchasePrice;
-        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
-        userRealEstateShare = yearHomeEquity * ownershipShare;
-
-        notes.push(
-          `🏡 Age ${age}: Purchased primary residence for $${Math.round(nominalPurchasePrice).toLocaleString()}! Down payment of $${Math.round(totalDownPaymentFunded).toLocaleString()} funded from savings. Originated ${mortgageTermYears}-yr mortgage of $${Math.round(futureActualLoanPrincipal).toLocaleString()} ($${Math.round(futureActualMonthlyPmt).toLocaleString()}/month).`
-        );
-      } else if (futurePurchaseExecuted && !homeSold) {
-        // POST-PURCHASE YEARS
-        const elapsedMonths = Math.max(0, (age - futurePurchaseAge) * 12);
-        if (futureActualLoanPrincipal <= 0 || elapsedMonths >= totalMortgageMonths) {
-          remainingMortgage = 0;
-          housingStatus = 'mortgage_free';
+      if (housingParams.isFuturePurchase) {
+        if (age < housingParams.futurePurchaseAge) {
+          currentLivingExpensesNominal = (housingParams.currentRentMonthly + housingParams.nonHousingMonthly) * 12 * inflationFactor;
+        } else if (housingResult.remainingMortgage > 0) {
+          currentLivingExpensesNominal = (housingState.futureActualMonthlyPmt + housingParams.nonHousingMonthly) * 12 * inflationFactor;
         } else {
-          remainingMortgage = Math.max(
-            0,
-            futureActualLoanPrincipal * Math.pow(1 + monthlyRate, elapsedMonths) -
-              futureActualMonthlyPmt * ((Math.pow(1 + monthlyRate, elapsedMonths) - 1) / (monthlyRate || 1))
-          );
-          housingStatus = 'mortgage';
+          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
         }
-
-        yearHomeValue = nominalPurchasePrice * Math.pow(1 + appreciationRate, age - futurePurchaseAge);
-        yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
-        userRealEstateShare = yearHomeEquity * ownershipShare;
-
-        // Optional sale / downsizing
-        if (planToSell && age === sellAge) {
-          homeSoldThisYear = true;
-          homeSold = true;
-          homeSoldAge = age;
-
-          const grossSalePrice = yearHomeValue;
-          const netAfterClosing = grossSalePrice * (1 - sellingCostRate);
-          const equityProceeds = Math.max(0, netAfterClosing - remainingMortgage);
-          homeSaleProceeds = equityProceeds * ownershipShare;
-          homeNetProceedsAtSale = homeSaleProceeds;
-
-          pNonReg += homeSaleProceeds;
-          if (hasCustomNonReg && customAccountsState.length > 0) {
-            const targetAcc =
-              customAccountsState.find((a) => a.category === 'investment') ||
-              customAccountsState.find((a) => a.category === 'savings') ||
-              customAccountsState[0];
-            if (targetAcc) {
-              targetAcc.balance += homeSaleProceeds;
-            }
-          }
-
-          yearHomeValue = 0;
-          remainingMortgage = 0;
-          yearHomeEquity = 0;
-          userRealEstateShare = 0;
-
-          notes.push(
-            `🏡 Age ${age}: Home sold for $${Math.round(grossSalePrice).toLocaleString()}! Net equity proceeds of $${Math.round(
-              homeSaleProceeds
-            ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
-          );
+      } else {
+        if (housingResult.remainingMortgage <= 0 && housingParams.ownsHome) {
+          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
+        } else {
+          currentLivingExpensesNominal = housingParams.initialAnnualExpenses * inflationFactor;
         }
       }
     }
+    const targetSpendingNominal = Math.round(currentLivingExpensesNominal);
 
-    // Primary contributions
-    let pRrspContrib = 0;
-    let pTfsaContrib = 0;
-    let pFhsaContrib = 0;
-    let pNonRegContrib = 0;
-
-    // Spouse contributions
-    let sRrspContrib = 0;
-    let sTfsaContrib = 0;
-    let sFhsaContrib = 0;
-    let sNonRegContrib = 0;
-
+    // Decumulation & Retirement Cashflow variables
+    let pensions: GovernmentPensionsResult = { pCppIncome: 0, sCppIncome: 0, pGrossOas: 0, sGrossOas: 0 };
     let pRrspWithdrawal = 0;
     let sRrspWithdrawal = 0;
     let pTfsaWithdrawal = 0;
     let sTfsaWithdrawal = 0;
     let pNonRegWithdrawal = 0;
     let sNonRegWithdrawal = 0;
-    let fhsaRolledOver = false;
+    let isRrifMandatory = Boolean(age >= 72 || (isCouple && spouse && spouseAge !== undefined && spouseAge >= 72));
+    let rrifMinimumWithdrawal = 0;
 
-    // Check FHSA (15-Year CRA Expiry or Age 71 Rollover into RRSP/RRIF or Home Purchase)
-    const currentSimYear = 2026 + i;
-
-    // Primary FHSA check
-    if (pFhsaActive) {
-      const primaryFhsaOpenYear = fhsaOpenYear || 2023;
-      const primaryYearsSinceOpen = currentSimYear - primaryFhsaOpenYear;
-      const primaryReached15Years = primaryYearsSinceOpen >= 15;
-
-      if (fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && age === fhsaHomePurchaseAge) {
-        yearFhsaWithdrawalOrTransfer += pFhsa;
-        notes.push(`🏠 Age ${age}: FHSA fully withdrawn tax-free ($${Math.round(pFhsa).toLocaleString()}) for qualifying home purchase!`);
-        pFhsa = 0;
-        pFhsaActive = false;
-      } else if (age >= 71 || primaryReached15Years) {
-        const destAccount = age >= 71 ? 'RRIF' : (isPrimaryRetired ? 'RRIF / RRSP' : 'RRSP');
-        pRrsp += pFhsa;
-        yearFhsaWithdrawalOrTransfer += pFhsa;
-        fhsaRolledOver = true;
-        const triggerReason = age >= 71
-          ? 'reaching CRA maximum age 71'
-          : `reaching 15-year participation limit (account opened in ${primaryFhsaOpenYear})`;
-        notes.push(`🔄 Age ${age} (Year ${currentSimYear}): FHSA reached its 15-year limit (${triggerReason}) and rolled over $${Math.round(pFhsa).toLocaleString()} into ${destAccount} 100% tax-free.`);
-        pFhsa = 0;
-        pFhsaActive = false;
-      }
-    }
-
-    // Spouse FHSA check
-    if (isCouple && spouse && sFhsaActive && spouseAge !== undefined) {
-      const spouseFhsaOpenYear = spouse.fhsaOpenYear || 2023;
-      const spouseYearsSinceOpen = currentSimYear - spouseFhsaOpenYear;
-      const spouseReached15Years = spouseYearsSinceOpen >= 15;
-
-      if (spouse.fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && spouseAge === spouse.fhsaHomePurchaseAge) {
-        yearFhsaWithdrawalOrTransfer += sFhsa;
-        notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA withdrawn tax-free ($${Math.round(sFhsa).toLocaleString()}) for qualifying home purchase!`);
-        sFhsa = 0;
-        sFhsaActive = false;
-      } else if (spouseAge >= 71 || spouseReached15Years) {
-        const destAccount = spouseAge >= 71 ? 'RRIF' : (isSpouseRetired ? 'RRIF / RRSP' : 'RRSP');
-        sRrsp += sFhsa;
-        yearFhsaWithdrawalOrTransfer += sFhsa;
-        fhsaRolledOver = true;
-        const triggerReason = spouseAge >= 71
-          ? 'reaching CRA maximum age 71'
-          : `reaching 15-year participation limit (account opened in ${spouseFhsaOpenYear})`;
-        notes.push(`🔄 Spouse Age ${spouseAge} (Year ${currentSimYear}): Spouse FHSA reached its 15-year limit (${triggerReason}) and rolled over $${Math.round(sFhsa).toLocaleString()} into ${destAccount} 100% tax-free.`);
-        sFhsa = 0;
-        sFhsaActive = false;
-      }
-    }
-
-    let pCppIncome = 0;
-    let sCppIncome = 0;
-    let pGrossOas = 0;
-    let sGrossOas = 0;
+    let pTaxable = contributionResult.pTaxable;
+    let sTaxable = contributionResult.sTaxable;
+    let pTaxPaid = contributionResult.pTaxPaid;
+    let sTaxPaid = contributionResult.sTaxPaid;
     let pOasClawback = 0;
     let sOasClawback = 0;
     let pNetOas = 0;
     let sNetOas = 0;
-
-    let pYearIncome = 0;
-    let sYearIncome = 0;
-
-    let pTaxable = 0;
-    let sTaxable = 0;
-    let pTaxPaid = 0;
-    let sTaxPaid = 0;
-
-    // 1. Working & Accumulation calculations
-    if (!isPrimaryRetired) {
-      if (i > 0) {
-        pEmploymentIncome *= (1 + incomeGrowthRate / 100);
-      }
-
-      // Check Career Disruption (Layoff, Industry Shift, Wage Cut)
-      let careerDisruptionActive = false;
-      let careerDisruptionReduction = 0;
-      if (inputs.careerDisruption?.enabled) {
-        const cd = inputs.careerDisruption;
-        const isDisrupted = cd.isTemporary
-          ? age >= cd.shockAge && age < cd.shockAge + (cd.recoveryYears || 2)
-          : age >= cd.shockAge;
-
-        if (age === cd.shockAge) {
-          pEmploymentIncome *= (1 - cd.reductionPercent / 100);
-          notes.push(
-            `🚨 Career Disruption at Age ${age}: Wage reduced by ${cd.reductionPercent}% (${
-              cd.isTemporary ? `temporary ${cd.recoveryYears || 2}-yr hit` : 'permanent step-down'
-            }).`
-          );
-        } else if (cd.isTemporary && age === cd.shockAge + (cd.recoveryYears || 2)) {
-          // Recovery back towards normal level
-          pEmploymentIncome *= 1.25;
-          notes.push(`💼 Career Recovery at Age ${age}: Wage partially rebounded following ${cd.recoveryYears || 2}-year disruption.`);
-        }
-
-        if (isDisrupted) {
-          careerDisruptionActive = true;
-          careerDisruptionReduction = cd.reductionPercent;
-        }
-      }
-
-      pYearIncome = Math.max(0, pEmploymentIncome);
-      lifetimeEmploymentIncome += pYearIncome;
-
-      pRrspContrib = Math.max(0, rrspAnnualContribution);
-      pTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, tfsaAnnualContribution));
-      if (pFhsaActive && pCumulativeFhsa < FHSA_LIFETIME_LIMIT) {
-        const allowed = Math.min(FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT - pCumulativeFhsa, Math.max(0, fhsaAnnualContribution));
-        pFhsaContrib = allowed;
-        pCumulativeFhsa += allowed;
-      }
-      if (hasCustomNonReg) {
-        let customContribSum = 0;
-        customAccountsState.forEach((acc) => {
-          const c = Math.max(0, acc.annualContribution);
-          acc.currentContribution = c;
-          customContribSum += c;
-        });
-        pNonRegContrib = customContribSum;
-      } else {
-        pNonRegContrib = Math.max(0, nonRegAnnualContribution);
-      }
-
-      if (simulationOptions?.stopContributionsAge !== undefined && age >= simulationOptions.stopContributionsAge) {
-        pRrspContrib = 0;
-        pTfsaContrib = 0;
-        pFhsaContrib = 0;
-        pNonRegContrib = 0;
-        if (hasCustomNonReg) {
-          customAccountsState.forEach((acc) => {
-            acc.currentContribution = 0;
-          });
-        }
-      }
-
-      // If salary decreases as a result of a career disruption or downturn, reduce contributions
-      const totalPlannedSavings = pRrspContrib + pTfsaContrib + pFhsaContrib + pNonRegContrib;
-      if (totalPlannedSavings > 0) {
-        let scaleDown = 1.0;
-
-        if (careerDisruptionActive) {
-          // Prioritize living expenses: Available surplus = income - living expenses
-          const estLivingCost = initialAnnualExpenses * inflationFactor;
-          const availableSurplus = Math.max(0, pYearIncome * 0.82 - estLivingCost);
-
-          if (availableSurplus < totalPlannedSavings) {
-            scaleDown = Math.min(
-              1 - careerDisruptionReduction / 100,
-              availableSurplus > 0 ? availableSurplus / totalPlannedSavings : 0.05
-            );
-            scaleDown = Math.max(0, Math.min(1, scaleDown));
-
-            if (age === inputs.careerDisruption!.shockAge) {
-              notes.push(
-                `📉 Account Contributions Scaled Down: Reduced by ${Math.round(
-                  (1 - scaleDown) * 100
-                )}% (to $${Math.round(totalPlannedSavings * scaleDown).toLocaleString()}/yr) to protect household living costs ($${Math.round(estLivingCost).toLocaleString()}/yr) during salary disruption.`
-              );
-            }
-          } else {
-            scaleDown = Math.max(0.1, 1 - careerDisruptionReduction / 100);
-          }
-        } else if (pYearIncome > 0 && totalPlannedSavings > pYearIncome * 0.70) {
-          scaleDown = (pYearIncome * 0.70) / totalPlannedSavings;
-        }
-
-        if (scaleDown < 1.0) {
-          pRrspContrib *= scaleDown;
-          pTfsaContrib *= scaleDown;
-          pFhsaContrib *= scaleDown;
-          pNonRegContrib *= scaleDown;
-          if (hasCustomNonReg) {
-            customAccountsState.forEach((acc) => {
-              acc.currentContribution *= scaleDown;
-            });
-          }
-        }
-      }
-
-      pTaxable = Math.max(0, pYearIncome - pRrspContrib - pFhsaContrib);
-      pTaxPaid = calculateCanadianTax(pTaxable, province, age, 0).totalTax;
-    }
-
-    if (isCouple && spouse && !isSpouseRetired) {
-      if (i > 0) {
-        sEmploymentIncome *= (1 + spouse.incomeGrowthRate / 100);
-      }
-
-      // Check Spouse Career Disruption
-      if (spouse.careerDisruption?.enabled && spouseAge !== undefined) {
-        const scd = spouse.careerDisruption;
-        if (spouseAge === scd.shockAge) {
-          sEmploymentIncome *= (1 - scd.reductionPercent / 100);
-          notes.push(`🚨 Spouse Career Shock at Age ${spouseAge}: Wage cut by ${scd.reductionPercent}%.`);
-        } else if (scd.isTemporary && spouseAge === scd.shockAge + (scd.recoveryYears || 2)) {
-          sEmploymentIncome *= 1.25;
-          notes.push(`💼 Spouse Career Recovery at Age ${spouseAge}.`);
-        }
-      }
-
-      sYearIncome = Math.max(0, sEmploymentIncome);
-      lifetimeEmploymentIncome += sYearIncome;
-
-      sRrspContrib = Math.max(0, spouse.rrspAnnualContribution);
-      sTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, spouse.tfsaAnnualContribution));
-      if (sFhsaActive && sCumulativeFhsa < FHSA_LIFETIME_LIMIT) {
-        const allowed = Math.min(FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT - sCumulativeFhsa, Math.max(0, spouse.fhsaAnnualContribution));
-        sFhsaContrib = allowed;
-        sCumulativeFhsa += allowed;
-      }
-      sNonRegContrib = Math.max(0, spouse.nonRegAnnualContribution);
-      if (simulationOptions?.stopContributionsAge !== undefined && (spouseAge !== undefined ? spouseAge >= simulationOptions.stopContributionsAge : age >= simulationOptions.stopContributionsAge)) {
-        sRrspContrib = 0;
-        sTfsaContrib = 0;
-        sFhsaContrib = 0;
-        sNonRegContrib = 0;
-      }
-
-      if (spouse.careerDisruption?.enabled && spouseAge !== undefined) {
-        const scd = spouse.careerDisruption;
-        const isSpouseDisrupted = scd.isTemporary
-          ? spouseAge >= scd.shockAge && spouseAge < scd.shockAge + (scd.recoveryYears || 2)
-          : spouseAge >= scd.shockAge;
-        if (isSpouseDisrupted) {
-          const spouseReduction = Math.max(0.1, 1 - scd.reductionPercent / 100);
-          sRrspContrib *= spouseReduction;
-          sTfsaContrib *= spouseReduction;
-          sFhsaContrib *= spouseReduction;
-          sNonRegContrib *= spouseReduction;
-        }
-      }
-
-      sTaxable = Math.max(0, sYearIncome - sRrspContrib - sFhsaContrib);
-      sTaxPaid = calculateCanadianTax(sTaxable, province, spouseAge!, 0).totalTax;
-    }
-
-    // 2. Investment Returns
-    const netNonRegReturn = Math.max(-1, nonRegBaseRate - (nonRegYieldTaxRate / 100));
-
-    const pRrspGrowth = (pRrsp + pRrspContrib) * rrspRate;
-    const pTfsaGrowth = (pTfsa + pTfsaContrib) * tfsaRate;
-    const pFhsaGrowth = (pFhsa + pFhsaContrib) * fhsaRate;
-    let pNonRegGrowth = 0;
-    if (hasCustomNonReg && customAccountsState.length > 0) {
-      const simYear = 2026 + i;
-      customAccountsState.forEach((acc) => {
-        let accRate = acc.expectedReturn / 100;
-
-        // Apply Market Stress Test shock if active
-        if (stressTest?.enabled) {
-          const drop = (stressTest.dropPercent || 10) / 100;
-          if (
-            (stressTest.timing === 'at_retirement' && age === retirementAge) ||
-            (stressTest.timing === 'immediate' && i === 0)
-          ) {
-            accRate = -drop;
-          }
-        }
-
-        // GIC Maturity check
-        if (acc.category === 'gic') {
-          const closeYr = acc.gicCloseYear || 2028;
-          if (simYear > closeYr) {
-            // After close date -> funds unlocked into liquid taxable pool
-            accRate = nonRegBaseRate;
-          } else if (simYear === closeYr && !acc.matured) {
-            acc.matured = true;
-            notes.push(
-              `🔒 GIC "${acc.name}" reached close date in ${simYear} ($${Math.round(
-                acc.balance
-              ).toLocaleString()}) and rolled into liquid Non-Reg.`
-            );
-          }
-        }
-
-        // Apply annual yield tax friction
-        const netAccReturn = Math.max(-1, accRate - (nonRegYieldTaxRate / 100));
-        const accContrib = isPrimaryRetired ? 0 : (acc.currentContribution || 0);
-        const accGrowth = (acc.balance + accContrib) * netAccReturn;
-
-        acc.balance += accContrib + accGrowth;
-        pNonRegGrowth += accGrowth;
-      });
-
-      // Synchronize overall pNonReg bucket balance
-      pNonReg = customAccountsState.reduce((sum, a) => sum + a.balance, 0);
-    } else {
-      pNonRegGrowth = (pNonReg + pNonRegContrib) * netNonRegReturn;
-      pNonReg += pNonRegContrib + pNonRegGrowth;
-    }
-
-    const sRrspGrowth = (sRrsp + sRrspContrib) * rrspRate;
-    const sTfsaGrowth = (sTfsa + sTfsaContrib) * tfsaRate;
-    const sFhsaGrowth = (sFhsa + sFhsaContrib) * fhsaRate;
-    const sNonRegGrowth = (sNonReg + sNonRegContrib) * netNonRegReturn;
-
-    const totalGrowth = pRrspGrowth + pTfsaGrowth + pFhsaGrowth + pNonRegGrowth + sRrspGrowth + sTfsaGrowth + sFhsaGrowth + sNonRegGrowth;
-    lifetimeInvestmentGrowth += totalGrowth;
-
-    pRrsp += pRrspContrib + pRrspGrowth;
-    pTfsa += pTfsaContrib + pTfsaGrowth;
-    pFhsa += pFhsaContrib + pFhsaGrowth;
-    if (!hasCustomNonReg) {
-      pNonReg += pNonRegContrib + pNonRegGrowth;
-    }
-
-    sRrsp += sRrspContrib + sRrspGrowth;
-    sTfsa += sTfsaContrib + sTfsaGrowth;
-    sFhsa += sFhsaContrib + sFhsaGrowth;
-    sNonReg += sNonRegContrib + sNonRegGrowth;
-
-    // 3. Decumulation & Pensions
-    let currentLivingExpensesNominal: number;
-    if (isRetired) {
-      currentLivingExpensesNominal = targetRetirementSpendingToday * inflationFactor;
-      // If mortgage is still active during retirement, factor in ongoing loan payments
-      if (remainingMortgage > 0) {
-        const annualMortgage = (isFuturePurchase ? futureActualMonthlyPmt : monthlyMortgagePmt) * 12;
-        currentLivingExpensesNominal += annualMortgage * inflationFactor;
-      }
-    } else {
-      if (isFuturePurchase) {
-        if (age < futurePurchaseAge) {
-          // Pre-purchase phase: currently renting
-          currentLivingExpensesNominal = (currentRentMonthly + nonHousingMonthly) * 12 * inflationFactor;
-        } else if (remainingMortgage > 0) {
-          // Post-purchase phase: amortizing mortgage
-          currentLivingExpensesNominal = (futureActualMonthlyPmt + nonHousingMonthly) * 12 * inflationFactor;
-        } else {
-          // Debt-free home ownership prior to retirement
-          currentLivingExpensesNominal = nonHousingMonthly * 12 * inflationFactor;
-        }
-      } else {
-        if (remainingMortgage <= 0 && ownsHome) {
-          currentLivingExpensesNominal = nonHousingMonthly * 12 * inflationFactor;
-        } else {
-          currentLivingExpensesNominal = initialAnnualExpenses * inflationFactor;
-        }
-      }
-    }
-    let targetSpendingNominal = Math.round(currentLivingExpensesNominal);
     let netSpendableCashflow = 0;
     let cashflowGap = 0;
-    let isRrifMandatory: boolean = Boolean(age >= 72 || (isCouple && spouse && spouseAge !== undefined && spouseAge >= 72));
-    let rrifMinimumWithdrawal = 0;
 
     if (isRetired) {
       totalRetirementYears++;
       sumAnnualRetirementSpend += targetSpendingNominal;
 
-      // Primary Pensions
-      if (age >= cppStartAge) {
-        pCppIncome = calculateCppAnnualBenefit(cppStartAge, cppEstimatedPercentOfMax, inflationFactor);
-        lifetimeCppReceived += pCppIncome;
-      }
-      if (age >= oasStartAge) {
-        pGrossOas = calculateOasGrossBenefit(age, oasStartAge, oasEligibleYearsInCanada, inflationFactor);
-      }
+      // Sub-Routine 4A: Government Pensions
+      pensions = calculateGovernmentPensionsForYear(age, spouseAge, inputs, isCouple, spouse, inflationFactor);
+      lifetimeCppReceived += pensions.pCppIncome + pensions.sCppIncome;
 
-      // Spouse Pensions
-      if (isCouple && spouse) {
-        if (spouseAge! >= spouse.cppStartAge) {
-          sCppIncome = calculateCppAnnualBenefit(spouse.cppStartAge, spouse.cppEstimatedPercentOfMax, inflationFactor);
-          lifetimeCppReceived += sCppIncome;
-        }
-        if (spouseAge! >= spouse.oasStartAge) {
-          sGrossOas = calculateOasGrossBenefit(spouseAge!, spouse.oasStartAge, spouse.oasEligibleYearsInCanada, inflationFactor);
-        }
-      }
+      const guaranteedCash =
+        pensions.pCppIncome +
+        pensions.pGrossOas +
+        pensions.sCppIncome +
+        pensions.sGrossOas +
+        (!isSpouseRetired ? contributionResult.sYearIncome - contributionResult.sTaxPaid : 0);
 
-      // Mandatory RRIF minimums
-      let pRrifMin = 0;
-      let sRrifMin = 0;
-      if (age >= 72 && pRrsp > 0) {
-        pRrifMin = pRrsp * getRrifMinimumRate(age);
-      }
-      if (isCouple && spouse && spouseAge! >= 72 && sRrsp > 0) {
-        sRrifMin = sRrsp * getRrifMinimumRate(spouseAge!);
-      }
-      rrifMinimumWithdrawal = pRrifMin + sRrifMin;
+      // Sub-Routine 4B: Decumulation Sequencing
+      const decumulationResult = calculateDecumulationForYear(
+        age,
+        spouseAge,
+        i,
+        targetSpendingNominal,
+        guaranteedCash,
+        drawdownStrategy,
+        balances,
+        isCouple,
+        spouse,
+        inflationFactor
+      );
 
-      // Available guaranteed income (CPP + Gross OAS + any spouse employment if spouse still working)
-      const guaranteedCash = pCppIncome + pGrossOas + sCppIncome + sGrossOas + (!isSpouseRetired ? sYearIncome - sTaxPaid : 0);
-      let neededFromPortfolio = Math.max(0, targetSpendingNominal - guaranteedCash);
+      pRrspWithdrawal = decumulationResult.pRrspWithdrawal;
+      sRrspWithdrawal = decumulationResult.sRrspWithdrawal;
+      pTfsaWithdrawal = decumulationResult.pTfsaWithdrawal;
+      sTfsaWithdrawal = decumulationResult.sTfsaWithdrawal;
+      pNonRegWithdrawal = decumulationResult.pNonRegWithdrawal;
+      sNonRegWithdrawal = decumulationResult.sNonRegWithdrawal;
+      rrifMinimumWithdrawal = decumulationResult.rrifMinimumWithdrawal;
+      isRrifMandatory = decumulationResult.isRrifMandatory;
 
-      // Drawdown sequencing across accounts
-      // 1. Mandatory RRIF minimums
-      if (pRrifMin > 0) {
-        const taken = Math.min(pRrsp, pRrifMin);
-        pRrspWithdrawal += taken;
-        pRrsp -= taken;
-      }
-      if (sRrifMin > 0) {
-        const taken = Math.min(sRrsp, sRrifMin);
-        sRrspWithdrawal += taken;
-        sRrsp -= taken;
-      }
+      // Sub-Routine 4C: Retirement Taxes, T1032 Splitting & Cashflow Gap
+      const taxCashflowResult = calculateRetirementTaxesAndCashflow(
+        age,
+        spouseAge,
+        i,
+        pensions,
+        {
+          pRrspWithdrawal,
+          sRrspWithdrawal,
+          pTfsaWithdrawal,
+          sTfsaWithdrawal,
+          pNonRegWithdrawal,
+          sNonRegWithdrawal
+        },
+        targetSpendingNominal,
+        province,
+        isCouple,
+        spouse,
+        inflationFactor
+      );
 
-      const totalRrspTaken = pRrspWithdrawal + sRrspWithdrawal;
-      neededFromPortfolio = Math.max(0, neededFromPortfolio - (totalRrspTaken * 0.8));
-
-      if (drawdownStrategy === 'tax_efficient') {
-        // Non-Reg first, then RRSP, then TFSA last
-        const totalNonReg = pNonReg + sNonReg;
-        if (totalNonReg > 0 && neededFromPortfolio > 0) {
-          const draw = Math.min(totalNonReg, neededFromPortfolio);
-          const pDraw = (totalNonReg > 0 ? (pNonReg / totalNonReg) * draw : 0);
-          const sDraw = draw - pDraw;
-          pNonRegWithdrawal += pDraw;
-          pNonReg -= pDraw;
-          sNonRegWithdrawal += sDraw;
-          sNonReg -= sDraw;
-          neededFromPortfolio -= draw;
-        }
-
-        const totalRrsp = pRrsp + sRrsp;
-        if (totalRrsp > 0 && neededFromPortfolio > 0) {
-          const drawGross = Math.min(totalRrsp, neededFromPortfolio / 0.78);
-          const pDraw = totalRrsp > 0 ? (pRrsp / totalRrsp) * drawGross : 0;
-          const sDraw = drawGross - pDraw;
-          pRrspWithdrawal += pDraw;
-          pRrsp -= pDraw;
-          sRrspWithdrawal += sDraw;
-          sRrsp -= sDraw;
-          neededFromPortfolio -= drawGross * 0.78;
-        }
-
-        const totalTfsa = pTfsa + sTfsa;
-        if (totalTfsa > 0 && neededFromPortfolio > 0) {
-          const draw = Math.min(totalTfsa, neededFromPortfolio);
-          const pDraw = totalTfsa > 0 ? (pTfsa / totalTfsa) * draw : 0;
-          const sDraw = draw - pDraw;
-          pTfsaWithdrawal += pDraw;
-          pTfsa -= pDraw;
-          sTfsaWithdrawal += sDraw;
-          sTfsa -= sDraw;
-          neededFromPortfolio -= draw;
-        }
-
-      } else if (drawdownStrategy === 'rrsp_meltdown') {
-        // Meltdown: accelerate RRSP withdrawals prior to age 71
-        const ceiling = 65000 * inflationFactor;
-        if (age < 72 && pRrsp > 0) {
-          const draw = Math.min(pRrsp, Math.max(pRrifMin, ceiling));
-          pRrspWithdrawal += draw;
-          pRrsp -= draw;
-        }
-        if (isCouple && spouse && spouseAge! < 72 && sRrsp > 0) {
-          const draw = Math.min(sRrsp, Math.max(sRrifMin, ceiling));
-          sRrspWithdrawal += draw;
-          sRrsp -= draw;
-        }
-
-        let rem = Math.max(0, targetSpendingNominal - (guaranteedCash + (pRrspWithdrawal + sRrspWithdrawal) * 0.78));
-        const totalNonReg = pNonReg + sNonReg;
-        if (totalNonReg > 0 && rem > 0) {
-          const draw = Math.min(totalNonReg, rem);
-          pNonRegWithdrawal += Math.min(pNonReg, draw / 2);
-          pNonReg -= pNonRegWithdrawal;
-          sNonRegWithdrawal += Math.min(sNonReg, draw / 2);
-          sNonReg -= sNonRegWithdrawal;
-          rem -= draw;
-        }
-        const totalTfsa = pTfsa + sTfsa;
-        if (totalTfsa > 0 && rem > 0) {
-          const draw = Math.min(totalTfsa, rem);
-          pTfsaWithdrawal += Math.min(pTfsa, draw / 2);
-          pTfsa -= pTfsaWithdrawal;
-          sTfsaWithdrawal += Math.min(sTfsa, draw / 2);
-          sTfsa -= sTfsaWithdrawal;
-          rem -= draw;
-        }
-
-      } else {
-        // Proportional or TFSA first
-        const totalTfsa = pTfsa + sTfsa;
-        if (drawdownStrategy === 'tfsa_first' && totalTfsa > 0 && neededFromPortfolio > 0) {
-          const draw = Math.min(totalTfsa, neededFromPortfolio);
-          pTfsaWithdrawal += Math.min(pTfsa, draw / 2);
-          pTfsa -= pTfsaWithdrawal;
-          sTfsaWithdrawal += Math.min(sTfsa, draw / 2);
-          sTfsa -= sTfsaWithdrawal;
-          neededFromPortfolio -= draw;
-        }
-
-        const totalLiquid = pRrsp + sRrsp + pNonReg + sNonReg + pTfsa + sTfsa;
-        if (totalLiquid > 0 && neededFromPortfolio > 0) {
-          const rrspTotal = pRrsp + sRrsp;
-          const nonRegTotal = pNonReg + sNonReg;
-          const tfsaTotal = pTfsa + sTfsa;
-
-          const fromRrsp = Math.min(rrspTotal, (neededFromPortfolio * (rrspTotal / totalLiquid)) / 0.8);
-          pRrspWithdrawal += pRrsp > 0 ? fromRrsp * (pRrsp / (rrspTotal || 1)) : 0;
-          pRrsp -= pRrspWithdrawal;
-          sRrspWithdrawal += sRrsp > 0 ? fromRrsp * (sRrsp / (rrspTotal || 1)) : 0;
-          sRrsp -= sRrspWithdrawal;
-
-          const fromNonReg = Math.min(nonRegTotal, neededFromPortfolio * (nonRegTotal / totalLiquid));
-          pNonRegWithdrawal += pNonReg > 0 ? fromNonReg * (pNonReg / (nonRegTotal || 1)) : 0;
-          pNonReg -= pNonRegWithdrawal;
-          sNonRegWithdrawal += sNonReg > 0 ? fromNonReg * (sNonReg / (nonRegTotal || 1)) : 0;
-          sNonReg -= sNonRegWithdrawal;
-
-          const fromTfsa = Math.min(tfsaTotal, neededFromPortfolio * (tfsaTotal / totalLiquid));
-          pTfsaWithdrawal += pTfsa > 0 ? fromTfsa * (pTfsa / (tfsaTotal || 1)) : 0;
-          pTfsa -= pTfsaWithdrawal;
-          sTfsaWithdrawal += sTfsa > 0 ? fromTfsa * (sTfsa / (tfsaTotal || 1)) : 0;
-          sTfsa -= sTfsaWithdrawal;
-        }
-      }
-
-      // If custom non-registered accounts exist, deduct withdrawals from sub-accounts
-      if (hasCustomNonReg && customAccountsState.length > 0 && pNonRegWithdrawal > 0) {
-        let remainingWithdrawal = pNonRegWithdrawal;
-        const simYear = 2026 + i;
-        const liquidAccounts = customAccountsState.filter(
-          (a) => a.category !== 'gic' || (a.gicCloseYear && simYear >= a.gicCloseYear)
-        );
-        const totalLiquid = liquidAccounts.reduce((sum, a) => sum + Math.max(0, a.balance), 0);
-
-        if (totalLiquid > 0) {
-          const drawAmt = Math.min(totalLiquid, remainingWithdrawal);
-          liquidAccounts.forEach((a) => {
-            const share = a.balance > 0 ? (a.balance / totalLiquid) * drawAmt : 0;
-            a.balance = Math.max(0, a.balance - share);
-          });
-          remainingWithdrawal -= drawAmt;
-        }
-
-        if (remainingWithdrawal > 0) {
-          const remainingAccounts = customAccountsState.filter((a) => a.balance > 0);
-          const totalRemaining = remainingAccounts.reduce((sum, a) => sum + a.balance, 0);
-          if (totalRemaining > 0) {
-            remainingAccounts.forEach((a) => {
-              const share = a.balance > 0 ? (a.balance / totalRemaining) * remainingWithdrawal : 0;
-              a.balance = Math.max(0, a.balance - share);
-            });
-          }
-        }
-      }
-
-      // Canadian Tax Calculation for Primary and Spouse:
-      // Pension Income Splitting rule (CRA Form T1032): Couples 65+ can split up to 50% of eligible pension/RRIF income
-      let pRrspTaxable = pRrspWithdrawal;
-      let sRrspTaxable = sRrspWithdrawal;
-
-      if (isCouple && spouse && spouse.pensionIncomeSplitting && (age >= 65 || spouseAge! >= 65)) {
-        const totalRrspTaxable = pRrspWithdrawal + sRrspWithdrawal;
-        // Balance taxable pension income between spouses to equalize marginal brackets
-        pRrspTaxable = totalRrspTaxable / 2;
-        sRrspTaxable = totalRrspTaxable / 2;
-        if (i % 5 === 0 && age >= 65) {
-          notes.push(`Age ${age}: Canadian Pension Income Splitting active (up to 50% RRIF equalized to lower marginal tax).`);
-        }
-      }
-
-      pTaxable = pCppIncome + pGrossOas + pRrspTaxable + (pNonRegWithdrawal * 0.25);
-      pOasClawback = calculateOasClawback(pGrossOas, pTaxable, inflationFactor);
-      pNetOas = Math.max(0, pGrossOas - pOasClawback);
-      lifetimeOasReceived += pNetOas;
-
-      const pTaxRes = calculateCanadianTax(pTaxable, province, age, age >= 65 ? pRrspTaxable : 0);
-      pTaxPaid = pTaxRes.totalTax + pOasClawback;
-
-      if (isCouple && spouse) {
-        sTaxable = sCppIncome + sGrossOas + sRrspTaxable + (sNonRegWithdrawal * 0.25);
-        sOasClawback = calculateOasClawback(sGrossOas, sTaxable, inflationFactor);
-        sNetOas = Math.max(0, sGrossOas - sOasClawback);
-        lifetimeOasReceived += sNetOas;
-
-        const sTaxRes = calculateCanadianTax(sTaxable, province, spouseAge!, spouseAge! >= 65 ? sRrspTaxable : 0);
-        sTaxPaid = sTaxRes.totalTax + sOasClawback;
-      }
-
-      if (pOasClawback > 0 || sOasClawback > 0) {
-        notes.push(`Age ${age}: OAS clawback triggered (${pOasClawback > 0 ? `Primary: $${Math.round(pOasClawback)}` : ''}${sOasClawback > 0 ? ` Spouse: $${Math.round(sOasClawback)}` : ''}).`);
-      }
-
-      // Net cash flow
-      const totalInflow = pCppIncome + pNetOas + sCppIncome + sNetOas + pRrspWithdrawal + sRrspWithdrawal + pTfsaWithdrawal + sTfsaWithdrawal + pNonRegWithdrawal + sNonRegWithdrawal;
-      const combinedTax = pTaxRes.totalTax + (isCouple ? calculateCanadianTax(sTaxable, province, spouseAge!, 0).totalTax : 0);
-      netSpendableCashflow = totalInflow - combinedTax;
-
-      if (netSpendableCashflow < targetSpendingNominal) {
-        cashflowGap = targetSpendingNominal - netSpendableCashflow;
-      }
+      pTaxable = taxCashflowResult.pTaxable;
+      sTaxable = taxCashflowResult.sTaxable;
+      pOasClawback = taxCashflowResult.pOasClawback;
+      sOasClawback = taxCashflowResult.sOasClawback;
+      pNetOas = taxCashflowResult.pNetOas;
+      sNetOas = taxCashflowResult.sNetOas;
+      pTaxPaid = taxCashflowResult.pTaxPaid;
+      sTaxPaid = taxCashflowResult.sTaxPaid;
+      netSpendableCashflow = taxCashflowResult.netSpendableCashflow;
+      cashflowGap = taxCashflowResult.cashflowGap;
+      lifetimeOasReceived += pNetOas + sNetOas;
+      yearNotes.push(...taxCashflowResult.notes);
     }
 
     const totalTaxPaid = pTaxPaid + sTaxPaid;
@@ -1090,8 +344,10 @@ export function runRetirementSimulation(
       sumEffectiveTaxInRetirement += (pTaxable + sTaxable > 0 ? totalTaxPaid / (pTaxable + sTaxable) : 0);
     }
 
-    const currentLiquidPortfolio = pRrsp + pTfsa + pFhsa + pNonReg + sRrsp + sTfsa + sFhsa + sNonReg;
-    const currentTotalNetWorth = currentLiquidPortfolio + userRealEstateShare;
+    const currentLiquidPortfolio = balances.pRrsp + balances.pTfsa + balances.pFhsa + balances.pNonReg +
+      balances.sRrsp + balances.sTfsa + balances.sFhsa + balances.sNonReg;
+    const currentTotalNetWorth = currentLiquidPortfolio + housingResult.userRealEstateShare;
+
     if (currentTotalNetWorth > peakNetWorth) {
       peakNetWorth = currentTotalNetWorth;
       peakNetWorthAge = age;
@@ -1100,66 +356,85 @@ export function runRetirementSimulation(
     if (age === retirementAge - 1 || (currentAge === retirementAge && i === 0)) {
       netWorthAtRetirement = currentTotalNetWorth;
       liquidNetWorthAtRetirement = currentLiquidPortfolio;
-      homeEquityAtRetirement = userRealEstateShare;
+      homeEquityAtRetirement = housingResult.userRealEstateShare;
     }
 
     if (isRetired && currentTotalNetWorth <= 0 && depletionAge === null && age > retirementAge) {
       depletionAge = age;
-      notes.push(`Age ${age}: Household portfolio and assets depleted. Shortfall starts.`);
+      yearNotes.push(`Age ${age}: Household portfolio and assets depleted. Shortfall starts.`);
     }
 
     const yearTotalWithdrawals = pRrspWithdrawal + sRrspWithdrawal + pTfsaWithdrawal + sTfsaWithdrawal + pNonRegWithdrawal + sNonRegWithdrawal;
+    const totalYearContributions =
+      contributionResult.pRrspContrib +
+      contributionResult.sRrspContrib +
+      contributionResult.pTfsaContrib +
+      contributionResult.sTfsaContrib +
+      contributionResult.pFhsaContrib +
+      contributionResult.sFhsaContrib +
+      contributionResult.pNonRegContrib +
+      contributionResult.sNonRegContrib;
+
+    const preRetirementNetCashflow = contributionResult.pYearIncome + contributionResult.sYearIncome - totalTaxPaid - totalYearContributions;
 
     yearlyResults.push({
       age,
       year: yearNumber,
       isRetired,
-      employmentIncome: Math.round(pYearIncome + sYearIncome),
-      cppIncome: Math.round(pCppIncome + sCppIncome),
-      oasGrossIncome: Math.round(pGrossOas + sGrossOas),
+      employmentIncome: Math.round(contributionResult.pYearIncome + contributionResult.sYearIncome),
+      cppIncome: Math.round(pensions.pCppIncome + pensions.sCppIncome),
+      oasGrossIncome: Math.round(pensions.pGrossOas + pensions.sGrossOas),
       oasClawback: Math.round(pOasClawback + sOasClawback),
       oasNetIncome: Math.round(pNetOas + sNetOas),
-      rrspBalance: Math.round(pRrsp + sRrsp),
-      tfsaBalance: Math.round(pTfsa + sTfsa),
-      fhsaBalance: Math.round(pFhsa + sFhsa),
-      nonRegBalance: Math.round(pNonReg + sNonReg),
+      rrspBalance: Math.round(balances.pRrsp + balances.sRrsp),
+      tfsaBalance: Math.round(balances.pTfsa + balances.sTfsa),
+      fhsaBalance: Math.round(balances.pFhsa + balances.sFhsa),
+      nonRegBalance: Math.round(balances.pNonReg + balances.sNonReg),
       totalNetWorth: Math.round(currentTotalNetWorth),
-      homeValue: Math.round(yearHomeValue),
-      remainingMortgage: Math.round(remainingMortgage),
-      homeEquity: Math.round(yearHomeEquity),
-      realEstateShare: Math.round(userRealEstateShare),
-      homeSoldThisYear,
-      homeSaleProceeds: Math.round(homeSaleProceeds),
-      isHomePurchasedThisYear,
-      downPaymentPaidThisYear: Math.round(downPaymentPaidThisYear),
-      housingStatus,
-      rrspContribution: Math.round(pRrspContrib + sRrspContrib),
-      tfsaContribution: Math.round(pTfsaContrib + sTfsaContrib),
-      fhsaContribution: Math.round(pFhsaContrib + sFhsaContrib),
-      nonRegContribution: Math.round(pNonRegContrib + sNonRegContrib),
+      homeValue: Math.round(housingResult.yearHomeValue),
+      remainingMortgage: Math.round(housingResult.remainingMortgage),
+      homeEquity: Math.round(housingResult.yearHomeEquity),
+      realEstateShare: Math.round(housingResult.userRealEstateShare),
+      homeSoldThisYear: housingResult.homeSoldThisYear,
+      homeSaleProceeds: Math.round(housingResult.homeSaleProceeds),
+      isHomePurchasedThisYear: housingResult.isHomePurchasedThisYear,
+      downPaymentPaidThisYear: Math.round(housingResult.downPaymentPaidThisYear),
+      housingStatus: housingResult.housingStatus,
+      rrspContribution: Math.round(contributionResult.pRrspContrib + contributionResult.sRrspContrib),
+      tfsaContribution: Math.round(contributionResult.pTfsaContrib + contributionResult.sTfsaContrib),
+      fhsaContribution: Math.round(contributionResult.pFhsaContrib + contributionResult.sFhsaContrib),
+      nonRegContribution: Math.round(contributionResult.pNonRegContrib + contributionResult.sNonRegContrib),
       rrspWithdrawal: Math.round(pRrspWithdrawal + sRrspWithdrawal),
       tfsaWithdrawal: Math.round(pTfsaWithdrawal + sTfsaWithdrawal),
       nonRegWithdrawal: Math.round(pNonRegWithdrawal + sNonRegWithdrawal),
-      fhsaWithdrawalOrTransfer: Math.round(yearFhsaWithdrawalOrTransfer),
+      fhsaWithdrawalOrTransfer: Math.round(housingResult.yearFhsaWithdrawalOrTransfer + contributionResult.yearFhsaWithdrawalOrTransfer),
       totalWithdrawals: Math.round(yearTotalWithdrawals),
-      totalInvestmentGrowth: Math.round(totalGrowth),
+      totalInvestmentGrowth: Math.round(investmentResult.totalGrowth),
       targetSpendingNominal: Math.round(targetSpendingNominal),
-      totalGrossIncome: Math.round(pYearIncome + sYearIncome + pCppIncome + sCppIncome + pGrossOas + sGrossOas + yearTotalWithdrawals),
+      totalGrossIncome: Math.round(
+        contributionResult.pYearIncome +
+        contributionResult.sYearIncome +
+        pensions.pCppIncome +
+        pensions.sCppIncome +
+        pensions.pGrossOas +
+        pensions.sGrossOas +
+        yearTotalWithdrawals
+      ),
       taxableIncome: Math.round(pTaxable + sTaxable),
       totalTaxPaid: Math.round(totalTaxPaid),
       effectiveTaxRate: (pTaxable + sTaxable > 0 ? totalTaxPaid / (pTaxable + sTaxable) : 0),
       marginalTaxRate: calculateCanadianTax(pTaxable, province, age, 0).marginalRate,
-      netSpendableCashflow: Math.round(isRetired ? netSpendableCashflow : (pYearIncome + sYearIncome - totalTaxPaid - (pRrspContrib + sRrspContrib + pTfsaContrib + sTfsaContrib + pFhsaContrib + sFhsaContrib + pNonRegContrib + sNonRegContrib))),
+      netSpendableCashflow: Math.round(isRetired ? netSpendableCashflow : preRetirementNetCashflow),
       cashflowGap: Math.round(cashflowGap),
       isRrifMandatory,
       rrifMinimumWithdrawal: Math.round(rrifMinimumWithdrawal),
-      fhsaRolledOver,
-      notes,
+      fhsaRolledOver: contributionResult.fhsaRolledOver,
+      notes: yearNotes,
       isCouple,
       spouseAge,
       isSpouseRetired,
-      spouseEmploymentIncome: Math.round(sYearIncome),
-      spouseCppIncome: Math.round(sCppIncome),
+      spouseEmploymentIncome: Math.round(contributionResult.sYearIncome),
+      spouseCppIncome: Math.round(pensions.sCppIncome),
       spouseOasNetIncome: Math.round(sNetOas),
       spouseTaxPaid: Math.round(sTaxPaid)
     });
@@ -1173,244 +448,24 @@ export function runRetirementSimulation(
   const yearsFunded = depletionAge !== null ? (depletionAge - retirementAge) : totalYearsInRetirement;
   const readinessScore = Math.min(100, Math.max(0, Math.round((yearsFunded / totalYearsInRetirement) * 100)));
 
-  // ==========================================
-  // Strategic Milestone Analysis (Skipped in sub-sims)
-  // ==========================================
-  let crossoverAge: number | null = null;
-  let crossoverYear: number | null = null;
-  let crossoverInvestmentGrowth = 0;
-  let crossoverLivingExpenses = 0;
-
-  let coastFireAge: number | null = null;
-  let coastFireYear: number | null = null;
-  let coastFireNetWorth = 0;
-
-  let millionaireAge: number | null = null;
-  let millionaireYear: number | null = null;
-
-  let mortgagePayoffAge: number | null = null;
-  let mortgagePayoffYear: number | null = null;
-
-  if (!simulationOptions?.isCoastCheck) {
-    // 1. Crossover Point: The point at which returns on investment start outgrowing annual living expenses
-    for (const row of yearlyResults) {
-      if (row.totalInvestmentGrowth >= row.targetSpendingNominal && row.targetSpendingNominal > 0) {
-        crossoverAge = row.age;
-        crossoverYear = row.year;
-        crossoverInvestmentGrowth = row.totalInvestmentGrowth;
-        crossoverLivingExpenses = row.targetSpendingNominal;
-        row.isCrossoverMilestone = true;
-        const growthFormatted = Math.round(row.totalInvestmentGrowth).toLocaleString();
-        const spendingFormatted = Math.round(row.targetSpendingNominal).toLocaleString();
-        row.notes.unshift(
-          `🚀 Crossover Milestone: Annual investment returns ($${growthFormatted}/yr) outgrow required annual living expenses ($${spendingFormatted}/yr)! Portfolio compounding surpasses household spending.`
-        );
-        row.milestoneBadges = row.milestoneBadges || [];
-        row.milestoneBadges.push({
-          id: 'crossover',
-          label: 'Crossover Point',
-          shortLabel: '🚀 Returns > Expenses',
-          type: 'crossover',
-          icon: 'zap',
-          color: 'emerald',
-          description: 'Annual investment returns surpass required annual living expenses',
-          metricsSummary: `Returns: $${growthFormatted}/yr vs Living: $${spendingFormatted}/yr`
-        });
-        break;
-      }
-    }
-
-    // 2. Coast FIRE Milestone: Point where zero future contributions still fully funds intended retirement
-    for (let testAge = currentAge; testAge <= retirementAge; testAge++) {
-      const testSim = runRetirementSimulation(inputs, stressTest, {
-        isCoastCheck: true,
-        stopContributionsAge: testAge
-      });
-      if (testSim.summary.isFullyFunded) {
-        coastFireAge = testAge;
-        break;
-      }
-    }
-
-    if (coastFireAge !== null) {
-      const coastRow = yearlyResults.find(r => r.age === coastFireAge);
-      if (coastRow) {
-        coastFireYear = coastRow.year;
-        coastFireNetWorth = coastRow.totalNetWorth;
-        coastRow.isCoastFireMilestone = true;
-        coastRow.milestoneBadges = coastRow.milestoneBadges || [];
-        const nwFormatted = Math.round(coastRow.totalNetWorth).toLocaleString();
-        coastRow.milestoneBadges.push({
-          id: 'coast_fire',
-          label: 'Coast FIRE / Zero-Contribution',
-          shortLabel: '⚓ Coast FIRE',
-          type: 'coast_fire',
-          icon: 'anchor',
-          color: 'cyan',
-          description: 'Zero further contributions required to fully fund retirement through life expectancy',
-          metricsSummary: `Invested Assets: $${nwFormatted}`
-        });
-        const coastMsg = coastFireAge === currentAge
-          ? `⚓ Coast FIRE Milestone: Zero-contribution viability achieved today! Your current portfolio ($${nwFormatted}) alone will compound to fully fund all intended retirement expenses through age ${lifeExpectancy} with $0 future contributions required.`
-          : `⚓ Coast FIRE Milestone: Zero-contribution viability reached at Age ${coastFireAge}! Even if all savings contributions stop at age ${coastFireAge}, investment growth alone will fully fund retirement expenses through age ${lifeExpectancy}.`;
-        coastRow.notes.unshift(coastMsg);
-      }
-    }
-
-    // 3. Millionaire Milestone ($1M+ Net Worth)
-    for (const row of yearlyResults) {
-      if (row.totalNetWorth >= 1000000) {
-        millionaireAge = row.age;
-        millionaireYear = row.year;
-        row.isMillionaireMilestone = true;
-        row.milestoneBadges = row.milestoneBadges || [];
-        const nwFormatted = Math.round(row.totalNetWorth).toLocaleString();
-        row.milestoneBadges.push({
-          id: 'millionaire',
-          label: 'Millionaire Milestone',
-          shortLabel: '💎 $1M Net Worth',
-          type: 'millionaire',
-          icon: 'diamond',
-          color: 'blue',
-          description: 'Household net worth reaches $1,000,000 milestone',
-          metricsSummary: `Net Worth: $${nwFormatted}`
-        });
-        row.notes.push(`💎 Millionaire Milestone: Total Net Worth surpasses $1,000,000 ($${nwFormatted}).`);
-        break;
-      }
-    }
-
-    // 4. Future Home Purchase Milestone
-    if (isFuturePurchase) {
-      const buyRow = yearlyResults.find(r => r.age === futurePurchaseAge);
-      if (buyRow) {
-        buyRow.milestoneBadges = buyRow.milestoneBadges || [];
-        buyRow.milestoneBadges.push({
-          id: 'home_purchase',
-          label: `Home Purchase (Age ${futurePurchaseAge})`,
-          shortLabel: '🏡 Home Purchase',
-          type: 'home_purchase',
-          icon: 'home',
-          color: 'amber',
-          description: `Transitioned from renting to homeowner: purchased primary residence for $${Math.round(nominalPurchasePrice).toLocaleString()}`,
-          metricsSummary: `Down Payment: $${Math.round(totalDownPaymentFunded).toLocaleString()}`
-        });
-      }
-    }
-
-    // 5. Mortgage Freedom Milestone
-    if (ownsHome && (initialMortgagePrincipal > 0 || (isFuturePurchase && futureActualLoanPrincipal > 0))) {
-      for (const row of yearlyResults) {
-        if (
-          row.remainingMortgage <= 0 &&
-          row.homeValue > 0 &&
-          !row.homeSoldThisYear &&
-          (!isFuturePurchase || row.age >= futurePurchaseAge)
-        ) {
-          mortgagePayoffAge = row.age;
-          mortgagePayoffYear = row.year;
-          row.isMortgageFreeMilestone = true;
-          row.milestoneBadges = row.milestoneBadges || [];
-          row.milestoneBadges.push({
-            id: 'mortgage_free',
-            label: 'Mortgage Freedom',
-            shortLabel: '🏡 Debt Free',
-            type: 'mortgage_free',
-            icon: 'home',
-            color: 'teal',
-            description: 'Primary residence mortgage fully amortized to $0 balance',
-            metricsSummary: 'Mortgage: $0'
-          });
-          row.notes.push(`🏡 Mortgage Freedom: Home mortgage loan fully paid off to $0 balance! Cash flow freed from loan service.`);
-          break;
-        }
-      }
-    }
-
-    // 5. Target Retirement Day Milestone
-    const retRow = yearlyResults.find(r => r.age === retirementAge);
-    if (retRow) {
-      retRow.milestoneBadges = retRow.milestoneBadges || [];
-      const nwFormatted = Math.round(retRow.totalNetWorth).toLocaleString();
-      retRow.milestoneBadges.push({
-        id: 'retirement',
-        label: 'Target Retirement Day',
-        shortLabel: '🎯 Retire Target',
-        type: 'retirement',
-        icon: 'target',
-        color: 'rose',
-        description: 'Transition from accumulation to decumulation phase',
-        metricsSummary: `Starting Nest Egg: $${nwFormatted}`
-      });
-      retRow.notes.push(`🎯 Target Retirement: Employment income ends and portfolio decumulation begins. Starting net worth: $${nwFormatted}.`);
-    }
-
-    // 6. Peak Lifetime Wealth Milestone
-    const peakRow = yearlyResults.find(r => r.age === peakNetWorthAge);
-    if (peakRow && peakNetWorthAge !== retirementAge) {
-      peakRow.isPeakWealthMilestone = true;
-      peakRow.milestoneBadges = peakRow.milestoneBadges || [];
-      const peakNwFormatted = Math.round(peakRow.totalNetWorth).toLocaleString();
-      peakRow.milestoneBadges.push({
-        id: 'peak_wealth',
-        label: 'Peak Lifetime Wealth Apex',
-        shortLabel: '🏔️ Peak Wealth',
-        type: 'peak_net_worth',
-        icon: 'mountain',
-        color: 'indigo',
-        description: 'Maximum lifetime net worth apex before decumulation',
-        metricsSummary: `Peak Net Worth: $${peakNwFormatted}`
-      });
-      peakRow.notes.push(`🏔️ Peak Net Worth: Lifetime wealth apex of $${peakNwFormatted} achieved at Age ${peakNetWorthAge}.`);
-    }
-
-    // 7. CPP & OAS Pension Starts
-    const cppRow = yearlyResults.find(r => r.age === cppStartAge);
-    if (cppRow && cppRow.cppIncome > 0) {
-      cppRow.milestoneBadges = cppRow.milestoneBadges || [];
-      cppRow.milestoneBadges.push({
-        id: 'cpp_start',
-        label: 'CPP Pension Benefit Start',
-        shortLabel: '🏛️ CPP Start',
-        type: 'pension',
-        icon: 'landmark',
-        color: 'violet',
-        description: 'Canada Pension Plan monthly retirement benefits begin',
-        metricsSummary: `CPP Benefit: $${Math.round(cppRow.cppIncome).toLocaleString()}/yr`
-      });
-    }
-
-    const oasRow = yearlyResults.find(r => r.age === oasStartAge);
-    if (oasRow && oasRow.oasNetIncome > 0) {
-      oasRow.milestoneBadges = oasRow.milestoneBadges || [];
-      oasRow.milestoneBadges.push({
-        id: 'oas_start',
-        label: 'OAS Pension Benefit Start',
-        shortLabel: '🏛️ OAS Start',
-        type: 'pension',
-        icon: 'landmark',
-        color: 'emerald',
-        description: 'Old Age Security monthly benefits begin',
-        metricsSummary: `OAS Net: $${Math.round(oasRow.oasNetIncome).toLocaleString()}/yr`
-      });
-    }
-
-    // 8. CRA Mandatory RRIF Conversion
-    const rrifRow = yearlyResults.find(r => r.age === 72);
-    if (rrifRow && rrifRow.rrspBalance > 0) {
-      rrifRow.milestoneBadges = rrifRow.milestoneBadges || [];
-      rrifRow.milestoneBadges.push({
-        id: 'rrif_mandatory',
-        label: 'CRA RRIF Mandatory Conversion',
-        shortLabel: '📜 RRIF Minimums',
-        type: 'rrif',
-        icon: 'file-text',
-        color: 'amber',
-        description: 'CRA statutory mandatory minimum RRIF withdrawal rules active',
-        metricsSummary: `Statutory Rate: ${(getRrifMinimumRate(72) * 100).toFixed(2)}%`
-      });
-    }
-  }
+  // 5. Evaluate Strategic Simulation Milestones via Analyzer Sub-Routine
+  const milestoneResults = evaluateSimulationMilestones(
+    yearlyResults,
+    inputs,
+    simulationOptions,
+    stressTest,
+    peakNetWorthAge,
+    {
+      ownsHome: housingParams.ownsHome,
+      isFuturePurchase: housingParams.isFuturePurchase,
+      futurePurchaseAge: housingParams.futurePurchaseAge,
+      nominalPurchasePrice: housingParams.nominalPurchasePrice,
+      totalDownPaymentFunded: housingState.totalDownPaymentFunded,
+      initialMortgagePrincipal: housingParams.initialMortgagePrincipal,
+      futureActualLoanPrincipal: housingState.futureActualLoanPrincipal
+    },
+    runRetirementSimulation
+  );
 
   const summary: SimulationSummary = {
     portfolioDepletionAge: depletionAge,
@@ -1422,15 +477,15 @@ export function runRetirementSimulation(
     netWorthAtLifeExpectancy: Math.round(netWorthAtLifeExpectancy),
     peakNetWorth: Math.round(peakNetWorth),
     peakNetWorthAge,
-    ownsHome,
-    isFutureHomeBuyer: isFuturePurchase,
-    futurePurchaseAge: isFuturePurchase ? futurePurchaseAge : null,
-    futurePurchaseYear: isFuturePurchase ? futurePurchaseYear : null,
+    ownsHome: housingParams.ownsHome,
+    isFutureHomeBuyer: housingParams.isFuturePurchase,
+    futurePurchaseAge: housingParams.isFuturePurchase ? housingParams.futurePurchaseAge : null,
+    futurePurchaseYear: housingParams.isFuturePurchase ? housingParams.futurePurchaseYear : null,
     homeEquityAtRetirement: Math.round(homeEquityAtRetirement),
-    homeSoldAge,
-    homeNetProceedsAtSale: Math.round(homeNetProceedsAtSale),
+    homeSoldAge: housingState.homeSoldAge,
+    homeNetProceedsAtSale: Math.round(housingState.homeNetProceedsAtSale),
     liquidNetWorthAtRetirement: Math.round(liquidNetWorthAtRetirement),
-    lifetimeEmploymentIncome: Math.round(lifetimeEmploymentIncome),
+    lifetimeEmploymentIncome: Math.round(contributionState.lifetimeEmploymentIncome),
     lifetimeCppReceived: Math.round(lifetimeCppReceived),
     lifetimeOasReceived: Math.round(lifetimeOasReceived),
     lifetimeTaxesPaid: Math.round(lifetimeTaxesPaid),
@@ -1439,19 +494,19 @@ export function runRetirementSimulation(
     averageEffectiveTaxInRetirement: totalRetirementYears > 0 ? sumEffectiveTaxInRetirement / totalRetirementYears : 0,
     retirementAge,
     firstRrifMandatoryYear: 72,
-    cppStartAge,
-    oasStartAge,
-    crossoverAge,
-    crossoverYear,
-    crossoverInvestmentGrowth: Math.round(crossoverInvestmentGrowth),
-    crossoverLivingExpenses: Math.round(crossoverLivingExpenses),
-    coastFireAge,
-    coastFireYear,
-    coastFireNetWorth: Math.round(coastFireNetWorth),
-    millionaireAge,
-    millionaireYear,
-    mortgagePayoffAge,
-    mortgagePayoffYear,
+    cppStartAge: inputs.cppStartAge,
+    oasStartAge: inputs.oasStartAge,
+    crossoverAge: milestoneResults.crossoverAge,
+    crossoverYear: milestoneResults.crossoverYear,
+    crossoverInvestmentGrowth: Math.round(milestoneResults.crossoverInvestmentGrowth),
+    crossoverLivingExpenses: Math.round(milestoneResults.crossoverLivingExpenses),
+    coastFireAge: milestoneResults.coastFireAge,
+    coastFireYear: milestoneResults.coastFireYear,
+    coastFireNetWorth: Math.round(milestoneResults.coastFireNetWorth),
+    millionaireAge: milestoneResults.millionaireAge,
+    millionaireYear: milestoneResults.millionaireYear,
+    mortgagePayoffAge: milestoneResults.mortgagePayoffAge,
+    mortgagePayoffYear: milestoneResults.mortgagePayoffYear,
     isCouple,
     spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined
   };
@@ -1462,10 +517,10 @@ export function runRetirementSimulation(
 export interface SavingsPulseResult {
   currentMonthlySavings: number;
   requiredMonthlySavings: number;
-  monthlyGap: number; // positive = shortfall to bridge; negative = surplus buffer
+  monthlyGap: number;
   status: 'surplus' | 'on_track' | 'underfunded' | 'critical';
-  currentSavingsRate: number; // percentage of gross income
-  requiredSavingsRate: number; // percentage of gross income
+  currentSavingsRate: number;
+  requiredSavingsRate: number;
   projectedNestEggAtRetire: number;
   targetNestEggNeeded: number;
   recommendedAction: string;
@@ -1537,11 +592,11 @@ export function calculateSavingsPulse(
         } : undefined
       };
 
-      const sim = runRetirementSimulation(testInputs);
-      if (sim.summary.isFullyFunded && sim.summary.netWorthAtLifeExpectancy >= 0) {
+      const testRes = fastSimulateEndNetWorth(testInputs);
+      if (testRes.isFullyFunded && testRes.netWorthAtLifeExpectancy >= 0) {
         minScale = mid;
         high = mid;
-        targetNestEggNeeded = sim.summary.netWorthAtRetirement;
+        targetNestEggNeeded = testRes.netWorthAtRetirement;
       } else {
         low = mid;
       }
@@ -1564,10 +619,10 @@ export function calculateSavingsPulse(
         nonRegAnnualContribution: inputs.nonRegAnnualContribution + addNonReg
       };
 
-      const sim = runRetirementSimulation(testInputs);
-      if (sim.summary.isFullyFunded && sim.summary.netWorthAtLifeExpectancy >= 0) {
+      const testRes = fastSimulateEndNetWorth(testInputs);
+      if (testRes.isFullyFunded && testRes.netWorthAtLifeExpectancy >= 0) {
         bestDelta = mid;
-        targetNestEggNeeded = sim.summary.netWorthAtRetirement;
+        targetNestEggNeeded = testRes.netWorthAtRetirement;
         high = mid;
       } else {
         low = mid;

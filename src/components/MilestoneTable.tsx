@@ -25,7 +25,7 @@ import {
   DollarSign,
   ArrowUpRight
 } from 'lucide-react';
-import { exportMilestoneTableToExcel } from '../utils/excelExport';
+import { useSimulation } from '../context/SimulationContext';
 
 interface LedgerAiExplanation {
   summary: string;
@@ -36,21 +36,22 @@ interface LedgerAiExplanation {
   source?: string;
 }
 
-interface MilestoneTableProps {
-  yearlyResults: YearSimulationResult[];
-  retirementAge: number;
+export interface MilestoneTableProps {
+  yearlyResults?: YearSimulationResult[];
+  retirementAge?: number;
   province?: CanadianProvince;
   inputs?: RetirementInputs;
   summary?: SimulationSummary;
 }
 
-export const MilestoneTable: React.FC<MilestoneTableProps> = ({
-  yearlyResults,
-  retirementAge,
-  province,
-  inputs,
-  summary
-}) => {
+export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
+  const sim = useSimulation();
+  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
+  const retirementAge = props.retirementAge ?? sim.inputs.retirementAge;
+  const province = props.province ?? sim.inputs.province;
+  const inputs = props.inputs ?? sim.inputs;
+  const summary = props.summary ?? sim.summary;
+
   const [filterMode, setFilterMode] = useState<'milestones' | 'retirement' | 'all'>('milestones');
   const [searchTerm, setSearchTerm] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -293,6 +294,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
+      const { exportMilestoneTableToExcel } = await import('../utils/excelExport');
       await exportMilestoneTableToExcel({
         data: filteredData,
         filterMode,

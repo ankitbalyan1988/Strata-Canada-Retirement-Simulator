@@ -1,4 +1,5 @@
 import { ScenarioPreset, SpouseInputs, RealEstateInputs, AccountReturnRates, RetirementInputs, MonthlyExpenseEstimates } from '../types/retirement';
+import { CRA_ECONOMIC_DEFAULTS } from '../config/canadianTaxData';
 
 export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   ownsHome: true,
@@ -61,16 +62,16 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   retirementAge: 64,
   lifeExpectancy: 85,
   province: 'ON',
-  currentAnnualIncome: 68400,
+  currentAnnualIncome: CRA_ECONOMIC_DEFAULTS.averageSalary,
   incomeGrowthRate: 2.1,
   monthlyExpenses: { ...DEFAULT_MONTHLY_EXPENSES },
   targetRetirementSpendingToday: 46500, // ~68% income replacement (FCAC benchmark)
   realEstate: { ...DEFAULT_REAL_ESTATE_INPUTS },
   accountReturns: { ...DEFAULT_ACCOUNT_RETURNS },
-  rrspBalance: 112000,
-  tfsaBalance: 41500,
+  rrspBalance: CRA_ECONOMIC_DEFAULTS.averageRrspBalance,
+  tfsaBalance: CRA_ECONOMIC_DEFAULTS.averageTfsaBalance,
   fhsaBalance: 12000,
-  nonRegBalance: 32000,
+  nonRegBalance: CRA_ECONOMIC_DEFAULTS.averageNonRegBalance,
   rrspAnnualContribution: 6800,
   tfsaAnnualContribution: 5800,
   fhsaAnnualContribution: 6000,
@@ -79,7 +80,7 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   fhsaIntent: 'rollover_to_rrsp',
   fhsaHomePurchaseAge: 45,
   cppStartAge: 65,
-  cppEstimatedPercentOfMax: 64, // Actual CRA average benefit paid
+  cppEstimatedPercentOfMax: CRA_ECONOMIC_DEFAULTS.averageCppBenefitPercent, // Actual CRA average benefit paid
   oasStartAge: 65,
   oasEligibleYearsInCanada: 40,
   preRetirementReturn: 6.0, // FP Canada guideline for balanced portfolio

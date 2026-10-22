@@ -40,19 +40,21 @@ import {
   Sun
 } from 'lucide-react';
 
-interface ExpatRetirementModuleProps {
-  retirementInputs: RetirementInputs;
-  yearlyResults: YearSimulationResult[];
-  summary: SimulationSummary;
+import { useSimulation } from '../context/SimulationContext';
+
+export interface ExpatRetirementModuleProps {
+  retirementInputs?: RetirementInputs;
+  yearlyResults?: YearSimulationResult[];
+  summary?: SimulationSummary;
   onUpdateExpatInputs?: (inputs: ExpatInputs) => void;
 }
 
-export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = ({
-  retirementInputs,
-  yearlyResults,
-  summary,
-  onUpdateExpatInputs
-}) => {
+export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (props) => {
+  const sim = useSimulation();
+  const retirementInputs = props.retirementInputs ?? sim.inputs;
+  const yearlyResults = props.yearlyResults ?? sim.yearlyResults;
+  const summary = props.summary ?? sim.summary;
+  const onUpdateExpatInputs = props.onUpdateExpatInputs ?? sim.updateExpatInputs;
   const defaultExpat = useMemo<ExpatInputs>(() => ({
     ...DEFAULT_EXPAT_INPUTS,
     emigrationAge: Math.max(retirementInputs.currentAge + 1, retirementInputs.retirementAge - 2),
@@ -70,6 +72,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = ({
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'ppp' | 'timeline' | 'checklist'>('overview');
+  const [regionFilter, setRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
 
   // Single source of truth: prioritize parent state if passed, else local state
   const currentExpatInputs = retirementInputs.expat || localExpatInputs;
@@ -402,43 +405,68 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = ({
                 </div>
               </div>
 
-              {/* Destination Country Quick-Pick Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {EXPAT_DESTINATIONS.map(dest => {
-                  const isSelected = dest.id === destinationCountry.id;
+              {/* Region Filter Bar */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {(['all', 'Europe', 'Americas', 'Asia-Pacific', 'Caribbean'] as const).map(reg => {
+                  const count = reg === 'all'
+                    ? EXPAT_DESTINATIONS.length
+                    : EXPAT_DESTINATIONS.filter(d => d.region === reg).length;
                   return (
                     <button
-                      key={dest.id}
+                      key={reg}
                       type="button"
-                      onClick={() => updateInputs(prev => ({ ...prev, destinationCountryId: dest.id }))}
-                      className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
-                        isSelected
-                          ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
-                          : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                      onClick={() => setRegionFilter(reg)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                        regionFilter === reg
+                          ? 'bg-cyan-700 text-white shadow-2xs font-bold'
+                          : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xl leading-none">{dest.flag}</span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                          dest.costOfLivingIndex <= 0.6 
-                            ? 'bg-emerald-100 text-emerald-800' 
-                            : dest.costOfLivingIndex <= 0.85
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}>
-                          {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
-                        </span>
-                      </div>
-                      <div className="text-xs font-bold text-slate-900 truncate">
-                        {dest.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 flex items-center justify-between">
-                        <span>{dest.currencyCode}</span>
-                        <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
-                      </div>
+                      {reg === 'all' ? 'All Destinations' : reg} ({count})
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Destination Country Quick-Pick Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {EXPAT_DESTINATIONS
+                  .filter(dest => regionFilter === 'all' || dest.region === regionFilter)
+                  .map(dest => {
+                    const isSelected = dest.id === destinationCountry.id;
+                    return (
+                      <button
+                        key={dest.id}
+                        type="button"
+                        onClick={() => updateInputs(prev => ({ ...prev, destinationCountryId: dest.id }))}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
+                            : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl leading-none">{dest.flag}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            dest.costOfLivingIndex <= 0.6 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : dest.costOfLivingIndex <= 0.85
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-slate-900 truncate">
+                          {dest.name}
+                        </div>
+                        <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                          <span>{dest.currencyCode}</span>
+                          <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
               </div>
 
               {/* Sliders: Emigration Age & OAS 20-Year Residence Rule */}

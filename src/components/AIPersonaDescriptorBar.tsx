@@ -13,18 +13,19 @@ import {
   HelpCircle,
   RotateCcw
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { RetirementInputs } from '../types/retirement';
+import { useSimulation } from '../context/SimulationContext';
+import { triggerConfetti } from '../utils/confettiHelper';
 
-interface AIPersonaDescriptorBarProps {
-  onApplyPersona: (inputs: RetirementInputs) => void;
-  activeProvince: string;
+export interface AIPersonaDescriptorBarProps {
+  onApplyPersona?: (inputs: RetirementInputs) => void;
+  activeProvince?: string;
 }
 
-export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = ({
-  onApplyPersona,
-  activeProvince
-}) => {
+export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (props) => {
+  const sim = useSimulation();
+  const onApplyPersona = props.onApplyPersona ?? sim.applyAIPersona;
+  const activeProvince = props.activeProvince ?? sim.inputs.province;
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,15 +74,11 @@ export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = ({
   const handleApply = () => {
     if (synthesizedPersona) {
       onApplyPersona(synthesizedPersona);
-      try {
-        confetti({
-          particleCount: 60,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (e) {
-        // ignore
-      }
+      triggerConfetti({
+        particleCount: 60,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
       setSynthesizedPersona(null);
       setPrompt('');
     }

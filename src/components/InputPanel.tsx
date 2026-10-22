@@ -50,16 +50,21 @@ import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
+import { useSimulation } from '../context/SimulationContext';
 
-interface InputPanelProps {
-  inputs: RetirementInputs;
-  onChange: React.Dispatch<React.SetStateAction<RetirementInputs>> | ((inputs: RetirementInputs) => void);
+export interface InputPanelProps {
+  inputs?: RetirementInputs;
+  onChange?: React.Dispatch<React.SetStateAction<RetirementInputs>> | ((inputs: RetirementInputs) => void);
 }
 
-export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
+export const InputPanel: React.FC<InputPanelProps> = (props) => {
+  const sim = useSimulation();
+  const inputs = props.inputs ?? sim.inputs;
+  const onChange = props.onChange ?? sim.setInputs;
   const isMarried = inputs.maritalStatus === 'married';
   const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
   const [isExpanded, setIsExpanded] = useState(true);
+  const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
 
   const updateExpatField = <K extends keyof ExpatInputs>(field: K, value: ExpatInputs[K]) => {
     const current = inputs.expat || {
@@ -3043,43 +3048,68 @@ export const InputPanel: React.FC<InputPanelProps> = ({ inputs, onChange }) => {
                 
                 {/* Destination Country Selection */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold text-slate-800">
                     <span>1. Which country do you plan to settle in?</span>
                     <span className="text-[11px] font-normal text-slate-500">
-                      Selected: {EXPAT_DESTINATIONS.find(d => d.id === (inputs.expat?.destinationCountryId || 'mexico'))?.name}
+                      Selected: <strong className="text-cyan-900 font-bold">{EXPAT_DESTINATIONS.find(d => d.id === (inputs.expat?.destinationCountryId || 'mexico'))?.name}</strong>
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                    {EXPAT_DESTINATIONS.map(dest => {
-                      const isSelected = dest.id === (inputs.expat?.destinationCountryId || 'mexico');
+                  {/* Region Filter Bar */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(['all', 'Europe', 'Americas', 'Asia-Pacific', 'Caribbean'] as const).map(reg => {
+                      const count = reg === 'all' 
+                        ? EXPAT_DESTINATIONS.length 
+                        : EXPAT_DESTINATIONS.filter(d => d.region === reg).length;
                       return (
                         <button
-                          key={dest.id}
+                          key={reg}
                           type="button"
-                          onClick={() => updateExpatField('destinationCountryId', dest.id)}
-                          className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
-                            isSelected
-                              ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
-                              : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                          onClick={() => setExpatRegionFilter(reg)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            expatRegionFilter === reg
+                              ? 'bg-cyan-700 text-white shadow-2xs'
+                              : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xl leading-none">{dest.flag}</span>
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
-                              {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
-                            </span>
-                          </div>
-                          <div className="text-xs font-bold text-slate-900 truncate">
-                            {dest.name}
-                          </div>
-                          <div className="text-[10px] text-slate-500 flex items-center justify-between">
-                            <span>{dest.currencyCode}</span>
-                            <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
-                          </div>
+                          {reg === 'all' ? 'All Destinations' : reg} ({count})
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    {EXPAT_DESTINATIONS
+                      .filter(dest => expatRegionFilter === 'all' || dest.region === expatRegionFilter)
+                      .map(dest => {
+                        const isSelected = dest.id === (inputs.expat?.destinationCountryId || 'mexico');
+                        return (
+                          <button
+                            key={dest.id}
+                            type="button"
+                            onClick={() => updateExpatField('destinationCountryId', dest.id)}
+                            className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
+                              isSelected
+                                ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
+                                : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xl leading-none">{dest.flag}</span>
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                                {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
+                              </span>
+                            </div>
+                            <div className="text-xs font-bold text-slate-900 truncate">
+                              {dest.name}
+                            </div>
+                            <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                              <span>{dest.currencyCode}</span>
+                              <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
 

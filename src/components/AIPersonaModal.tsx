@@ -16,18 +16,19 @@ import {
 } from 'lucide-react';
 import { RetirementInputs } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
+import { useSimulation } from '../context/SimulationContext';
 
-interface AIPersonaModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onApplyPersona: (inputs: RetirementInputs) => void;
+export interface AIPersonaModalProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  onApplyPersona?: (inputs: RetirementInputs) => void;
 }
 
-export const AIPersonaModal: React.FC<AIPersonaModalProps> = ({
-  isOpen,
-  onClose,
-  onApplyPersona
-}) => {
+export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
+  const sim = useSimulation();
+  const isOpen = props.isOpen ?? sim.isAIPersonaModalOpen;
+  const onClose = props.onClose ?? (() => sim.setIsAIPersonaModalOpen(false));
+  const onApplyPersona = props.onApplyPersona ?? sim.applyAIPersona;
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [generatedPersona, setGeneratedPersona] = useState<RetirementInputs | null>(null);
