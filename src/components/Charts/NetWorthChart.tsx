@@ -4,11 +4,17 @@ import {
   Layers, 
   AlertTriangle, 
   TrendingDown, 
+  TrendingUp,
   ShieldCheck, 
   Zap, 
   Flame,
-  CheckCircle2
+  CheckCircle2,
+  Sliders,
+  Anchor
 } from 'lucide-react';
+import { useSimulationStore } from '../../store/useSimulationStore';
+import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
+import { WhatIfSensitivityPanel } from './WhatIfSensitivityPanel';
 
 interface NetWorthChartProps {
   yearlyResults: YearSimulationResult[];
@@ -39,6 +45,22 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
     totalLine: true
   });
 
+  // What-If State from Centralized Store
+  const inputs = useSimulationStore((state) => state.inputs);
+  const summary = useSimulationStore((state) => state.summary);
+  const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+  const setIsWhatIfActive = useSimulationStore((state) => state.setIsWhatIfActive);
+  const setWhatIfSettings = useSimulationStore((state) => state.setWhatIfSettings);
+  const resetWhatIfSettings = useSimulationStore((state) => state.resetWhatIfSettings);
+
+  // Memoized What-If Simulation Result
+  const whatIfResult = useMemo(() => {
+    if (!whatIfSettings.isActive) return null;
+    return calculateWhatIfSimulation(inputs, whatIfSettings, summary, yearlyResults);
+  }, [inputs, whatIfSettings, summary, yearlyResults]);
+
+  const whatIfYearlyResults = whatIfResult?.yearlyResults;
+
   if (!yearlyResults || yearlyResults.length === 0) return null;
 
   // Chart Dimensions
@@ -48,15 +70,16 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
-  // Memoized Y domain scale (considering baseline and stress)
+  // Memoized Y domain scale (considering baseline, stress, and what-if)
   const yDomainMax = useMemo(() => {
     const maxNetWorth = Math.max(
       100000,
       ...yearlyResults.map((y) => y.totalNetWorth),
-      ...(stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : [])
+      ...(stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : []),
+      ...(whatIfYearlyResults ? whatIfYearlyResults.map((y) => y.totalNetWorth) : [])
     );
     return Math.ceil((maxNetWorth * 1.1) / 100000) * 100000;
-  }, [yearlyResults, stressYearlyResults]);
+  }, [yearlyResults, stressYearlyResults, whatIfYearlyResults]);
 
   const minAge = yearlyResults[0].age;
   const maxAge = yearlyResults[yearlyResults.length - 1].age;
@@ -90,6 +113,14 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
       .join(' ');
   }, [stressYearlyResults, getX, getY]);
 
+  // Memoized SVG polyline points for What-If Net Worth
+  const whatIfLinePoints = useMemo(() => {
+    if (!whatIfYearlyResults) return '';
+    return whatIfYearlyResults
+      .map((d) => `${getX(d.age)},${getY(d.totalNetWorth)}`)
+      .join(' ');
+  }, [whatIfYearlyResults, getX, getY]);
+
   // Memoized area band path between baseline and stress line
   const stressBandPath = useMemo(() => {
     if (!isStressTestActive || !stressYearlyResults || stressYearlyResults.length !== yearlyResults.length) {
@@ -99,6 +130,16 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
     const backward = [...stressYearlyResults].reverse().map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ');
     return `M ${getX(yearlyResults[0].age)},${getY(yearlyResults[0].totalNetWorth)} ${forward} ${backward} Z`;
   }, [yearlyResults, stressYearlyResults, isStressTestActive, getX, getY]);
+
+  // Memoized area band path between baseline and What-If line
+  const whatIfBandPath = useMemo(() => {
+    if (!whatIfSettings.isActive || !whatIfYearlyResults || whatIfYearlyResults.length !== yearlyResults.length) {
+      return '';
+    }
+    const forward = yearlyResults.map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ');
+    const backward = [...whatIfYearlyResults].reverse().map((d) => `L ${getX(d.age)},${getY(d.totalNetWorth)}`).join(' ');
+    return `M ${getX(yearlyResults[0].age)},${getY(yearlyResults[0].totalNetWorth)} ${forward} ${backward} Z`;
+  }, [yearlyResults, whatIfYearlyResults, whatIfSettings.isActive, getX, getY]);
 
   // Memoized baseline gradient area path
   const baselineAreaPath = useMemo(() => {
@@ -125,6 +166,9 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   const hoveredData = hoveredIndex !== null ? yearlyResults[hoveredIndex] : null;
   const hoveredStressData = (isStressTestActive && stressYearlyResults && hoveredIndex !== null)
     ? stressYearlyResults[hoveredIndex]
+    : null;
+  const hoveredWhatIfData = (whatIfSettings.isActive && whatIfYearlyResults && hoveredIndex !== null)
+    ? whatIfYearlyResults[hoveredIndex]
     : null;
 
   const formatCurrency = (val: number) => {
@@ -231,8 +275,30 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
             )}
           </div>
 
+          {/* WHAT-IF SENSITIVITY TOGGLE */}
+          <button
+            type="button"
+            onClick={() => setIsWhatIfActive((prev) => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs border shadow-xs ${
+              whatIfSettings.isActive
+                ? 'bg-purple-600 text-white border-purple-500 shadow-purple-900/30 ring-2 ring-purple-400/30'
+                : 'bg-slate-900 text-slate-300 hover:text-white border-slate-800'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5 text-purple-300" />
+            <span>What-If Analysis</span>
+            <span className={`w-2 h-2 rounded-full ${whatIfSettings.isActive ? 'bg-purple-200 animate-pulse' : 'bg-slate-500'}`}></span>
+          </button>
+
           {/* Account Filter Pills */}
           <div className="flex items-center flex-wrap gap-1.5 text-xs">
+            {whatIfSettings.isActive && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-purple-300 bg-purple-50 text-purple-700 font-semibold text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                What-If Line
+              </span>
+            )}
+
             <button
               type="button"
               onClick={() => setVisibleAccounts(p => ({ ...p, rrsp: !p.rrsp }))}
@@ -302,6 +368,26 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
         </div>
       </div>
 
+      {/* WHAT-IF SENSITIVITY INTERACTIVE PANEL */}
+      {whatIfSettings.isActive && whatIfResult && (
+        <WhatIfSensitivityPanel
+          whatIfResult={whatIfResult}
+          onApplyPreset={(presetSettings) => {
+            setWhatIfSettings((prev) => ({
+              ...prev,
+              ...presetSettings
+            }));
+          }}
+          onUpdateDelta={(field, value) => {
+            setWhatIfSettings((prev) => ({
+              ...prev,
+              [field]: value
+            }));
+          }}
+          onReset={resetWhatIfSettings}
+        />
+      )}
+
       {/* Stress Test Live Impact Alert Banner */}
       {isStressTestActive && (
         <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition animate-in fade-in duration-200 ${
@@ -359,6 +445,11 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
             <linearGradient id="stressBandGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.30" />
               <stop offset="100%" stopColor="#d97706" stopOpacity="0.10" />
+            </linearGradient>
+
+            <linearGradient id="whatIfBandGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#7e22ce" stopOpacity="0.06" />
             </linearGradient>
 
             <linearGradient id="rrspGrad" x1="0" y1="0" x2="0" y2="1">
@@ -734,6 +825,152 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
             </g>
           )}
 
+          {/* WHAT-IF SENSITIVITY VISUALIZATION */}
+          {whatIfSettings.isActive && whatIfYearlyResults && whatIfResult && (
+            <g pointerEvents="none">
+              {/* Shaded Impact Band between baseline and What-If curve */}
+              {whatIfBandPath && (
+                <path
+                  d={whatIfBandPath}
+                  fill="url(#whatIfBandGrad)"
+                  stroke="#a855f7"
+                  strokeWidth="0.8"
+                  strokeDasharray="2 2"
+                />
+              )}
+
+              {/* What-If Net Worth Polyline */}
+              <polyline
+                fill="none"
+                stroke="#9333ea"
+                strokeWidth="2.5"
+                strokeDasharray="5 3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points={whatIfLinePoints}
+              />
+
+              {/* Shifted What-If Crossover Point Marker */}
+              {whatIfResult.crossoverImpact.whatIfAge !== null && (() => {
+                const row = whatIfYearlyResults.find((r) => r.age === whatIfResult.crossoverImpact.whatIfAge);
+                if (!row) return null;
+                const x = getX(row.age);
+                const y = getY(row.totalNetWorth);
+                return (
+                  <g key="whatif-crossover-marker">
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="5.5"
+                      fill="#10b981"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    <rect
+                      x={x - 48}
+                      y={Math.max(padding.top - 2, y - 24)}
+                      width="96"
+                      height="18"
+                      rx="4"
+                      fill="#065f46"
+                      stroke="#34d399"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={x}
+                      y={Math.max(padding.top - 2, y - 24) + 12.5}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      className="text-[9px] font-bold"
+                    >
+                      🚀 Crossover (A{row.age})
+                    </text>
+                  </g>
+                );
+              })()}
+
+              {/* Shifted What-If Coast FIRE Marker */}
+              {whatIfResult.coastFireImpact.whatIfAge !== null && (() => {
+                const row = whatIfYearlyResults.find((r) => r.age === whatIfResult.coastFireImpact.whatIfAge);
+                if (!row) return null;
+                const x = getX(row.age);
+                const y = getY(row.totalNetWorth);
+                return (
+                  <g key="whatif-coastfire-marker">
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="5.5"
+                      fill="#06b6d4"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    <rect
+                      x={x - 52}
+                      y={Math.max(padding.top - 2, y - 24)}
+                      width="104"
+                      height="18"
+                      rx="4"
+                      fill="#0e7490"
+                      stroke="#22d3ee"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={x}
+                      y={Math.max(padding.top - 2, y - 24) + 12.5}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      className="text-[9px] font-bold"
+                    >
+                      ⚓ Coast FIRE (A{row.age})
+                    </text>
+                  </g>
+                );
+              })()}
+
+              {/* What-If Cashflow at Retirement Pin */}
+              {(() => {
+                const row = whatIfYearlyResults.find((r) => r.age === retirementAge);
+                if (!row) return null;
+                const x = getX(retirementAge);
+                const y = getY(row.totalNetWorth);
+                const monthly = Math.round(row.netSpendableCashflow / 12);
+                const deltaMonthly = Math.round(whatIfResult.retirementCashflow.deltaNominalMonthly);
+                return (
+                  <g key="whatif-retire-cashflow-pin">
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="6"
+                      fill="#7c3aed"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    <rect
+                      x={x - 58}
+                      y={Math.min(padding.top + chartHeight - 22, y + 8)}
+                      width="116"
+                      height="20"
+                      rx="4"
+                      fill="#581c87"
+                      stroke="#c084fc"
+                      strokeWidth="1"
+                    />
+                    <text
+                      x={x}
+                      y={Math.min(padding.top + chartHeight - 22, y + 8) + 13.5}
+                      textAnchor="middle"
+                      fill="#ffffff"
+                      className="text-[9px] font-bold"
+                    >
+                      💵 ${monthly.toLocaleString()}/mo ({deltaMonthly >= 0 ? '+' : ''}${deltaMonthly})
+                    </text>
+                  </g>
+                );
+              })()}
+            </g>
+          )}
+
           {/* Hover Crosshair Marker */}
           {hoveredIndex !== null && hoveredData && (
             <g pointerEvents="none">
@@ -761,6 +998,17 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   cy={getY(hoveredStressData.totalNetWorth)}
                   r="4"
                   fill="#d97706"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                />
+              )}
+
+              {whatIfSettings.isActive && hoveredWhatIfData && (
+                <circle
+                  cx={getX(hoveredWhatIfData.age)}
+                  cy={getY(hoveredWhatIfData.totalNetWorth)}
+                  r="4.5"
+                  fill="#9333ea"
                   stroke="#ffffff"
                   strokeWidth="1.5"
                 />
@@ -807,6 +1055,33 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   <span>
                     -${(hoveredData.totalNetWorth - hoveredStressData.totalNetWorth).toLocaleString()}{' '}
                     ({hoveredData.totalNetWorth > 0 ? -Math.round(((hoveredData.totalNetWorth - hoveredStressData.totalNetWorth) / hoveredData.totalNetWorth) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* If What-If is active, display side-by-side comparison in tooltip */}
+            {whatIfSettings.isActive && hoveredWhatIfData && (
+              <div className="mb-2 p-1.5 rounded-lg bg-purple-950/70 border border-purple-700/60 flex flex-col gap-0.5 font-mono text-[11px]">
+                <div className="flex justify-between text-purple-300">
+                  <span className="flex items-center gap-1 font-sans font-bold">
+                    <Sliders className="w-3 h-3 text-purple-400" />
+                    What-If Net Worth:
+                  </span>
+                  <span className="font-bold text-white">${hoveredWhatIfData.totalNetWorth.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-[10.5px]">
+                  <span className="font-sans text-slate-400">Net Worth Delta:</span>
+                  <span className={hoveredWhatIfData.totalNetWorth >= hoveredData.totalNetWorth ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}>
+                    {hoveredWhatIfData.totalNetWorth >= hoveredData.totalNetWorth ? '+' : ''}
+                    ${(hoveredWhatIfData.totalNetWorth - hoveredData.totalNetWorth).toLocaleString()}{' '}
+                    ({hoveredData.totalNetWorth > 0 ? (hoveredWhatIfData.totalNetWorth >= hoveredData.totalNetWorth ? '+' : '') + Math.round(((hoveredWhatIfData.totalNetWorth - hoveredData.totalNetWorth) / hoveredData.totalNetWorth) * 100) : 0}%)
+                  </span>
+                </div>
+                <div className="flex justify-between text-[10.5px]">
+                  <span className="font-sans text-slate-400">Spendable Cashflow:</span>
+                  <span className="text-purple-200">
+                    ${Math.round(hoveredWhatIfData.netSpendableCashflow / 12).toLocaleString()}/mo
                   </span>
                 </div>
               </div>

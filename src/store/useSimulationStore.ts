@@ -8,7 +8,9 @@ import {
   StressTestOptions
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
+import { WhatIfSettings } from '../types/whatIf';
 import { DEFAULT_INPUTS } from '../utils/presets';
+import { DEFAULT_WHAT_IF_SETTINGS } from '../utils/whatIfCalculator';
 import {
   runRetirementSimulation,
   calculateSavingsPulse,
@@ -42,6 +44,9 @@ export interface SimulationState {
   isCompareModalOpen: boolean;
   isAIPersonaModalOpen: boolean;
 
+  // What-If Sensitivity Analysis
+  whatIfSettings: WhatIfSettings;
+
   // Actions
   setInputs: (inputs: RetirementInputs | ((prev: RetirementInputs) => RetirementInputs)) => void;
   updateField: <K extends keyof RetirementInputs>(
@@ -58,6 +63,9 @@ export interface SimulationState {
   updateExpatInputs: (newExpat: ExpatInputs) => void;
   setIsStressTestActive: (active: boolean | ((prev: boolean) => boolean)) => void;
   setStressTiming: (timing: 'at_retirement' | 'immediate') => void;
+  setIsWhatIfActive: (active: boolean | ((prev: boolean) => boolean)) => void;
+  setWhatIfSettings: (settings: Partial<WhatIfSettings> | ((prev: WhatIfSettings) => WhatIfSettings)) => void;
+  resetWhatIfSettings: () => void;
   setActiveChartTab: (tab: 'networth' | 'cashflow') => void;
   setIsCompareModalOpen: (open: boolean) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
@@ -138,6 +146,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isExportingPdf: false,
   isCompareModalOpen: false,
   isAIPersonaModalOpen: false,
+  whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
 
   setInputs: (newInputs) => {
     set((state) => ({
@@ -272,6 +281,30 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setStressTiming: (timing) => {
     set({ stressTiming: timing });
     scheduleWorkerCalculation(get, set);
+  },
+
+  setIsWhatIfActive: (active) => {
+    set((state) => ({
+      whatIfSettings: {
+        ...state.whatIfSettings,
+        isActive: typeof active === 'function' ? active(state.whatIfSettings.isActive) : active
+      }
+    }));
+  },
+
+  setWhatIfSettings: (updater) => {
+    set((state) => ({
+      whatIfSettings: {
+        ...state.whatIfSettings,
+        ...(typeof updater === 'function' ? updater(state.whatIfSettings) : updater)
+      }
+    }));
+  },
+
+  resetWhatIfSettings: () => {
+    set(() => ({
+      whatIfSettings: DEFAULT_WHAT_IF_SETTINGS
+    }));
   },
 
   setActiveChartTab: (tab) => {
