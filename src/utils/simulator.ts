@@ -170,9 +170,13 @@ export function runRetirementSimulation(
     );
     yearNotes.push(...housingResult.notes);
 
-    // Sync FHSA active status if down payment drained account
-    contributionState.pFhsaActive = housingState.pFhsaActive;
-    contributionState.sFhsaActive = housingState.sFhsaActive;
+    // Sync FHSA active status: once closed or deployed, it remains closed
+    if (!housingState.pFhsaActive) {
+      contributionState.pFhsaActive = false;
+    }
+    if (!housingState.sFhsaActive) {
+      contributionState.sFhsaActive = false;
+    }
 
     // Sub-Routine 2: Contributions, Wage Growth & Pre-Retirement Deductions
     const contributionResult = calculateContributionsForYear(
@@ -191,6 +195,14 @@ export function runRetirementSimulation(
       simulationOptions?.stopContributionsAge
     );
     yearNotes.push(...contributionResult.notes);
+
+    // Sync FHSA active status back to housingState so future loop iterations never reactivate it
+    if (!contributionState.pFhsaActive) {
+      housingState.pFhsaActive = false;
+    }
+    if (!contributionState.sFhsaActive) {
+      housingState.sFhsaActive = false;
+    }
 
     // Sub-Routine 3: Investment Returns, Yield Drag, GIC Maturity & Stress Testing
     const investmentResult = calculateInvestmentReturnsForYear(

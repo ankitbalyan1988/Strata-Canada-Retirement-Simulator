@@ -92,20 +92,25 @@ export function calculateContributionsForYear(
     const primaryReached15Years = primaryYearsSinceOpen >= 15;
 
     if (inputs.fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && age === inputs.fhsaHomePurchaseAge) {
-      yearFhsaWithdrawalOrTransfer += balances.pFhsa;
-      notes.push(`🏠 Age ${age}: FHSA fully withdrawn tax-free ($${Math.round(balances.pFhsa).toLocaleString()}) for qualifying home purchase!`);
-      balances.pFhsa = 0;
+      if (balances.pFhsa > 0) {
+        yearFhsaWithdrawalOrTransfer += balances.pFhsa;
+        notes.push(`🏠 Age ${age}: FHSA fully withdrawn tax-free ($${Math.round(balances.pFhsa).toLocaleString()}) for qualifying home purchase!`);
+        balances.pFhsa = 0;
+      }
       state.pFhsaActive = false;
     } else if (age >= 71 || primaryReached15Years) {
       const destAccount = age >= 71 ? 'RRIF' : (isPrimaryRetired ? 'RRIF / RRSP' : 'RRSP');
-      balances.pRrsp += balances.pFhsa;
-      yearFhsaWithdrawalOrTransfer += balances.pFhsa;
-      fhsaRolledOver = true;
-      const triggerReason = age >= 71
-        ? 'reaching CRA maximum age 71'
-        : `reaching 15-year participation limit (account opened in ${primaryFhsaOpenYear})`;
-      notes.push(`🔄 Age ${age} (Year ${currentSimYear}): FHSA reached its 15-year limit (${triggerReason}) and rolled over $${Math.round(balances.pFhsa).toLocaleString()} into ${destAccount} 100% tax-free.`);
-      balances.pFhsa = 0;
+      const rolloverAmount = balances.pFhsa;
+      if (rolloverAmount > 0) {
+        balances.pRrsp += rolloverAmount;
+        yearFhsaWithdrawalOrTransfer += rolloverAmount;
+        fhsaRolledOver = true;
+        const triggerReason = age >= 71
+          ? 'reaching CRA maximum age 71'
+          : `reaching 15-year participation limit (account opened in ${primaryFhsaOpenYear})`;
+        notes.push(`🔄 Age ${age} (Year ${currentSimYear}): FHSA rolled over $${Math.round(rolloverAmount).toLocaleString()} into ${destAccount} 100% tax-free (${triggerReason}).`);
+        balances.pFhsa = 0;
+      }
       state.pFhsaActive = false;
     }
   }
@@ -117,20 +122,25 @@ export function calculateContributionsForYear(
     const spouseReached15Years = spouseYearsSinceOpen >= 15;
 
     if (spouse.fhsaIntent === 'home_purchase' && (!isFuturePurchase || fundWithFhsa) && spouseAge === spouse.fhsaHomePurchaseAge) {
-      yearFhsaWithdrawalOrTransfer += balances.sFhsa;
-      notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA withdrawn tax-free ($${Math.round(balances.sFhsa).toLocaleString()}) for qualifying home purchase!`);
-      balances.sFhsa = 0;
+      if (balances.sFhsa > 0) {
+        yearFhsaWithdrawalOrTransfer += balances.sFhsa;
+        notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA withdrawn tax-free ($${Math.round(balances.sFhsa).toLocaleString()}) for qualifying home purchase!`);
+        balances.sFhsa = 0;
+      }
       state.sFhsaActive = false;
     } else if (spouseAge >= 71 || spouseReached15Years) {
       const destAccount = spouseAge >= 71 ? 'RRIF' : (isSpouseRetired ? 'RRIF / RRSP' : 'RRSP');
-      balances.sRrsp += balances.sFhsa;
-      yearFhsaWithdrawalOrTransfer += balances.sFhsa;
-      fhsaRolledOver = true;
-      const triggerReason = spouseAge >= 71
-        ? 'reaching CRA maximum age 71'
-        : `reaching 15-year participation limit (account opened in ${spouseFhsaOpenYear})`;
-      notes.push(`🔄 Spouse Age ${spouseAge} (Year ${currentSimYear}): Spouse FHSA reached its 15-year limit (${triggerReason}) and rolled over $${Math.round(balances.sFhsa).toLocaleString()} into ${destAccount} 100% tax-free.`);
-      balances.sFhsa = 0;
+      const rolloverAmount = balances.sFhsa;
+      if (rolloverAmount > 0) {
+        balances.sRrsp += rolloverAmount;
+        yearFhsaWithdrawalOrTransfer += rolloverAmount;
+        fhsaRolledOver = true;
+        const triggerReason = spouseAge >= 71
+          ? 'reaching CRA maximum age 71'
+          : `reaching 15-year participation limit (account opened in ${spouseFhsaOpenYear})`;
+        notes.push(`🔄 Spouse Age ${spouseAge} (Year ${currentSimYear}): Spouse FHSA rolled over $${Math.round(rolloverAmount).toLocaleString()} into ${destAccount} 100% tax-free (${triggerReason}).`);
+        balances.sFhsa = 0;
+      }
       state.sFhsaActive = false;
     }
   }

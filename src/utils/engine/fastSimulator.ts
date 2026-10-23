@@ -141,8 +141,12 @@ export function fastSimulateEndNetWorth(
       isCouple
     );
 
-    contributionState.pFhsaActive = housingState.pFhsaActive;
-    contributionState.sFhsaActive = housingState.sFhsaActive;
+    if (!housingState.pFhsaActive) {
+      contributionState.pFhsaActive = false;
+    }
+    if (!housingState.sFhsaActive) {
+      contributionState.sFhsaActive = false;
+    }
 
     // 2. Contributions
     const contributionResult = calculateContributionsForYear(
@@ -160,6 +164,13 @@ export function fastSimulateEndNetWorth(
       housingParams.initialAnnualExpenses,
       stopContributionsAge
     );
+
+    if (!contributionState.pFhsaActive) {
+      housingState.pFhsaActive = false;
+    }
+    if (!contributionState.sFhsaActive) {
+      housingState.sFhsaActive = false;
+    }
 
     // 3. Compounding & Returns
     calculateInvestmentReturnsForYear(
