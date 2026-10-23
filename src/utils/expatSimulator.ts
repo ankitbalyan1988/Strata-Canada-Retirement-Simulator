@@ -347,6 +347,7 @@ export function calculateExpatRetirementPlan(
     lifetimePartXIIIWithholdingCAD: totalPartXIIIWithholding,
     lifetimePPPSurplusCAD: totalPPPSurplus,
     realEstateOutcomeDescription,
+    yearlyExpatResults: expatYearlyResults,
     insights,
     checklist
   };

@@ -99,6 +99,9 @@ export interface ExpatSimulationSummary {
   // Real Estate Analysis
   realEstateOutcomeDescription: string;
   
+  // Year-by-Year Expat Ledger
+  yearlyExpatResults: ExpatYearResult[];
+  
   // Strategic Insights
   insights: {
     category: 'oas' | 'departure_tax' | 'treaty' | 'tfsa' | 'real_estate' | 'lifestyle';

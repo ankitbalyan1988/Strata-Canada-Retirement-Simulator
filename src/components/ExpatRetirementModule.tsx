@@ -37,10 +37,12 @@ import {
   Sliders,
   TrendingUp,
   HeartPulse,
-  Sun
+  Sun,
+  Table
 } from 'lucide-react';
 
 import { useSimulationStore } from '../store/useSimulationStore';
+import { ExpatMilestoneLedger } from './ExpatMilestoneLedger';
 
 export interface ExpatRetirementModuleProps {
   retirementInputs?: RetirementInputs;
@@ -75,7 +77,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'assets' | 'ppp' | 'timeline' | 'checklist'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ledger' | 'assets' | 'ppp' | 'checklist'>('overview');
   const [regionFilter, setRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
 
   // Single source of truth: prioritize parent state if passed, else local state
@@ -749,6 +751,22 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
 
               <button
                 type="button"
+                onClick={() => setActiveTab('ledger')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'ledger'
+                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200 ring-1 ring-cyan-500/30'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Table className="w-3.5 h-3.5 text-cyan-600" />
+                <span>Expat Simulation Ledger</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-300">
+                  {destinationCountry.currencyCode}
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setActiveTab('assets')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'assets'
@@ -786,6 +804,17 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 <span>CRA Departure Checklist & Visas</span>
               </button>
             </div>
+
+            {/* TAB CONTENT: EXPAT ANNUAL SIMULATION LEDGER & MILESTONE SCHEDULE */}
+            {activeTab === 'ledger' && (
+              <ExpatMilestoneLedger
+                expatResult={expatResult}
+                retirementInputs={retirementInputs}
+                yearlyResults={yearlyResults}
+                summary={summary}
+                expatInputs={currentExpatInputs}
+              />
+            )}
 
             {/* TAB CONTENT 1: OVERVIEW & INSIGHTS */}
             {activeTab === 'overview' && (
