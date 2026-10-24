@@ -185,19 +185,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   return (
-    <div className="bg-white border border-slate-200 shadow-sm overflow-hidden flex flex-col transition-colors">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-colors">
       
       {/* Marital Status Selector Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 p-4 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800">
+      <div className="bg-slate-50/70 dark:bg-slate-800/50 p-4 text-slate-900 dark:text-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center gap-2.5">
-          <span className="p-1.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30">
+          <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20">
             {isMarried ? <Users className="w-4 h-4" /> : <User className="w-4 h-4" />}
           </span>
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Household Planning Structure
             </span>
-            <div className="text-sm font-semibold text-white">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">
               {isMarried ? 'Couple Retirement Plan (Dual Income & Accounts)' : 'Individual Retirement Plan (Solo)'}
             </div>
           </div>
@@ -206,14 +206,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* Controls: Marital Status Segmented Toggle & Collapse/Expand Button */}
         <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
           {/* Marital Status Segmented Toggle */}
-          <div className="flex items-center bg-slate-800/90 rounded-xl p-1 border border-slate-700/80 text-xs font-semibold">
+          <div className="flex items-center bg-slate-200/70 dark:bg-slate-800 rounded-xl p-1 border border-slate-300/60 dark:border-slate-700/60 text-xs font-semibold">
             <button
               type="button"
               onClick={() => handleMaritalStatusChange('single')}
               className={`px-3.5 py-1.5 rounded-lg transition ${
                 inputs.maritalStatus !== 'married'
-                  ? 'bg-rose-600 text-white shadow-xs font-bold'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Single / Divorced
@@ -224,8 +224,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               onClick={() => handleMaritalStatusChange('married')}
               className={`px-3.5 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
                 inputs.maritalStatus === 'married'
-                  ? 'bg-rose-600 text-white shadow-xs font-bold'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Heart className="w-3.5 h-3.5 fill-current" />
@@ -237,7 +237,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-750 transition border border-slate-700/80 font-medium"
+            className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700/80 font-medium"
             title={isExpanded ? 'Collapse Household Planning Structure' : 'Expand Household Planning Structure'}
             aria-expanded={isExpanded}
           >
@@ -249,27 +249,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
       {/* Collapsed Summary Bar */}
       {!isExpanded && (
-        <div className="px-4 py-3 bg-slate-50/90 border-t border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="px-4 py-3 bg-slate-50/90 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-wrap text-xs">
-            <span className="font-bold text-slate-800">Current Inputs:</span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Age <strong className="text-slate-900">{inputs.currentAge}</strong> (Retiring @ <strong className="text-rose-600">{inputs.retirementAge}</strong>)
+            <span className="font-bold text-slate-900 dark:text-white">Current Inputs:</span>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Age <strong className="text-slate-900 dark:text-white">{inputs.currentAge}</strong> (Retiring @ <strong className="text-emerald-600 dark:text-emerald-400">{inputs.retirementAge}</strong>)
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Income: <strong className="text-slate-900">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Income: <strong className="text-slate-900 dark:text-white">${inputs.currentAnnualIncome.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Target Spending: <strong className="text-slate-900">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Target Spending: <strong className="text-slate-900 dark:text-white">${inputs.targetRetirementSpendingToday.toLocaleString()}/yr</strong>
             </span>
-            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-              Province: <strong className="text-slate-900">{inputs.province}</strong>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Province: <strong className="text-slate-900 dark:text-white">{inputs.province}</strong>
             </span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 ml-auto"
+            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 flex items-center gap-1 ml-auto"
           >
             <span>Show Full Planning Tabs</span>
             <ChevronDown className="w-3.5 h-3.5" />
@@ -281,152 +281,152 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
       {isExpanded && (
         <>
           {/* Tabs Header */}
-          <div className="flex border-b border-slate-200 overflow-x-auto bg-slate-50/70 p-1.5 gap-1 text-xs font-semibold">
+          <div className="flex border-b border-slate-200 dark:border-slate-700/80 overflow-x-auto bg-slate-50/60 dark:bg-slate-800/40 p-1.5 gap-1 text-xs font-semibold">
             <button
-          type="button"
-          onClick={() => setActiveTab('personal')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'personal'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
-          }`}
-        >
-          <User className="w-4 h-4 text-blue-600" />
-          <span>Primary Profile</span>
-        </button>
+              type="button"
+              onClick={() => setActiveTab('personal')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'personal'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Primary Profile</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('expenses')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'expenses'
-              ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
-              : 'text-rose-700 hover:text-rose-900:text-rose-100 hover:bg-rose-50/60:bg-rose-950/40 font-semibold'
-          }`}
-        >
-          <Receipt className="w-4 h-4 text-rose-600" />
-          <span>Living Expenses</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('expenses')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'expenses'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Living Expenses</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('accounts')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'accounts'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
-          }`}
-        >
-          <PiggyBank className="w-4 h-4 text-emerald-600" />
-          <span>Primary Accounts</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('accounts')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'accounts'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Primary Accounts</span>
+            </button>
 
-        {/* Real Estate & Home Ownership Tab */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('realestate')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'realestate'
-              ? 'bg-amber-50 text-amber-900 shadow-sm border border-amber-200 font-bold ring-1 ring-amber-300'
-              : 'text-amber-800 hover:text-amber-950:text-amber-100 hover:bg-amber-50/60:bg-amber-950/40 font-semibold'
-          }`}
-        >
-          <Home className="w-4 h-4 text-amber-600" />
-          <span>Real Estate & Home</span>
-          {inputs.realEstate?.ownsHome ? (
-            inputs.realEstate.purchaseType === 'future' ? (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">
-                Buy @ {inputs.realEstate.futurePurchaseAge || inputs.currentAge + 3}
-              </span>
-            ) : (
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            )
-          ) : (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">
-              Rent
-            </span>
-          )}
-        </button>
+            {/* Real Estate & Home Ownership Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('realestate')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'realestate'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Home className="w-4 h-4 text-amber-500" />
+              <span>Real Estate & Home</span>
+              {inputs.realEstate?.ownsHome ? (
+                inputs.realEstate.purchaseType === 'future' ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 font-bold">
+                    Buy @ {inputs.realEstate.futurePurchaseAge || inputs.currentAge + 3}
+                  </span>
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                )
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-slate-700/50">
+                  Rent
+                </span>
+              )}
+            </button>
 
-        {/* Spouse Tab - ONLY visible when married */}
-        {isMarried && (
-          <button
-            type="button"
-            onClick={() => setActiveTab('spouse')}
-            className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'spouse'
-                ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-200 font-bold ring-1 ring-rose-300'
-                : 'text-rose-700 hover:text-rose-900:text-rose-100 hover:bg-rose-50/60:bg-rose-950/40 font-semibold'
-            }`}
-          >
-            <Users className="w-4 h-4 text-rose-600" />
-            <span>Spouse Details & Accounts</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
-          </button>
-        )}
+            {/* Spouse Tab - ONLY visible when married */}
+            {isMarried && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('spouse')}
+                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'spouse'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Spouse Details & Accounts</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              </button>
+            )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('pensions')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'pensions'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
-          }`}
-        >
-          <Landmark className="w-4 h-4 text-purple-600" />
-          <span>CPP & OAS Pensions</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('pensions')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'pensions'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Landmark className="w-4 h-4 text-purple-500" />
+              <span>CPP & OAS Pensions</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('market')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'market'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4 text-amber-600" />
-          <span>Returns & Inflation</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('market')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'market'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 text-amber-500" />
+              <span>Returns & Inflation</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('strategy')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'strategy'
-              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold'
-              : 'text-slate-600 hover:text-slate-900:text-white hover:bg-slate-100:bg-slate-800'
-          }`}
-        >
-          <ArrowRightLeft className="w-4 h-4 text-rose-600" />
-          <span>Drawdown Strategy</span>
-        </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('strategy')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'strategy'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <ArrowRightLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>Drawdown Strategy</span>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('expat')}
-          className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-            activeTab === 'expat'
-              ? 'bg-cyan-50 text-cyan-900 shadow-sm border border-cyan-300 font-bold ring-1 ring-cyan-300'
-              : 'text-cyan-800 hover:text-cyan-950 hover:bg-cyan-50/60 font-semibold'
-          }`}
-        >
-          <Globe className="w-4 h-4 text-cyan-600" />
-          <span>Expat & Relocation</span>
-          {inputs.expat?.planToEmigrate ? (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 font-bold flex items-center gap-1">
-              <span>{EXPAT_DESTINATIONS.find(d => d.id === inputs.expat?.destinationCountryId)?.flag || '✈️'}</span>
-              <span>{inputs.expat.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
-            </span>
-          ) : (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 font-medium">
-              Optional
-            </span>
-          )}
-        </button>
-      </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('expat')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'expat'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <span>Expat & Relocation</span>
+              {inputs.expat?.planToEmigrate ? (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20 font-bold flex items-center gap-1">
+                  <span>{EXPAT_DESTINATIONS.find(d => d.id === inputs.expat?.destinationCountryId)?.flag || '✈️'}</span>
+                  <span>{inputs.expat.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
+                </span>
+              ) : (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-slate-700/50">
+                  Optional
+                </span>
+              )}
+            </button>
+          </div>
 
       {/* Tab Contents */}
       <div className="p-5 sm:p-6">
@@ -434,10 +434,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 1: PERSONAL & HOUSEHOLD BUDGET */}
         {activeTab === 'personal' && (
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Primary Profile & Career Baseline</h4>
-                <p className="text-xs text-slate-500">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">Primary Profile & Career Baseline</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isMarried
                     ? 'Your personal timeline, employment earnings trajectory, and career disruption scenarios'
                     : 'Personal timeline, employment earnings trajectory, and career disruption scenarios'}
@@ -447,13 +447,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="flex flex-col gap-4 bg-slate-50/60 p-4 rounded-xl border border-slate-200/80">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Timeline Assumptions</h5>
+              <div className="flex flex-col gap-4 bg-slate-50/60 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Timeline Assumptions</h5>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Current Age:</span>
-                    <span className="text-indigo-600 font-mono font-bold">{inputs.currentAge} years old</span>
+                    <span className="text-slate-700 dark:text-slate-300">Current Age:</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.currentAge} years old</span>
                   </div>
                   <input
                     type="range"
@@ -462,14 +462,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     value={inputs.currentAge}
                     onChange={(e) => updateField('currentAge', Number(e.target.value))}
                     aria-label="Current Age"
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-indigo-600 dark:accent-indigo-500"
                   />
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Life Expectancy:</span>
-                    <span className="text-indigo-600 font-mono font-bold">{inputs.lifeExpectancy} years old</span>
+                    <span className="text-slate-700 dark:text-slate-300">Life Expectancy:</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.lifeExpectancy} years old</span>
                   </div>
                   <input
                     type="range"
@@ -478,21 +478,21 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     value={inputs.lifeExpectancy}
                     onChange={(e) => updateField('lifeExpectancy', Number(e.target.value))}
                     aria-label="Life Expectancy"
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-indigo-600 dark:accent-indigo-500"
                   />
-                  <span className="text-[11px] text-slate-500 mt-0.5 block">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
                     Longevity horizon (Stats Canada average is 82-87; planning for 90-95 protects against outliving assets).
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 bg-slate-50/60 p-4 rounded-xl border border-slate-200/80">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+              <div className="flex flex-col gap-4 bg-slate-50/60 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   {isMarried ? 'Your Earnings & Career Trajectory' : 'Earnings & Career Trajectory'}
                 </h5>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Your Annual Employment Income
                   </label>
                   <CurrencyInput
@@ -504,15 +504,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   />
 
                   {/* Wage Trend Slider (supports negative wage decrease / deflation as well as positive growth) */}
-                  <div className="mt-3 p-2.5 rounded-lg bg-white border border-slate-200 flex flex-col gap-1.5">
+                  <div className="mt-3 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-slate-600">Annual Wage Trajectory:</span>
+                      <span className="font-medium text-slate-600 dark:text-slate-300">Annual Wage Trajectory:</span>
                       <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
                         inputs.incomeGrowthRate > 0
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
                           : inputs.incomeGrowthRate < 0
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-slate-100 text-slate-700'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300'
+                          : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                       }`}>
                         {inputs.incomeGrowthRate > 0 ? `+${inputs.incomeGrowthRate}% / yr Growth` : inputs.incomeGrowthRate < 0 ? `${inputs.incomeGrowthRate}% / yr Decline` : '0.0% / yr Flat'}
                       </span>
@@ -526,10 +526,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       value={inputs.incomeGrowthRate}
                       onChange={(e) => updateField('incomeGrowthRate', Number(e.target.value))}
                       aria-label="Annual Wage Trend"
-                      className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-indigo-600 dark:accent-indigo-500"
                     />
 
-                    <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                    <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 font-medium">
                       <span>-5% (Wage Erosion)</span>
                       <span>0% (Stagnant)</span>
                       <span>+8% (Strong Growth)</span>
@@ -537,11 +537,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   {/* Career Disruption / Layoff Simulator Box */}
-                  <div className="mt-3 p-3 rounded-xl border border-slate-200 bg-white flex flex-col gap-2.5">
+                  <div className="mt-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 flex flex-col gap-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <Briefcase className="w-4 h-4 text-rose-500" />
-                        <span className="text-xs font-bold text-slate-900">Career Disruption / Layoff Simulator</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Career Disruption / Layoff Simulator</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
@@ -568,21 +568,21 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           }}
                           className="sr-only peer"
                         />
-                        <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
+                        <div className="w-9 h-5 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600"></div>
                       </label>
                     </div>
 
-                    <p className="text-[11px] text-slate-500 leading-tight">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
                       Test if your retirement plan survives industry disruption, unexpected layoffs, or forced step-downs before retirement.
                     </p>
 
                     {inputs.careerDisruption?.enabled && (
-                      <div className="mt-1 pt-2 border-t border-slate-100 flex flex-col gap-2.5 bg-rose-50/30 p-2.5 rounded-lg border border-rose-100">
+                      <div className="mt-1 pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2.5 bg-rose-50/30 dark:bg-rose-500/10 p-2.5 rounded-lg border border-rose-100 dark:border-rose-500/20">
                         {/* Shock Age */}
                         <div>
                           <div className="flex justify-between text-xs font-semibold mb-1">
-                            <span className="text-slate-700">Disruption Occurs At:</span>
-                            <span className="text-rose-700 font-bold font-mono">Age {inputs.careerDisruption.shockAge}</span>
+                            <span className="text-slate-700 dark:text-slate-300">Disruption Occurs At:</span>
+                            <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">Age {inputs.careerDisruption.shockAge}</span>
                           </div>
                           <input
                             type="range"
@@ -594,15 +594,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               ...inputs.careerDisruption!,
                               shockAge: Number(e.target.value)
                             })}
-                            className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
                           />
                         </div>
 
                         {/* Severity Quick Buttons & Slider */}
                         <div>
                           <div className="flex justify-between text-xs font-semibold mb-1">
-                            <span className="text-slate-700">Wage Reduction Severity:</span>
-                            <span className="text-rose-700 font-bold font-mono">-{inputs.careerDisruption.reductionPercent}%</span>
+                            <span className="text-slate-700 dark:text-slate-300">Wage Reduction Severity:</span>
+                            <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">-{inputs.careerDisruption.reductionPercent}%</span>
                           </div>
                           <div className="grid grid-cols-3 gap-1.5 mb-1.5">
                             {[15, 30, 50].map(pct => (
@@ -613,10 +613,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                   ...inputs.careerDisruption!,
                                   reductionPercent: pct
                                 })}
-                                className={`py-1 rounded text-[10px] font-bold border transition ${
+                                className={`py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                                   inputs.careerDisruption?.reductionPercent === pct
                                     ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                                 }`}
                               >
                                 -{pct}% {pct === 15 ? 'Pay Cut' : pct === 30 ? 'Layoff' : 'Step-down'}
@@ -633,13 +633,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               ...inputs.careerDisruption!,
                               reductionPercent: Number(e.target.value)
                             })}
-                            className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                            className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
                           />
                         </div>
 
                         {/* Disruption Duration */}
-                        <div className="flex items-center justify-between text-xs pt-1 border-t border-rose-100">
-                          <span className="text-slate-700 font-medium">Trajectory Impact:</span>
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-rose-100 dark:border-rose-500/20">
+                          <span className="text-slate-700 dark:text-slate-300 font-medium">Trajectory Impact:</span>
                           <div className="flex items-center gap-1.5">
                             <button
                               type="button"
@@ -647,10 +647,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                 ...inputs.careerDisruption!,
                                 isTemporary: false
                               })}
-                              className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition ${
+                              className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition cursor-pointer ${
                                 !inputs.careerDisruption.isTemporary
                                   ? 'bg-rose-700 text-white'
-                                  : 'bg-white text-slate-600 border border-slate-200'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                               }`}
                             >
                               Permanent Step-Down
@@ -662,10 +662,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                 isTemporary: true,
                                 recoveryYears: 2
                               })}
-                              className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition ${
+                              className={`px-2 py-0.5 rounded text-[10.5px] font-semibold transition cursor-pointer ${
                                 inputs.careerDisruption.isTemporary
                                   ? 'bg-rose-700 text-white'
-                                  : 'bg-white text-slate-600 border border-slate-200'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                               }`}
                             >
                               Temporary (2-Yr Rebound)
@@ -681,17 +681,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Expat Emigration Planning Question Card */}
-            <div className="p-4 rounded-xl border border-cyan-200 bg-cyan-50/50 flex flex-col gap-3">
+            <div className="p-4 rounded-xl border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/50 dark:bg-cyan-500/10 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="p-1.5 rounded-lg bg-cyan-600 text-white">
                     <Globe className="w-4 h-4" />
                   </span>
                   <div>
-                    <h5 className="text-xs font-bold text-slate-900">
+                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
                       Do you plan to exit Canada and settle in a different country at a later date?
                     </h5>
-                    <p className="text-[11px] text-slate-500">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
                       Model CRA non-resident withholding taxes, treaty protections, departure tax, and local purchasing power (PPP).
                     </p>
                   </div>
@@ -704,22 +704,22 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     onChange={(e) => updateExpatField('planToEmigrate', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
                 </label>
               </div>
 
               {inputs.expat?.planToEmigrate && (
-                <div className="pt-3 border-t border-cyan-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                <div className="pt-3 border-t border-cyan-200/80 dark:border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
                   <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-slate-700">Destination:</span>
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Destination:</span>
                       <select
                         value={inputs.expat.destinationCountryId || 'mexico'}
                         onChange={(e) => updateExpatField('destinationCountryId', e.target.value)}
-                        className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
+                        className="text-xs font-bold bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
                       >
                         {EXPAT_DESTINATIONS.map(d => (
-                          <option key={d.id} value={d.id}>
+                          <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
                             {d.flag} {d.name} ({d.purchasingPowerMultiplier.toFixed(1)}x PPP • {d.currencyCode})
                           </option>
                         ))}
@@ -727,8 +727,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-slate-700">Planned Exit Age:</span>
-                      <strong className="text-xs font-mono font-bold text-cyan-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Planned Exit Age:</span>
+                      <strong className="text-xs font-mono font-bold text-cyan-900 dark:text-cyan-200 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                         Age {inputs.expat.emigrationAge || inputs.retirementAge}
                       </strong>
                     </div>
@@ -737,7 +737,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <button
                     type="button"
                     onClick={() => setActiveTab('expat')}
-                    className="text-xs font-bold text-cyan-700 hover:text-cyan-800 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                    className="text-xs font-bold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
                   >
                     <span>Configure Full Expat Parameters</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -747,14 +747,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Next Step Guidance to Living Expenses */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
                   <Receipt className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-900">Next Step: Estimate Living Expenses</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-50">Next Step: Estimate Living Expenses</div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
                     Enter your monthly household expenses in today's dollars (rent/mortgage, utilities, credit cards) and adjust post-retirement lifestyle needs.
                   </div>
                 </div>
@@ -762,7 +762,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               <button
                 type="button"
                 onClick={() => setActiveTab('expenses')}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 self-stretch sm:self-auto justify-center"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 self-stretch sm:self-auto justify-center cursor-pointer"
               >
                 <span>Continue to Living Expenses</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -774,12 +774,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 2: LIVING EXPENSES & RETIREMENT BUDGET */}
         {activeTab === 'expenses' && (
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                   {isMarried ? 'Household Living Expenses & Retirement Budget' : 'Living Expenses & Retirement Budget'}
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {isMarried
                     ? 'Estimate combined household monthly living costs in today\'s dollars to determine realistic retirement replacement spending.'
                     : 'Estimate your monthly living costs in today\'s dollars to determine realistic retirement replacement spending.'}
@@ -807,14 +807,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             />
 
             {/* Target Retirement Spending Summary / Direct Override */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 rounded-xl border border-slate-200 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/90 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs">
               <div>
-                <label className="font-bold text-slate-800 block text-xs">
+                <label className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
                   {isMarried
                     ? 'Combined Household Retirement Annual Target (Today\'s Dollars)'
                     : 'Personal Retirement Annual Spending Target (Today\'s Dollars)'}
                 </label>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   Auto-calculated from your monthly living expenses with post-retirement shift applied (or customize manually)
                 </span>
               </div>
@@ -830,11 +830,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Navigation Buttons: Previous and Next */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setActiveTab('personal')}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Back to Primary Profile</span>
@@ -843,7 +843,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               <button
                 type="button"
                 onClick={() => setActiveTab('accounts')}
-                className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs"
+                className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <span>Continue to Primary Accounts</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -855,32 +855,32 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 2: PRIMARY ACCOUNTS & CONTRIBUTIONS */}
         {activeTab === 'accounts' && (
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                   {isMarried ? 'Your Personal Registered & Taxable Accounts' : 'Canadian Registered & Taxable Accounts'}
                 </h4>
-                <p className="text-xs text-slate-500">Your current balances and planned annual savings</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Your current balances and planned annual savings</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
               {/* RRSP */}
-              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/30 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
-                    <span className="text-sm font-bold text-slate-900">RRSP</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-50">RRSP</span>
                   </div>
-                  <span className="text-[11px] font-medium text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-500/20 px-2 py-0.5 rounded">
                     Tax-Deductible
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.rrspBalance}
                       onChange={(val) => updateField('rrspBalance', val)}
@@ -891,7 +891,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
                     <CurrencyInput
                       value={inputs.rrspAnnualContribution}
                       onChange={(val) => updateField('rrspAnnualContribution', val)}
@@ -902,7 +902,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-blue-800 block mb-1 font-semibold">Expected Return</label>
+                    <label className="text-[11px] font-medium text-blue-800 dark:text-blue-300 block mb-1 font-semibold">Expected Return</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -911,29 +911,29 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         step={0.1}
                         value={inputs.accountReturns?.rrspReturn ?? 6.5}
                         onChange={(e) => updateAccountReturn('rrspReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-blue-700 rounded-lg border border-blue-200 bg-white"
+                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-blue-700 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
                       />
-                      <span className="absolute right-2.5 top-2 text-xs text-blue-500 font-bold">%</span>
+                      <span className="absolute right-2.5 top-2 text-xs text-blue-500 dark:text-blue-400 font-bold">%</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* TFSA */}
-              <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/30 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                    <span className="text-sm font-bold text-slate-900">TFSA</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-50">TFSA</span>
                   </div>
-                  <span className="text-[11px] font-medium text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-500/20 px-2 py-0.5 rounded">
                     100% Tax-Free
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.tfsaBalance}
                       onChange={(val) => updateField('tfsaBalance', val)}
@@ -944,7 +944,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
                     <CurrencyInput
                       value={inputs.tfsaAnnualContribution}
                       onChange={(val) => updateField('tfsaAnnualContribution', val)}
@@ -956,7 +956,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-emerald-800 block mb-1 font-semibold">Expected Return</label>
+                    <label className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 block mb-1 font-semibold">Expected Return</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -965,29 +965,29 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         step={0.1}
                         value={inputs.accountReturns?.tfsaReturn ?? 7.0}
                         onChange={(e) => updateAccountReturn('tfsaReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-emerald-700 rounded-lg border border-emerald-200 bg-white"
+                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-500/40 bg-white dark:bg-slate-950"
                       />
-                      <span className="absolute right-2.5 top-2 text-xs text-emerald-600 font-bold">%</span>
+                      <span className="absolute right-2.5 top-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold">%</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* FHSA */}
-              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/30 flex flex-col gap-3.5">
+              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/10 flex flex-col gap-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span className="text-sm font-bold text-slate-900">FHSA (First Home Savings Account)</span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-50">FHSA (First Home Savings Account)</span>
                   </div>
-                  <span className="text-[11px] font-medium text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-500/20 px-2 py-0.5 rounded">
                     Deductible + Tax-Free
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Current Balance</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.fhsaBalance}
                       onChange={(val) => updateField('fhsaBalance', val)}
@@ -998,7 +998,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 block mb-1">Annual Savings</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
                     <CurrencyInput
                       value={inputs.fhsaAnnualContribution}
                       onChange={(val) => updateField('fhsaAnnualContribution', val)}
@@ -1010,7 +1010,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-amber-800 block mb-1 font-semibold">Expected Return</label>
+                    <label className="text-[11px] font-medium text-amber-800 dark:text-amber-300 block mb-1 font-semibold">Expected Return</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -1019,21 +1019,21 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         step={0.1}
                         value={inputs.accountReturns?.fhsaReturn ?? 6.0}
                         onChange={(e) => updateAccountReturn('fhsaReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-amber-700 rounded-lg border border-amber-200 bg-white"
+                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-500/40 bg-white dark:bg-slate-950"
                       />
-                      <span className="absolute right-2.5 top-2 text-xs text-amber-600 font-bold">%</span>
+                      <span className="absolute right-2.5 top-2 text-xs text-amber-600 dark:text-amber-400 font-bold">%</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Year FHSA Opened & CRA 15-Year Rollover Rules */}
-                <div className="pt-2.5 border-t border-amber-200/70 flex flex-col gap-2.5 bg-white p-3 rounded-xl border border-amber-200/90 shadow-2xs">
+                <div className="pt-2.5 border-t border-amber-200/70 dark:border-amber-500/30 flex flex-col gap-2.5 bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200/90 dark:border-amber-500/30 shadow-2xs">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
-                      <label className="text-xs font-bold text-slate-900 block">
+                      <label className="text-xs font-bold text-slate-900 dark:text-slate-50 block">
                         Year FHSA Account Was Opened
                       </label>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         CRA rules state an FHSA must close after 15 years (or at age 71).
                       </span>
                     </div>
@@ -1044,10 +1044,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           key={yr}
                           type="button"
                           onClick={() => updateField('fhsaOpenYear', yr)}
-                          className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg border transition ${
+                          className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg border transition cursor-pointer ${
                             (inputs.fhsaOpenYear || 2023) === yr
                               ? 'bg-amber-600 text-white border-amber-600 shadow-2xs'
-                              : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
                           {yr}
@@ -1065,23 +1065,23 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     const rolloverTarget = isRollover71 ? 'RRIF' : (rolloverAge >= inputs.retirementAge ? 'RRIF / RRSP' : 'RRSP');
 
                     return (
-                      <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200 text-xs flex flex-col gap-1.5">
+                      <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-500/15 border border-amber-200 dark:border-amber-500/30 text-xs flex flex-col gap-1.5">
                         <div className="flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-semibold text-amber-950 flex items-center gap-1">
+                          <span className="font-semibold text-amber-950 dark:text-amber-200 flex items-center gap-1">
                             <span>⏳</span> 15-Year CRA Participation Window:
                           </span>
-                          <span className="font-mono font-bold px-2 py-0.5 rounded bg-amber-200/80 text-amber-900 text-[11px]">
+                          <span className="font-mono font-bold px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px]">
                             Opened in {openYr} → 15 Yrs Ends in {expiryYr}
                           </span>
                         </div>
-                        <p className="text-[11.5px] text-amber-900 leading-snug">
+                        <p className="text-[11.5px] text-amber-900 dark:text-amber-200 leading-snug">
                           {inputs.fhsaIntent === 'home_purchase' ? (
                             <>
                               If not utilized for a home purchase by year <strong>{expiryYr}</strong>, your FHSA balance rolls over at <strong>Age {rolloverAge}</strong> into your <strong>{rolloverTarget}</strong> 100% tax-free!
                             </>
                           ) : (
                             <>
-                              After 15 years in <strong>{expiryYr}</strong>, your accumulated FHSA automatically rolls over at <span className="font-extrabold text-amber-950 underline decoration-amber-500 underline-offset-2">Age {rolloverAge}</span> directly into your <strong>{rolloverTarget}</strong> tax-free without reducing any RRSP contribution room.
+                              After 15 years in <strong>{expiryYr}</strong>, your accumulated FHSA automatically rolls over at <span className="font-extrabold text-amber-950 dark:text-amber-100 underline decoration-amber-500 underline-offset-2">Age {rolloverAge}</span> directly into your <strong>{rolloverTarget}</strong> tax-free without reducing any RRSP contribution room.
                             </>
                           )}
                         </p>
@@ -1090,16 +1090,16 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   })()}
 
                   {/* FHSA Intent Switcher */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100">
-                    <span className="text-xs font-semibold text-slate-700">Account Intent:</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Account Intent:</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => updateField('fhsaIntent', 'rollover_to_rrsp')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                           inputs.fhsaIntent !== 'home_purchase'
                             ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-bold'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                       >
                         Rollover to RRSP/RRIF
@@ -1107,10 +1107,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       <button
                         type="button"
                         onClick={() => updateField('fhsaIntent', 'home_purchase')}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition ${
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                           inputs.fhsaIntent === 'home_purchase'
                             ? 'bg-amber-600 text-white border-amber-600 shadow-2xs font-bold'
-                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                       >
                         Buy First Home
@@ -1119,8 +1119,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   {inputs.fhsaIntent === 'home_purchase' && (
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3 text-xs">
-                      <span className="text-slate-600">Planned Home Purchase Age:</span>
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 text-xs">
+                      <span className="text-slate-600 dark:text-slate-400">Planned Home Purchase Age:</span>
                       <div className="flex items-center gap-2">
                         <input
                           type="range"
@@ -1128,9 +1128,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           max={Math.min(71, inputs.currentAge + ((inputs.fhsaOpenYear || 2023) + 15 - 2026))}
                           value={inputs.fhsaHomePurchaseAge || inputs.currentAge + 3}
                           onChange={(e) => updateField('fhsaHomePurchaseAge', Number(e.target.value))}
-                          className="w-24 sm:w-32 h-1.5 bg-slate-200 rounded cursor-pointer accent-amber-600"
+                          className="w-24 sm:w-32 h-1.5 bg-slate-200 dark:bg-slate-700 rounded cursor-pointer accent-amber-600"
                         />
-                        <span className="font-mono font-bold text-amber-900 text-xs">
+                        <span className="font-mono font-bold text-amber-900 dark:text-amber-300 text-xs">
                           Age {inputs.fhsaHomePurchaseAge || inputs.currentAge + 3}
                         </span>
                       </div>
@@ -1261,19 +1261,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             <div className="flex flex-col gap-6">
               
               {/* Header & 3-Way Housing Mode Selection */}
-              <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
+              <div className="flex flex-col gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <Home className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                    <Home className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     Canadian Real Estate, Mortgage & Housing Strategy
                   </h4>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Model existing homeownership, simulate a future home purchase with FHSA/HBP down payments, or model long-term renting throughout retirement.
                   </p>
                 </div>
 
                 {/* 3-Way Segmented Control */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80">
                   <button
                     type="button"
                     onClick={() => {
@@ -1282,20 +1282,20 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         purchaseType: 'current'
                       });
                     }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
                       re.ownsHome && re.purchaseType !== 'future'
-                        ? 'bg-white text-slate-900 shadow-sm border border-amber-300 ring-2 ring-amber-400/40'
-                        : 'text-slate-600 hover:bg-white/60'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-amber-300 dark:border-amber-500/40 ring-2 ring-amber-400/40'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
                     }`}
                   >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType !== 'future' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200/70 text-slate-600'}`}>
+                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType !== 'future' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                       <Home className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-1.5">
                         <span>Owns Home Today</span>
                       </div>
-                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
                         Purchased in past; existing mortgage & accumulated equity
                       </span>
                     </div>
@@ -1311,21 +1311,21 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
                       });
                     }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
                       re.ownsHome && re.purchaseType === 'future'
-                        ? 'bg-white text-slate-900 shadow-sm border border-blue-300 ring-2 ring-blue-500/40'
-                        : 'text-slate-600 hover:bg-white/60'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-blue-300 dark:border-blue-500/40 ring-2 ring-blue-500/40'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
                     }`}
                   >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType === 'future' ? 'bg-blue-100 text-blue-800' : 'bg-slate-200/70 text-slate-600'}`}>
+                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType === 'future' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-1.5">
                         <span>Future Home Purchase</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-100 text-blue-800 font-extrabold uppercase">Simulator</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 font-extrabold uppercase">Simulator</span>
                       </div>
-                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
                         Currently renting; model future purchase & financial impact
                       </span>
                     </div>
@@ -1338,20 +1338,20 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         ownsHome: false
                       });
                     }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 ${
+                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
                       !re.ownsHome
-                        ? 'bg-white text-slate-900 shadow-sm border border-slate-300 ring-2 ring-slate-400/40'
-                        : 'text-slate-600 hover:bg-white/60'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700 ring-2 ring-slate-400/40'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
                     }`}
                   >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${!re.ownsHome ? 'bg-slate-700 text-white' : 'bg-slate-200/70 text-slate-600'}`}>
+                    <div className={`p-1.5 rounded-lg shrink-0 ${!re.ownsHome ? 'bg-slate-700 dark:bg-slate-600 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
                       <Building2 className="w-4 h-4" />
                     </div>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-1.5">
                         <span>Rent Long-Term</span>
                       </div>
-                      <span className="text-[10.5px] text-slate-500 leading-tight block mt-0.5">
+                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
                         No real estate asset; 100% renting throughout retirement
                       </span>
                     </div>
@@ -1361,13 +1361,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
               {/* VIEW 1: RENT LONG-TERM (NO REAL ESTATE) */}
               {!re.ownsHome && (
-                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 text-center flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-slate-200/80 flex items-center justify-center text-slate-600">
+                <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 text-center flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-200/80 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300">
                     <Building2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-slate-900 text-sm">Long-Term Renting Mode</h5>
-                    <p className="text-xs text-slate-500 max-w-lg mt-1">
+                    <h5 className="font-bold text-slate-900 dark:text-slate-50 text-sm">Long-Term Renting Mode</h5>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-lg mt-1">
                       You are modeling retirement with 100% rental housing. Your wealth compounds in Canadian registered accounts (TFSA, RRSP) and non-registered investments without mortgage debt or physical home equity.
                     </p>
                   </div>
@@ -1382,7 +1382,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
                         });
                       }}
-                      className="text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl border border-blue-200 transition cursor-pointer"
+                      className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-500/30 transition cursor-pointer"
                     >
                       + Model Future Home Purchase
                     </button>
@@ -1394,7 +1394,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           purchaseType: 'current'
                         });
                       }}
-                      className="text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 px-4 py-2 rounded-xl border border-amber-200 transition cursor-pointer"
+                      className="text-xs font-bold text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30 transition cursor-pointer"
                     >
                       + Model Current Homeownership
                     </button>
@@ -1407,72 +1407,72 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 <div className="flex flex-col gap-6">
 
                   {/* Future Buyer Stepper Journey Bar */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-emerald-50/80 border border-blue-200/90 flex flex-col gap-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-blue-200/60 pb-2">
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-emerald-50/80 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-emerald-950/30 border border-blue-200/90 dark:border-blue-500/30 flex flex-col gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-blue-200/60 dark:border-blue-500/20 pb-2">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-                        <span className="text-xs font-bold text-blue-950 uppercase tracking-wide">
+                        <span className="text-xs font-bold text-blue-950 dark:text-blue-100 uppercase tracking-wide">
                           Future Home Purchase Journey (Assumption: Currently Renting)
                         </span>
                       </div>
-                      <span className="text-xs font-semibold text-blue-800 font-mono">
+                      <span className="text-xs font-semibold text-blue-800 dark:text-blue-300 font-mono">
                         {yearsToPurchase} {yearsToPurchase === 1 ? 'Year' : 'Years'} Until Purchase
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
-                      <div className="p-2.5 rounded-xl bg-white/90 border border-blue-200/70">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase block">1. Today (Age {inputs.currentAge})</span>
-                        <span className="font-extrabold text-slate-900 block mt-0.5">🏢 Currently Renting</span>
-                        <span className="text-[11px] text-blue-700 font-mono font-semibold">${Math.round(currentRent).toLocaleString()} / month</span>
+                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-blue-200/70 dark:border-blue-500/30">
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase block">1. Today (Age {inputs.currentAge})</span>
+                        <span className="font-extrabold text-slate-900 dark:text-slate-100 block mt-0.5">🏢 Currently Renting</span>
+                        <span className="text-[11px] text-blue-700 dark:text-blue-400 font-mono font-semibold">${Math.round(currentRent).toLocaleString()} / month</span>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white/90 border border-indigo-200/80">
-                        <span className="text-[10px] font-bold text-indigo-700 uppercase block">2. Age {futurePurchaseAge} ({futurePurchaseYear})</span>
-                        <span className="font-extrabold text-indigo-950 block mt-0.5">🏡 Buy Primary Home</span>
-                        <span className="text-[11px] text-indigo-700 font-mono font-semibold">${Math.round(projectedPurchasePrice).toLocaleString()} est. price</span>
+                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-500/30">
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase block">2. Age {futurePurchaseAge} ({futurePurchaseYear})</span>
+                        <span className="font-extrabold text-indigo-950 dark:text-indigo-100 block mt-0.5">🏡 Buy Primary Home</span>
+                        <span className="text-[11px] text-indigo-700 dark:text-indigo-400 font-mono font-semibold">${Math.round(projectedPurchasePrice).toLocaleString()} est. price</span>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white/90 border border-indigo-200/80">
-                        <span className="text-[10px] font-bold text-indigo-700 uppercase block">3. Down Payment</span>
-                        <span className="font-extrabold text-indigo-950 block mt-0.5">💰 ${Math.round(projectedDownPayment).toLocaleString()} ({downPaymentPct}%)</span>
-                        <span className="text-[10.5px] text-slate-600 block truncate">
+                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-indigo-200/80 dark:border-indigo-500/30">
+                        <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase block">3. Down Payment</span>
+                        <span className="font-extrabold text-indigo-950 dark:text-indigo-100 block mt-0.5">💰 ${Math.round(projectedDownPayment).toLocaleString()} ({downPaymentPct}%)</span>
+                        <span className="text-[10.5px] text-slate-600 dark:text-slate-400 block truncate">
                           {[fundWithFhsa && 'FHSA', fundWithHbp && 'HBP', fundWithTfsa && 'TFSA', fundWithNonReg && 'Non-Reg'].filter(Boolean).join(' + ') || 'Mortgage Only'}
                         </span>
                       </div>
 
-                      <div className="p-2.5 rounded-xl bg-white/90 border border-emerald-200/80">
-                        <span className="text-[10px] font-bold text-emerald-700 uppercase block">4. Age {mortgageFreeAge}</span>
-                        <span className="font-extrabold text-emerald-950 block mt-0.5">🎉 100% Mortgage-Free</span>
-                        <span className="text-[11px] text-emerald-700 font-mono font-semibold">$0 Housing Debt</span>
+                      <div className="p-2.5 rounded-xl bg-white/90 dark:bg-slate-900/90 border border-emerald-200/80 dark:border-emerald-500/30">
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">4. Age {mortgageFreeAge}</span>
+                        <span className="font-extrabold text-emerald-950 dark:text-emerald-100 block mt-0.5">🎉 100% Mortgage-Free</span>
+                        <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono font-semibold">$0 Housing Debt</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Future Purchase Top Metrics Badges */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-blue-100/30 p-4 rounded-2xl border border-blue-200/80">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-blue-50/70 via-indigo-50/40 to-blue-100/30 dark:from-blue-950/30 dark:via-indigo-950/20 dark:to-blue-900/30 p-4 rounded-2xl border border-blue-200/80 dark:border-blue-500/30">
                     <div>
-                      <span className="text-[10px] font-bold text-blue-800 uppercase tracking-wider block">Target Purchase Age</span>
-                      <span className="text-lg font-extrabold text-slate-900 font-mono">Age {futurePurchaseAge}</span>
-                      <span className="text-[10px] text-slate-500 block">Year {futurePurchaseYear} ({yearsToPurchase} yrs away)</span>
+                      <span className="text-[10px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider block">Target Purchase Age</span>
+                      <span className="text-lg font-extrabold text-slate-900 dark:text-slate-50 font-mono">Age {futurePurchaseAge}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Year {futurePurchaseYear} ({yearsToPurchase} yrs away)</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider block">Projected Home Price</span>
-                      <span className="text-lg font-extrabold text-indigo-950 font-mono">${Math.round(projectedPurchasePrice).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 block">(${costOfHome.toLocaleString()} in today's $)</span>
+                      <span className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider block">Projected Home Price</span>
+                      <span className="text-lg font-extrabold text-indigo-950 dark:text-indigo-100 font-mono">${Math.round(projectedPurchasePrice).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">(${costOfHome.toLocaleString()} in today's $)</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Target Down Payment</span>
-                      <span className="text-lg font-extrabold text-amber-900 font-mono">${Math.round(projectedDownPayment).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 block">{downPaymentPct}% of purchase price</span>
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">Target Down Payment</span>
+                      <span className="text-lg font-extrabold text-amber-900 dark:text-amber-200 font-mono">${Math.round(projectedDownPayment).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{downPaymentPct}% of purchase price</span>
                     </div>
 
-                    <div className="bg-white/80 p-2 rounded-xl border border-blue-200 shadow-2xs">
-                      <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Future Mortgage</span>
-                      <span className="text-lg font-black text-blue-950 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()}/mo</span>
-                      <span className="text-[10px] font-semibold text-emerald-700 block">Free by Age {mortgageFreeAge}</span>
+                    <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-xl border border-blue-200 dark:border-blue-500/30 shadow-2xs">
+                      <span className="text-[10px] font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider block">Future Mortgage</span>
+                      <span className="text-lg font-black text-blue-950 dark:text-blue-100 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()}/mo</span>
+                      <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 block">Free by Age {mortgageFreeAge}</span>
                     </div>
                   </div>
 
@@ -1480,13 +1480,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                     {/* Column 1: Future Purchase Timing & Price */}
-                    <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/20 flex flex-col gap-3.5">
+                    <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10 flex flex-col gap-3.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                           Purchase Timing & Current Rent
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
                           Renting → Buying
                         </span>
                       </div>
@@ -1494,8 +1494,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Target Purchase Age */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Planned Age of Home Purchase:</span>
-                          <span className="text-blue-700 font-bold font-mono">Age {futurePurchaseAge} (in {yearsToPurchase} yrs)</span>
+                          <span className="text-slate-700 dark:text-slate-300">Planned Age of Home Purchase:</span>
+                          <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">Age {futurePurchaseAge} (in {yearsToPurchase} yrs)</span>
                         </div>
                         <input
                           type="range"
@@ -1510,9 +1510,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               updateField('fhsaHomePurchaseAge', val);
                             }
                           }}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                         />
-                        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                        <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           <span>Earliest: Age {inputs.currentAge + 1}</span>
                           <span>Retirement: Age {inputs.retirementAge}</span>
                         </div>
@@ -1521,7 +1521,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Current Monthly Rent */}
                       <div>
                         <div className="flex justify-between items-center text-[11px] font-semibold mb-1">
-                          <label className="text-slate-700">
+                          <label className="text-slate-700 dark:text-slate-300">
                             Current Monthly Rent Paid Today (Prior to Purchase)
                           </label>
                           {livingExpensesRent && isRentOverridden && (
@@ -1533,7 +1533,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                   currentRent: livingExpensesRent
                                 });
                               }}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 underline font-semibold cursor-pointer"
+                              className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 underline font-semibold cursor-pointer"
                             >
                               Sync with Living Expenses (${livingExpensesRent.toLocaleString()}/mo)
                             </button>
@@ -1551,7 +1551,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={50}
                           aria-label="Current Monthly Rent"
                         />
-                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
                           {isRentOverridden
                             ? 'Custom rent override active for pre-purchase rental phase.'
                             : livingExpensesRent
@@ -1562,7 +1562,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                       {/* Target Home Price in Today's Dollars */}
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Target Home Cost in Today's Dollars
                         </label>
                         <CurrencyInput
@@ -1577,7 +1577,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={10000}
                           aria-label="Target Home Cost in Today's Dollars"
                         />
-                        <span className="text-[10.5px] text-blue-700 font-medium mt-0.5 block">
+                        <span className="text-[10.5px] text-blue-700 dark:text-blue-400 font-medium mt-0.5 block">
                           At {annualAppreciationRate}% annual growth, this home will cost ~${Math.round(projectedPurchasePrice).toLocaleString()} at Age {futurePurchaseAge}.
                         </span>
                       </div>
@@ -1585,8 +1585,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Target Down Payment with Percentage Presets */}
                       <div>
                         <div className="flex justify-between items-center text-[11px] font-semibold mb-1.5">
-                          <span className="text-slate-700">Target Down Payment:</span>
-                          <span className="text-amber-700 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
+                          <span className="text-slate-700 dark:text-slate-300">Target Down Payment:</span>
+                          <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
                         </div>
 
                         {/* Percentage Preset Pill Buttons: 5%, 10%, 15%, 20%, Custom */}
@@ -1607,7 +1607,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                 className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                                   isSelected
                                     ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                    : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                                    : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                                 }`}
                               >
                                 {pct}%
@@ -1622,7 +1622,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
                               downPaymentPreset === 'custom'
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             Custom
@@ -1643,19 +1643,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={5000}
                           aria-label="Target Down Payment"
                         />
-                        <span className="text-[10px] text-slate-500 mt-0.5 block">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
                           Projected down payment at purchase: ~${Math.round(projectedDownPayment).toLocaleString()}.
                         </span>
                       </div>
 
                       {/* Selectable Accounts to Fund Down Payment */}
-                      <div className="bg-white p-3.5 rounded-xl border border-blue-200 flex flex-col gap-2.5">
+                      <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-blue-200 dark:border-blue-500/30 flex flex-col gap-2.5">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             Select Accounts to Fund Down Payment
                           </span>
-                          <span className="text-[10px] text-slate-500">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             Choose all accounts that apply
                           </span>
                         </div>
@@ -1664,8 +1664,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           {/* 1. FHSA */}
                           <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
                             fundWithFhsa
-                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
-                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                              ? 'bg-blue-50/70 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-blue-950 dark:text-blue-100'
+                              : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                           }`}>
                             <input
                               type="checkbox"
@@ -1677,12 +1677,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               <div className="flex items-center justify-between">
                                 <strong className="font-bold text-[11.5px]">FHSA (First Home Savings Account)</strong>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
-                                  fundWithFhsa ? 'bg-blue-200/80 text-blue-900' : 'bg-slate-200 text-slate-600'
+                                  fundWithFhsa ? 'bg-blue-200/80 dark:bg-blue-500/30 text-blue-900 dark:text-blue-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                   {fundWithFhsa ? '100% Tax-Free' : 'Preserved'}
                                 </span>
                               </div>
-                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                              <p className="text-[10.5px] text-slate-600 dark:text-slate-400 mt-0.5">
                                 {fundWithFhsa
                                   ? `Qualifying tax-free withdrawal of accumulated FHSA balance at Age ${futurePurchaseAge}.`
                                   : 'FHSA will NOT be used for down payment; balance remains invested for rollover into RRSP.'}
@@ -1693,8 +1693,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           {/* 2. RRSP Home Buyers' Plan */}
                           <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
                             fundWithHbp
-                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
-                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                              ? 'bg-blue-50/70 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-blue-950 dark:text-blue-100'
+                              : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                           }`}>
                             <input
                               type="checkbox"
@@ -1711,12 +1711,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               <div className="flex items-center justify-between">
                                 <strong className="font-bold text-[11.5px]">RRSP Home Buyers' Plan (HBP)</strong>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
-                                  fundWithHbp ? 'bg-blue-200/80 text-blue-900' : 'bg-slate-200 text-slate-600'
+                                  fundWithHbp ? 'bg-blue-200/80 dark:bg-blue-500/30 text-blue-900 dark:text-blue-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                   {fundWithHbp ? (isMarried ? 'Up to $120,000' : 'Up to $60,000') : 'Preserved'}
                                 </span>
                               </div>
-                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                              <p className="text-[10.5px] text-slate-600 dark:text-slate-400 mt-0.5">
                                 {fundWithHbp
                                   ? 'Withdraw up to $60,000 tax-free per person from RRSP (CRA 15-year repayment schedule).'
                                   : 'RRSP retirement investments will remain untouched.'}
@@ -1727,8 +1727,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           {/* 3. TFSA */}
                           <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
                             fundWithTfsa
-                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
-                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                              ? 'bg-blue-50/70 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-blue-950 dark:text-blue-100'
+                              : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                           }`}>
                             <input
                               type="checkbox"
@@ -1740,12 +1740,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               <div className="flex items-center justify-between">
                                 <strong className="font-bold text-[11.5px]">TFSA (Tax-Free Savings Account)</strong>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
-                                  fundWithTfsa ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                                  fundWithTfsa ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                   {fundWithTfsa ? 'Tax-Free Withdrawal' : 'Preserved'}
                                 </span>
                               </div>
-                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                              <p className="text-[10.5px] text-slate-600 dark:text-slate-400 mt-0.5">
                                 {fundWithTfsa
                                   ? 'Withdraw liquid TFSA savings to fund any remaining down payment portion.'
                                   : 'TFSA investments will be protected and left to compound tax-free.'}
@@ -1756,8 +1756,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           {/* 4. Non-Registered */}
                           <label className={`flex items-start gap-2.5 p-2 rounded-lg border transition cursor-pointer ${
                             fundWithNonReg
-                              ? 'bg-blue-50/70 border-blue-200 text-blue-950'
-                              : 'bg-slate-50/70 border-slate-200 text-slate-500'
+                              ? 'bg-blue-50/70 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 text-blue-950 dark:text-blue-100'
+                              : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
                           }`}>
                             <input
                               type="checkbox"
@@ -1769,12 +1769,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               <div className="flex items-center justify-between">
                                 <strong className="font-bold text-[11.5px]">Non-Registered / Taxable Accounts</strong>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
-                                  fundWithNonReg ? 'bg-purple-100 text-purple-800' : 'bg-slate-200 text-slate-600'
+                                  fundWithNonReg ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
                                   {fundWithNonReg ? 'Liquid Savings' : 'Preserved'}
                                 </span>
                               </div>
-                              <p className="text-[10.5px] text-slate-600 mt-0.5">
+                              <p className="text-[10.5px] text-slate-600 dark:text-slate-400 mt-0.5">
                                 {fundWithNonReg
                                   ? 'Deploy taxable high-interest savings, investments, or cash toward down payment.'
                                   : 'Non-registered investments will remain untouched.'}
@@ -1783,8 +1783,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           </label>
 
                           {!fundWithFhsa && !fundWithHbp && !fundWithTfsa && !fundWithNonReg && (
-                            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-[10.5px] text-amber-900 font-semibold flex items-center gap-1.5">
-                              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 text-[10.5px] text-amber-900 dark:text-amber-200 font-semibold flex items-center gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                               <span>No funding accounts selected. 100% of the purchase price will be financed as mortgage debt.</span>
                             </div>
                           )}
@@ -1794,13 +1794,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
 
                     {/* Column 2: Mortgage Terms & Future Amortization */}
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 flex flex-col gap-3.5">
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col gap-3.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <Key className="w-3.5 h-3.5 text-slate-700" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                           Future Mortgage Terms
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
                           Est. Loan: ${Math.round(futureInitialLoan).toLocaleString()}
                         </span>
                       </div>
@@ -1808,8 +1808,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Mortgage Interest Rate */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Mortgage Interest Rate (Semi-Annual Compounding):</span>
-                          <span className="text-rose-700 font-bold font-mono">{mortgageInterestRate}%</span>
+                          <span className="text-slate-700 dark:text-slate-300">Mortgage Interest Rate (Semi-Annual Compounding):</span>
+                          <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
                         </div>
                         <input
                           type="range"
@@ -1818,15 +1818,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={0.05}
                           value={mortgageInterestRate}
                           onChange={(e) => updateRealEstateField('mortgageInterestRate', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
                         />
                       </div>
 
                       {/* Mortgage Amortization Term */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Amortization Term:</span>
-                          <span className="text-blue-700 font-bold font-mono">{mortgageTermYears} Years</span>
+                          <span className="text-slate-700 dark:text-slate-300">Amortization Term:</span>
+                          <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">{mortgageTermYears} Years</span>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5 mb-1.5">
                           {[15, 20, 25, 30].map(term => (
@@ -1834,10 +1834,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               key={term}
                               type="button"
                               onClick={() => updateRealEstateField('mortgageTermYears', term)}
-                              className={`py-1 text-[11px] font-bold rounded-lg border transition ${
+                              className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
                                 mortgageTermYears === term
                                   ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                               }`}
                             >
                               {term} yrs
@@ -1849,8 +1849,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Expected Annual Appreciation */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Annual Real Estate Appreciation Rate:</span>
-                          <span className="text-emerald-700 font-bold font-mono">{annualAppreciationRate}% / yr</span>
+                          <span className="text-slate-700 dark:text-slate-300">Annual Real Estate Appreciation Rate:</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">{annualAppreciationRate}% / yr</span>
                         </div>
                         <input
                           type="range"
@@ -1859,15 +1859,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={0.1}
                           value={annualAppreciationRate}
                           onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-emerald-600"
                         />
                       </div>
 
                       {/* Ownership Share */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Your Ownership Share of the Home:</span>
-                          <span className="text-blue-800 font-bold font-mono">{ownershipSharePercent}%</span>
+                          <span className="text-slate-700 dark:text-slate-300">Your Ownership Share of the Home:</span>
+                          <span className="text-blue-800 dark:text-blue-300 font-bold font-mono">{ownershipSharePercent}%</span>
                         </div>
                         <input
                           type="range"
@@ -1876,27 +1876,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={5}
                           value={ownershipSharePercent}
                           onChange={(e) => updateRealEstateField('ownershipSharePercent', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                         />
-                        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                        <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           <span>50% (Equal Co-owner)</span>
                           <span>100% (Sole Owner)</span>
                         </div>
                       </div>
 
                       {/* Future Payment Summary Box */}
-                      <div className="bg-white p-3 rounded-xl border border-blue-200 flex items-center justify-between">
+                      <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-blue-200 dark:border-blue-500/30 flex items-center justify-between">
                         <div>
-                          <span className="text-[11px] text-slate-500 block">Projected Monthly Payment</span>
-                          <span className="text-sm font-bold text-slate-900 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()} / mo</span>
-                          <span className="text-[10px] text-slate-400">vs Rent: ${Math.round(currentRent).toLocaleString()}/mo</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Projected Monthly Payment</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">${Math.round(futureMonthlyPayment).toLocaleString()} / mo</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">vs Rent: ${Math.round(currentRent).toLocaleString()}/mo</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[11px] text-slate-500 block">Mortgage-Free By</span>
-                          <span className="text-xs font-bold text-emerald-700 font-mono">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mortgage-Free By</span>
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono">
                             Age {mortgageFreeAge} (Year {futurePurchaseYear + mortgageTermYears})
                           </span>
-                          <span className="text-[10px] text-emerald-600 block">
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block">
                             {mortgageFreeAge <= inputs.retirementAge ? 'Paid before retirement!' : `${mortgageFreeAge - inputs.retirementAge} yrs into retirement`}
                           </span>
                         </div>
@@ -1905,16 +1905,16 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   {/* Disposition / Downsizing / Sale Section */}
-                  <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/20 flex flex-col gap-3">
+                  <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-500/10 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-50">
                           Future Home Downsizing / Sale (Backup Asset Liquidation)
                         </span>
                       </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-xs font-semibold text-indigo-900 shadow-2xs">
+                      <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-500/30 text-xs font-semibold text-indigo-900 dark:text-indigo-200 shadow-2xs">
                         <input
                           type="checkbox"
                           checked={planToSellHome}
@@ -1925,17 +1925,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       </label>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                       Optionally model selling the home at an older age. Capital gains are 100% tax-free under Canada’s <strong>Principal Residence Exemption (PRE)</strong>. Net equity proceeds are deposited into your <strong>Taxable Non-Registered Account</strong>.
                     </p>
 
                     {planToSellHome && (
-                      <div className="pt-3 border-t border-indigo-100 flex flex-col gap-3 bg-white p-3.5 rounded-xl border border-indigo-100">
+                      <div className="pt-3 border-t border-indigo-100 dark:border-indigo-500/20 flex flex-col gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <div className="flex justify-between text-xs font-semibold mb-1">
-                              <span className="text-slate-700">Planned Age at Sale:</span>
-                              <span className="text-indigo-700 font-bold font-mono">Age {sellHomeAge}</span>
+                              <span className="text-slate-700 dark:text-slate-300">Planned Age at Sale:</span>
+                              <span className="text-indigo-700 dark:text-indigo-400 font-bold font-mono">Age {sellHomeAge}</span>
                             </div>
                             <input
                               type="range"
@@ -1944,17 +1944,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               step={1}
                               value={Math.max(futurePurchaseAge + 1, sellHomeAge)}
                               onChange={(e) => updateRealEstateField('sellHomeAge', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-indigo-600"
                             />
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
                               {sellHomeAge - futurePurchaseAge} years after purchasing
                             </span>
                           </div>
 
                           <div>
                             <div className="flex justify-between text-xs font-semibold mb-1">
-                              <span className="text-slate-700">Selling & Legal Closing Friction:</span>
-                              <span className="text-slate-800 font-bold font-mono">{sellingCostPercent}%</span>
+                              <span className="text-slate-700 dark:text-slate-300">Selling & Legal Closing Friction:</span>
+                              <span className="text-slate-800 dark:text-slate-200 font-bold font-mono">{sellingCostPercent}%</span>
                             </div>
                             <input
                               type="range"
@@ -1963,27 +1963,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               step={0.5}
                               value={sellingCostPercent}
                               onChange={(e) => updateRealEstateField('sellingCostPercent', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-slate-700"
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-slate-700 dark:accent-slate-400"
                             />
-                            <span className="text-[10px] text-slate-400">Realtor commissions & closing costs</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">Realtor commissions & closing costs</span>
                           </div>
                         </div>
 
                         {/* Projected Proceeds Card */}
-                        <div className="p-3 rounded-lg bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="p-3 rounded-lg bg-emerald-50/80 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
-                            <span className="text-xs font-bold text-emerald-950 block">
+                            <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200 block">
                               🎉 Projected Net Equity Inflow at Age {sellHomeAge}:
                             </span>
-                            <span className="text-[11px] text-emerald-700">
+                            <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
                               Estimated property value of ${Math.round(projectedValueAtSale).toLocaleString()} with ${Math.round(remainingMortgageAtSale).toLocaleString()} mortgage remaining.
                             </span>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-lg font-black text-emerald-800 font-mono">
+                            <span className="text-lg font-black text-emerald-800 dark:text-emerald-300 font-mono">
                               +${Math.round(netProceedsAtSale).toLocaleString()}
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-600 block">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
                               Deposited to Taxable Account
                             </span>
                           </div>
@@ -2000,29 +2000,29 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 <div className="flex flex-col gap-6">
 
                   {/* Top Live Real Estate Badge */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-amber-100/30 p-4 rounded-2xl border border-amber-200/80">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-amber-100/30 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-900/30 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-500/30">
                     <div>
-                      <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">Estimated Home Value</span>
-                      <span className="text-lg font-extrabold text-slate-900 font-mono">${Math.round(currentMarketValue).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 block">Cost: ${costOfHome.toLocaleString()}</span>
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">Estimated Home Value</span>
+                      <span className="text-lg font-extrabold text-slate-900 dark:text-slate-50 font-mono">${Math.round(currentMarketValue).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Cost: ${costOfHome.toLocaleString()}</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-rose-800 uppercase tracking-wider block">Remaining Mortgage</span>
-                      <span className="text-lg font-extrabold text-rose-700 font-mono">${Math.round(remainingMortgageToday).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 block">Pmt: ${Math.round(monthlyPayment).toLocaleString()}/mo</span>
+                      <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider block">Remaining Mortgage</span>
+                      <span className="text-lg font-extrabold text-rose-700 dark:text-rose-400 font-mono">${Math.round(remainingMortgageToday).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Pmt: ${Math.round(monthlyPayment).toLocaleString()}/mo</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">Total Home Equity</span>
-                      <span className="text-lg font-extrabold text-emerald-700 font-mono">${Math.round(totalEquityToday).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 block">{Math.round((totalEquityToday / (currentMarketValue || 1)) * 100)}% equity built</span>
+                      <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">Total Home Equity</span>
+                      <span className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">${Math.round(totalEquityToday).toLocaleString()}</span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{Math.round((totalEquityToday / (currentMarketValue || 1)) * 100)}% equity built</span>
                     </div>
 
-                    <div className="bg-white/80 p-2 rounded-xl border border-amber-200 shadow-2xs">
-                      <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider block">Your Net Share ({ownershipSharePercent}%)</span>
-                      <span className="text-lg font-black text-amber-950 font-mono">${Math.round(userEquityToday).toLocaleString()}</span>
-                      <span className="text-[10px] font-semibold text-amber-700 block">Added to Net Worth</span>
+                    <div className="bg-white/80 dark:bg-slate-900/80 p-2 rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-2xs">
+                      <span className="text-[10px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider block">Your Net Share ({ownershipSharePercent}%)</span>
+                      <span className="text-lg font-black text-amber-950 dark:text-amber-100 font-mono">${Math.round(userEquityToday).toLocaleString()}</span>
+                      <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 block">Added to Net Worth</span>
                     </div>
                   </div>
 
@@ -2030,20 +2030,20 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     
                     {/* Property Purchase & Valuation */}
-                    <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/20 flex flex-col gap-3.5">
+                    <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/10 flex flex-col gap-3.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <Home className="w-3.5 h-3.5 text-amber-600" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Home className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                           Property Cost & Valuation
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300">
                           Primary Residence
                         </span>
                       </div>
 
                       {/* Cost of Home */}
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Original Cost of Home (Purchase Price)
                         </label>
                         <CurrencyInput
@@ -2057,7 +2057,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                       {/* Current Market Value */}
                       <div>
-                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                        <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                           Current Estimated Market Value Today
                         </label>
                         <CurrencyInput
@@ -2072,8 +2072,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Down Payment */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Down Payment Paid:</span>
-                          <span className="text-amber-700 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
+                          <span className="text-slate-700 dark:text-slate-300">Down Payment Paid:</span>
+                          <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
                         </div>
                         <CurrencyInput
                           value={downPayment}
@@ -2088,8 +2088,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Ownership Share */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Your Ownership Share of the Home:</span>
-                          <span className="text-amber-800 font-bold font-mono">{ownershipSharePercent}%</span>
+                          <span className="text-slate-700 dark:text-slate-300">Your Ownership Share of the Home:</span>
+                          <span className="text-amber-800 dark:text-amber-300 font-bold font-mono">{ownershipSharePercent}%</span>
                         </div>
                         <input
                           type="range"
@@ -2098,9 +2098,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={5}
                           value={ownershipSharePercent}
                           onChange={(e) => updateRealEstateField('ownershipSharePercent', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-amber-600"
                         />
-                        <div className="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                        <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                           <span>50% (Equal Co-owner)</span>
                           <span>100% (Sole Owner)</span>
                         </div>
@@ -2109,8 +2109,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Expected Annual Appreciation */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Annual Real Estate Appreciation Rate:</span>
-                          <span className="text-emerald-700 font-bold font-mono">{annualAppreciationRate}% / yr</span>
+                          <span className="text-slate-700 dark:text-slate-300">Annual Real Estate Appreciation Rate:</span>
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">{annualAppreciationRate}% / yr</span>
                         </div>
                         <input
                           type="range"
@@ -2119,19 +2119,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={0.1}
                           value={annualAppreciationRate}
                           onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-emerald-600"
                         />
                       </div>
                     </div>
 
                     {/* Mortgage Terms & Amortization */}
-                    <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/40 flex flex-col gap-3.5">
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col gap-3.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                          <Key className="w-3.5 h-3.5 text-slate-700" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                          <Key className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
                           Mortgage Terms & Amortization
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                           Initial Loan: ${initialLoan.toLocaleString()}
                         </span>
                       </div>
@@ -2139,8 +2139,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Mortgage Interest Rate */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Mortgage Interest Rate (Semi-Annual Compounding):</span>
-                          <span className="text-rose-700 font-bold font-mono">{mortgageInterestRate}%</span>
+                          <span className="text-slate-700 dark:text-slate-300">Mortgage Interest Rate (Semi-Annual Compounding):</span>
+                          <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
                         </div>
                         <input
                           type="range"
@@ -2149,15 +2149,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={0.05}
                           value={mortgageInterestRate}
                           onChange={(e) => updateRealEstateField('mortgageInterestRate', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
                         />
                       </div>
 
                       {/* Mortgage Amortization Term */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Amortization Term:</span>
-                          <span className="text-blue-700 font-bold font-mono">{mortgageTermYears} Years</span>
+                          <span className="text-slate-700 dark:text-slate-300">Amortization Term:</span>
+                          <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">{mortgageTermYears} Years</span>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5 mb-1.5">
                           {[15, 20, 25, 30].map(term => (
@@ -2165,10 +2165,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               key={term}
                               type="button"
                               onClick={() => updateRealEstateField('mortgageTermYears', term)}
-                              className={`py-1 text-[11px] font-bold rounded-lg border transition ${
+                              className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
                                 mortgageTermYears === term
                                   ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
                               }`}
                             >
                               {term} yrs
@@ -2180,8 +2180,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       {/* Year Mortgage Started */}
                       <div>
                         <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700">Year Mortgage Started:</span>
-                          <span className="text-slate-900 font-bold font-mono">{mortgageStartYear} ({currentCalendarYear - mortgageStartYear} yrs elapsed)</span>
+                          <span className="text-slate-700 dark:text-slate-300">Year Mortgage Started:</span>
+                          <span className="text-slate-900 dark:text-slate-100 font-bold font-mono">{mortgageStartYear} ({currentCalendarYear - mortgageStartYear} yrs elapsed)</span>
                         </div>
                         <input
                           type="range"
@@ -2190,19 +2190,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           step={1}
                           value={mortgageStartYear}
                           onChange={(e) => updateRealEstateField('mortgageStartYear', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-slate-800"
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-slate-800 dark:accent-slate-400"
                         />
                       </div>
 
                       {/* Monthly Payment Summary Box */}
-                      <div className="bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                      <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                         <div>
-                          <span className="text-[11px] text-slate-500 block">Estimated Monthly Payment</span>
-                          <span className="text-sm font-bold text-slate-900 font-mono">${Math.round(monthlyPayment).toLocaleString()} / mo</span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Estimated Monthly Payment</span>
+                          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">${Math.round(monthlyPayment).toLocaleString()} / mo</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[11px] text-slate-500 block">Mortgage-Free By</span>
-                          <span className="text-xs font-bold text-emerald-700 font-mono">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mortgage-Free By</span>
+                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono">
                             Year {mortgageStartYear + mortgageTermYears} (Age {inputs.currentAge + (mortgageStartYear + mortgageTermYears - currentCalendarYear)})
                           </span>
                         </div>
@@ -2211,16 +2211,16 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   {/* Disposition / Downsizing / Sale Section */}
-                  <div className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/20 flex flex-col gap-3">
+                  <div className="p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-500/10 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
-                        <span className="text-sm font-bold text-slate-900">
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-50">
                           Home Disposition & Downsizing Strategy (Backup Asset Liquidation)
                         </span>
                       </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-indigo-200 text-xs font-semibold text-indigo-900 shadow-2xs">
+                      <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-500/30 text-xs font-semibold text-indigo-900 dark:text-indigo-200 shadow-2xs">
                         <input
                           type="checkbox"
                           checked={planToSellHome}
@@ -2231,17 +2231,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       </label>
                     </div>
 
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                       Choose whether you plan to sell your home at a target retirement age. Under the Canada Revenue Agency’s <strong>Principal Residence Exemption (PRE)</strong>, 100% of your capital gain is completely tax-free. When sold, your share of net proceeds is automatically deposited into your <strong>Taxable Non-Registered Account</strong> to compound and fund living expenses.
                     </p>
 
                     {planToSellHome && (
-                      <div className="pt-3 border-t border-indigo-100 flex flex-col gap-3 bg-white p-3.5 rounded-xl border border-indigo-100">
+                      <div className="pt-3 border-t border-indigo-100 dark:border-indigo-500/20 flex flex-col gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-500/20">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div>
                             <div className="flex justify-between text-xs font-semibold mb-1">
-                              <span className="text-slate-700">Planned Age at Sale:</span>
-                              <span className="text-indigo-700 font-bold font-mono">Age {sellHomeAge}</span>
+                              <span className="text-slate-700 dark:text-slate-300">Planned Age at Sale:</span>
+                              <span className="text-indigo-700 dark:text-indigo-400 font-bold font-mono">Age {sellHomeAge}</span>
                             </div>
                             <input
                               type="range"
@@ -2250,17 +2250,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               step={1}
                               value={sellHomeAge}
                               onChange={(e) => updateRealEstateField('sellHomeAge', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-indigo-600"
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-indigo-600"
                             />
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">
                               Occurs {sellHomeAge >= inputs.retirementAge ? `${sellHomeAge - inputs.retirementAge} yrs into retirement` : `${inputs.retirementAge - sellHomeAge} yrs before retirement`}
                             </span>
                           </div>
 
                           <div>
                             <div className="flex justify-between text-xs font-semibold mb-1">
-                              <span className="text-slate-700">Selling & Legal Closing Friction:</span>
-                              <span className="text-slate-800 font-bold font-mono">{sellingCostPercent}%</span>
+                              <span className="text-slate-700 dark:text-slate-300">Selling & Legal Closing Friction:</span>
+                              <span className="text-slate-800 dark:text-slate-200 font-bold font-mono">{sellingCostPercent}%</span>
                             </div>
                             <input
                               type="range"
@@ -2269,27 +2269,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               step={0.5}
                               value={sellingCostPercent}
                               onChange={(e) => updateRealEstateField('sellingCostPercent', Number(e.target.value))}
-                              className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-slate-700"
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-slate-700 dark:accent-slate-400"
                             />
-                            <span className="text-[10px] text-slate-400">Realtor commissions, legal fees, and title transfers</span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500">Realtor commissions, legal fees, and title transfers</span>
                           </div>
                         </div>
 
                         {/* Projected Proceeds Card */}
-                        <div className="p-3 rounded-lg bg-emerald-50/80 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="p-3 rounded-lg bg-emerald-50/80 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div>
-                            <span className="text-xs font-bold text-emerald-950 block">
+                            <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200 block">
                               🎉 Projected Net Equity Inflow at Age {sellHomeAge}:
                             </span>
-                            <span className="text-[11px] text-emerald-700">
+                            <span className="text-[11px] text-emerald-700 dark:text-emerald-400">
                               Estimated property value of ${Math.round(projectedValueAtSale).toLocaleString()} with ${Math.round(remainingMortgageAtSale).toLocaleString()} mortgage remaining.
                             </span>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className="text-lg font-black text-emerald-800 font-mono">
+                            <span className="text-lg font-black text-emerald-800 dark:text-emerald-300 font-mono">
                               +${Math.round(netProceedsAtSale).toLocaleString()}
                             </span>
-                            <span className="text-[10px] font-bold text-emerald-600 block">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block">
                               Deposited to Taxable Account
                             </span>
                           </div>
@@ -2308,19 +2308,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 3: SPOUSE DETAILS & ACCOUNTS - ONLY RENDERED WHEN MARRIED */}
         {isMarried && inputs.spouse && (
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
+            <div className="flex items-center justify-between border-b border-rose-100 dark:border-rose-500/20 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-rose-950 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-rose-600" />
+                <h4 className="text-sm font-bold text-rose-950 dark:text-rose-200 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   Spouse Profile & Separate Registered Accounts
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   In Canada, each spouse maintains their own individual RRSP room, TFSA limit, CPP pension, and OAS clawback threshold.
                 </p>
               </div>
 
               {/* Pension Income Splitting Toggle */}
-              <label className="flex items-center gap-2 cursor-pointer bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-900">
+              <label className="flex items-center gap-2 cursor-pointer bg-rose-50 dark:bg-rose-500/15 border border-rose-200 dark:border-rose-500/30 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-900 dark:text-rose-200">
                 <input
                   type="checkbox"
                   checked={inputs.spouse.pensionIncomeSplitting}
@@ -2332,43 +2332,43 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Spouse Career & Ages */}
-            <div className="p-4 rounded-xl border border-rose-200/80 bg-rose-50/20 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl border border-rose-200/80 dark:border-rose-500/30 bg-rose-50/20 dark:bg-rose-500/10 grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Spouse Name / Label</label>
+                <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Spouse Name / Label</label>
                 <input
                   type="text"
                   value={inputs.spouse.name}
                   onChange={(e) => updateSpouseField('name', e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 font-medium"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Current Age</label>
+                <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Current Age</label>
                 <input
                   type="number"
                   min={18}
                   max={inputs.spouse.retirementAge - 1}
                   value={inputs.spouse.currentAge}
                   onChange={(e) => updateSpouseField('currentAge', Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 font-mono font-medium"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Target Retirement Age</label>
+                <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Target Retirement Age</label>
                 <input
                   type="number"
                   min={Math.max(45, inputs.spouse.currentAge + 1)}
                   max={75}
                   value={inputs.spouse.retirementAge}
                   onChange={(e) => updateSpouseField('retirementAge', Number(e.target.value))}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 font-mono font-medium"
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono font-medium"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-700 block mb-1">Annual Employment Income</label>
+                <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">Annual Employment Income</label>
                 <CurrencyInput
                   value={inputs.spouse.annualIncome}
                   onChange={(val) => updateSpouseField('annualIncome', val)}
@@ -2377,7 +2377,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   aria-label="Spouse Annual Employment Income"
                 />
                 <div className="flex items-center justify-between gap-1 mt-1 text-[10.5px]">
-                  <span className="text-slate-500">Wage Trend:</span>
+                  <span className="text-slate-500 dark:text-slate-400">Wage Trend:</span>
                   <div className="flex items-center gap-1">
                     <input
                       type="number"
@@ -2386,7 +2386,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       step={0.1}
                       value={inputs.spouse.incomeGrowthRate}
                       onChange={(e) => updateSpouseField('incomeGrowthRate', Number(e.target.value))}
-                      className="w-14 px-1.5 py-0.5 text-xs font-mono border border-slate-200 rounded text-right font-medium"
+                      className="w-14 px-1.5 py-0.5 text-xs font-mono border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded text-right font-medium"
                     />
                     <span className="text-slate-400">%</span>
                   </div>
@@ -2398,14 +2398,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
               {/* Spouse RRSP */}
-              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/20 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">Spouse RRSP</span>
-                  <span className="text-[10px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded">Deductible</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse RRSP</span>
+                  <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-500/20 px-2 py-0.5 rounded">Deductible</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.spouse.rrspBalance}
                       onChange={(val) => updateSpouseField('rrspBalance', val)}
@@ -2415,7 +2415,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Annual Contrib</label>
                     <CurrencyInput
                       value={inputs.spouse.rrspAnnualContribution}
                       onChange={(val) => updateSpouseField('rrspAnnualContribution', val)}
@@ -2428,14 +2428,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               </div>
 
               {/* Spouse TFSA */}
-              <div className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/20 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">Spouse TFSA</span>
-                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">100% Tax-Free</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse TFSA</span>
+                  <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-500/20 px-2 py-0.5 rounded">100% Tax-Free</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.spouse.tfsaBalance}
                       onChange={(val) => updateSpouseField('tfsaBalance', val)}
@@ -2445,7 +2445,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Annual Contrib</label>
                     <CurrencyInput
                       value={inputs.spouse.tfsaAnnualContribution}
                       onChange={(val) => updateSpouseField('tfsaAnnualContribution', val)}
@@ -2459,14 +2459,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               </div>
 
               {/* Spouse FHSA */}
-              <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/20 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">Spouse FHSA</span>
-                  <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Home / RRSP Roll</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse FHSA</span>
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded">Home / RRSP Roll</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.spouse.fhsaBalance}
                       onChange={(val) => updateSpouseField('fhsaBalance', val)}
@@ -2476,7 +2476,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Annual Contrib</label>
                     <CurrencyInput
                       value={inputs.spouse.fhsaAnnualContribution}
                       onChange={(val) => updateSpouseField('fhsaAnnualContribution', val)}
@@ -2489,19 +2489,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </div>
 
                 {/* Spouse Year FHSA Opened & 15-yr Rollover */}
-                <div className="pt-2 border-t border-amber-200/60 flex flex-col gap-2 bg-white/90 p-2.5 rounded-lg border border-amber-200/60 text-xs">
+                <div className="pt-2 border-t border-amber-200/60 dark:border-amber-500/30 flex flex-col gap-2 bg-white/90 dark:bg-slate-900 p-2.5 rounded-lg border border-amber-200/60 dark:border-amber-500/30 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-slate-700">Year Opened:</span>
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Year Opened:</span>
                     <div className="flex items-center gap-1">
                       {[2023, 2024, 2025, 2026].map((yr) => (
                         <button
                           key={yr}
                           type="button"
                           onClick={() => updateSpouseField('fhsaOpenYear', yr)}
-                          className={`px-2 py-0.5 text-[10.5px] font-mono font-bold rounded border transition ${
+                          className={`px-2 py-0.5 text-[10.5px] font-mono font-bold rounded border transition cursor-pointer ${
                             (inputs.spouse?.fhsaOpenYear || 2023) === yr
                               ? 'bg-amber-600 text-white border-amber-600'
-                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'
                           }`}
                         >
                           {yr}
@@ -2515,7 +2515,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     const spRolloverAge = Math.min(71, (inputs.spouse?.currentAge || 40) + (spExpiryYr - 2026));
                     const spTarget = spRolloverAge >= 71 ? 'RRIF' : (spRolloverAge >= (inputs.spouse?.retirementAge || 65) ? 'RRIF / RRSP' : 'RRSP');
                     return (
-                      <span className="text-[11px] text-amber-900 leading-tight">
+                      <span className="text-[11px] text-amber-900 dark:text-amber-200 leading-tight">
                         CRA 15-yr limit in <strong>{spExpiryYr}</strong> → rolls over into spouse's <strong>{spTarget}</strong> at <span className="font-bold underline decoration-amber-500">Age {spRolloverAge}</span>.
                       </span>
                     );
@@ -2524,14 +2524,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               </div>
 
               {/* Spouse Non-Reg */}
-              <div className="p-4 rounded-xl border border-purple-100 bg-purple-50/20 flex flex-col gap-3">
+              <div className="p-4 rounded-xl border border-purple-100 dark:border-purple-500/20 bg-purple-50/20 dark:bg-purple-500/10 flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-900">Spouse Non-Reg (SA)</span>
-                  <span className="text-[10px] font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded">Taxable</span>
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse Non-Reg (SA)</span>
+                  <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-500/20 px-2 py-0.5 rounded">Taxable</span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Current Balance</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Current Balance</label>
                     <CurrencyInput
                       value={inputs.spouse.nonRegBalance}
                       onChange={(val) => updateSpouseField('nonRegBalance', val)}
@@ -2541,7 +2541,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-slate-500 block mb-1">Annual Contrib</label>
+                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Annual Contrib</label>
                     <CurrencyInput
                       value={inputs.spouse.nonRegAnnualContribution}
                       onChange={(val) => updateSpouseField('nonRegAnnualContribution', val)}
@@ -2556,11 +2556,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Spouse CPP & OAS parameters */}
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/50 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="flex justify-between text-xs font-semibold mb-1">
-                  <span>Spouse CPP Start Age:</span>
-                  <span className="text-blue-700 font-bold">{inputs.spouse.cppStartAge} yrs</span>
+                  <span className="text-slate-700 dark:text-slate-300">Spouse CPP Start Age:</span>
+                  <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.spouse.cppStartAge} yrs</span>
                 </div>
                 <input
                   type="range"
@@ -2568,14 +2568,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   max={70}
                   value={inputs.spouse.cppStartAge}
                   onChange={(e) => updateSpouseField('cppStartAge', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                 />
               </div>
 
               <div>
                 <div className="flex justify-between text-xs font-semibold mb-1">
-                  <span>Spouse OAS Start Age:</span>
-                  <span className="text-sky-700 font-bold">{inputs.spouse.oasStartAge} yrs</span>
+                  <span className="text-slate-700 dark:text-slate-300">Spouse OAS Start Age:</span>
+                  <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.spouse.oasStartAge} yrs</span>
                 </div>
                 <input
                   type="range"
@@ -2583,7 +2583,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   max={70}
                   value={inputs.spouse.oasStartAge}
                   onChange={(e) => updateSpouseField('oasStartAge', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
+                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
                 />
               </div>
             </div>
@@ -2593,32 +2593,32 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 4: CPP & OAS PENSIONS (PRIMARY) */}
         {activeTab === 'pensions' && (
           <div className="flex flex-col gap-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h4 className="text-sm font-bold text-slate-900">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                 {isMarried ? 'Your Personal Government Pensions' : 'Government Assistance & Public Pensions'}
               </h4>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Canada Pension Plan (CPP) and Old Age Security (OAS) timing trade-offs
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/20 flex flex-col gap-4">
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-bold text-blue-950 flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-blue-600" />
+                  <h5 className="text-sm font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                    <Landmark className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     Canada Pension Plan (CPP)
                   </h5>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
                     Age {inputs.cppStartAge}
                   </span>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">CPP Start Age (60 - 70):</span>
-                    <span className="text-blue-700 font-bold">{inputs.cppStartAge} yrs</span>
+                    <span className="text-slate-700 dark:text-slate-300">CPP Start Age (60 - 70):</span>
+                    <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.cppStartAge} yrs</span>
                   </div>
                   <input
                     type="range"
@@ -2627,17 +2627,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={1}
                     value={inputs.cppStartAge}
                     onChange={(e) => updateField('cppStartAge', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                   />
-                  <div className="mt-1 text-[11px] font-semibold text-blue-600">
+                  <div className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
                     Adjustment: {getCppAdjustmentText(inputs.cppStartAge)}
                   </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Career Entitlement:</span>
-                    <span className="text-blue-700 font-mono font-bold">{inputs.cppEstimatedPercentOfMax}% of Maximum</span>
+                    <span className="text-slate-700 dark:text-slate-300">Career Entitlement:</span>
+                    <span className="text-blue-700 dark:text-blue-400 font-mono font-bold">{inputs.cppEstimatedPercentOfMax}% of Maximum</span>
                   </div>
                   <input
                     type="range"
@@ -2646,26 +2646,26 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={5}
                     value={inputs.cppEstimatedPercentOfMax}
                     onChange={(e) => updateField('cppEstimatedPercentOfMax', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                   />
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-sky-100 bg-sky-50/20 flex flex-col gap-4">
+              <div className="p-4 rounded-xl border border-sky-100 dark:border-sky-500/20 bg-sky-50/20 dark:bg-sky-500/10 flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-bold text-sky-950 flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-sky-600" />
+                  <h5 className="text-sm font-bold text-sky-950 dark:text-sky-200 flex items-center gap-1.5">
+                    <Landmark className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                     Old Age Security (OAS)
                   </h5>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-800">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300">
                     Age {inputs.oasStartAge}
                   </span>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">OAS Start Age (65 - 70):</span>
-                    <span className="text-sky-700 font-bold">{inputs.oasStartAge} yrs</span>
+                    <span className="text-slate-700 dark:text-slate-300">OAS Start Age (65 - 70):</span>
+                    <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.oasStartAge} yrs</span>
                   </div>
                   <input
                     type="range"
@@ -2674,17 +2674,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={1}
                     value={inputs.oasStartAge}
                     onChange={(e) => updateField('oasStartAge', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
                   />
-                  <div className="mt-1 text-[11px] font-semibold text-sky-600">
+                  <div className="mt-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400">
                     Adjustment: {getOasAdjustmentText(inputs.oasStartAge)}
                   </div>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Years Lived in Canada:</span>
-                    <span className="text-sky-700 font-mono font-bold">{inputs.oasEligibleYearsInCanada} / 40 yrs</span>
+                    <span className="text-slate-700 dark:text-slate-300">Years Lived in Canada:</span>
+                    <span className="text-sky-700 dark:text-sky-400 font-mono font-bold">{inputs.oasEligibleYearsInCanada} / 40 yrs</span>
                   </div>
                   <input
                     type="range"
@@ -2693,7 +2693,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={1}
                     value={inputs.oasEligibleYearsInCanada}
                     onChange={(e) => updateField('oasEligibleYearsInCanada', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-sky-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
                   />
                 </div>
               </div>
@@ -2705,33 +2705,33 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 5: MARKET RETURNS & INFLATION */}
         {activeTab === 'market' && (
           <div className="flex flex-col gap-6">
-            <div className="border-b border-slate-100 pb-3">
-              <h4 className="text-sm font-bold text-slate-900">Economic Parameters & Per-Account Return Rates</h4>
-              <p className="text-xs text-slate-500">Configure expected return rates independently for each Canadian account vehicle</p>
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">Economic Parameters & Per-Account Return Rates</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Configure expected return rates independently for each Canadian account vehicle</p>
             </div>
 
             {/* Individual Account Returns Grid */}
-            <div className="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 flex flex-col gap-3">
+            <div className="p-4 rounded-2xl bg-indigo-50/40 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                   Individual Account Expected Return Rates
                 </span>
-                <span className="text-[11px] font-semibold text-indigo-700">
+                <span className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-300">
                   Independent compounding rates applied directly to each account
                 </span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* RRSP */}
-                <div className="p-3 bg-white rounded-xl border border-blue-200 flex flex-col gap-1.5 shadow-2xs">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-blue-200 dark:border-blue-500/30 flex flex-col gap-1.5 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-900">RRSP</span>
+                    <span className="text-xs font-bold text-blue-900 dark:text-blue-300">RRSP</span>
                     <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">Expected:</span>
-                    <span className="text-sm font-extrabold text-blue-700 font-mono">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Expected:</span>
+                    <span className="text-sm font-extrabold text-blue-700 dark:text-blue-400 font-mono">
                       {inputs.accountReturns?.rrspReturn ?? 6.5}%
                     </span>
                   </div>
@@ -2742,19 +2742,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={0.1}
                     value={inputs.accountReturns?.rrspReturn ?? 6.5}
                     onChange={(e) => updateAccountReturn('rrspReturn', Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-blue-600"
+                    className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                   />
                 </div>
 
                 {/* TFSA */}
-                <div className="p-3 bg-white rounded-xl border border-emerald-200 flex flex-col gap-1.5 shadow-2xs">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-200 dark:border-emerald-500/30 flex flex-col gap-1.5 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-emerald-900">TFSA</span>
+                    <span className="text-xs font-bold text-emerald-900 dark:text-emerald-300">TFSA</span>
                     <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">Expected:</span>
-                    <span className="text-sm font-extrabold text-emerald-700 font-mono">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Expected:</span>
+                    <span className="text-sm font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">
                       {inputs.accountReturns?.tfsaReturn ?? 7.0}%
                     </span>
                   </div>
@@ -2765,19 +2765,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={0.1}
                     value={inputs.accountReturns?.tfsaReturn ?? 7.0}
                     onChange={(e) => updateAccountReturn('tfsaReturn', Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-emerald-600"
+                    className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-emerald-600"
                   />
                 </div>
 
                 {/* FHSA */}
-                <div className="p-3 bg-white rounded-xl border border-amber-200 flex flex-col gap-1.5 shadow-2xs">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-500/30 flex flex-col gap-1.5 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-900">FHSA</span>
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-300">FHSA</span>
                     <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">Expected:</span>
-                    <span className="text-sm font-extrabold text-amber-700 font-mono">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Expected:</span>
+                    <span className="text-sm font-extrabold text-amber-700 dark:text-amber-400 font-mono">
                       {inputs.accountReturns?.fhsaReturn ?? 6.0}%
                     </span>
                   </div>
@@ -2788,26 +2788,26 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={0.1}
                     value={inputs.accountReturns?.fhsaReturn ?? 6.0}
                     onChange={(e) => updateAccountReturn('fhsaReturn', Number(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
+                    className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-amber-600"
                   />
                 </div>
 
                 {/* Non-Reg */}
-                <div className="p-3 bg-white rounded-xl border border-purple-200 flex flex-col gap-1.5 shadow-2xs">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-purple-200 dark:border-purple-500/30 flex flex-col gap-1.5 shadow-2xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-900">Non-Reg</span>
+                    <span className="text-xs font-bold text-purple-900 dark:text-purple-300">Non-Reg</span>
                     <span className="w-2 h-2 rounded-full bg-purple-600"></span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-slate-500">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
                       {inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0 ? 'Blended:' : 'Expected:'}
                     </span>
-                    <span className="text-sm font-extrabold text-purple-700 font-mono">
+                    <span className="text-sm font-extrabold text-purple-700 dark:text-purple-400 font-mono">
                       {inputs.accountReturns?.nonRegReturn ?? 5.5}%
                     </span>
                   </div>
                   {inputs.nonRegCustomAccounts && inputs.nonRegCustomAccounts.length > 0 ? (
-                    <div className="text-[9px] text-purple-800 font-semibold bg-purple-50/80 px-1.5 py-0.5 rounded border border-purple-100 text-center">
+                    <div className="text-[9px] text-purple-800 dark:text-purple-300 font-semibold bg-purple-50/80 dark:bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-500/30 text-center">
                       Calculated from {inputs.nonRegCustomAccounts.length} custom accounts
                     </div>
                   ) : (
@@ -2818,7 +2818,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       step={0.1}
                       value={inputs.accountReturns?.nonRegReturn ?? 5.5}
                       onChange={(e) => updateAccountReturn('nonRegReturn', Number(e.target.value))}
-                      className="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer accent-purple-600"
+                      className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-purple-600"
                     />
                   )}
                 </div>
@@ -2826,13 +2826,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-4">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Macroeconomic & Tax Friction</h5>
+              <div className="bg-slate-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-col gap-4">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Macroeconomic & Tax Friction</h5>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Annual CPI Inflation Rate:</span>
-                    <span className="text-rose-700 font-mono font-bold">{inputs.inflationRate}%</span>
+                    <span className="text-slate-700 dark:text-slate-300">Annual CPI Inflation Rate:</span>
+                    <span className="text-rose-700 dark:text-rose-400 font-mono font-bold">{inputs.inflationRate}%</span>
                   </div>
                   <input
                     type="range"
@@ -2841,15 +2841,15 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={0.1}
                     value={inputs.inflationRate}
                     onChange={(e) => updateField('inflationRate', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-rose-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Bank of Canada benchmark target is 2.0%</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">Bank of Canada benchmark target is 2.0%</span>
                 </div>
 
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700">Taxable Account Annual Tax Drag:</span>
-                    <span className="text-purple-700 font-mono font-bold">{inputs.nonRegYieldTaxRate}%</span>
+                    <span className="text-slate-700 dark:text-slate-300">Taxable Account Annual Tax Drag:</span>
+                    <span className="text-purple-700 dark:text-purple-400 font-mono font-bold">{inputs.nonRegYieldTaxRate}%</span>
                   </div>
                   <input
                     type="range"
@@ -2858,22 +2858,22 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     step={0.1}
                     value={inputs.nonRegYieldTaxRate}
                     onChange={(e) => updateField('nonRegYieldTaxRate', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-purple-600"
+                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-purple-600"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Estimated annual tax friction on dividend yields and realized capital gains</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">Estimated annual tax friction on dividend yields and realized capital gains</span>
                 </div>
               </div>
 
               {inputs.realEstate?.ownsHome ? (
-                <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col gap-4">
-                  <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700">Property Appreciation</h5>
+                <div className="bg-slate-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-col gap-4">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Property Appreciation</h5>
                   <div>
                     <div className="flex justify-between text-xs font-semibold mb-1">
-                      <span className="text-slate-700 flex items-center gap-1">
-                        <Home className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                        <Home className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         Real Estate Annual Appreciation Rate:
                       </span>
-                      <span className="text-amber-700 font-mono font-bold">{inputs.realEstate.annualAppreciationRate}%</span>
+                      <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">{inputs.realEstate.annualAppreciationRate}%</span>
                     </div>
                     <input
                       type="range"
@@ -2882,14 +2882,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       step={0.1}
                       value={inputs.realEstate.annualAppreciationRate}
                       onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
-                      className="w-full h-2 bg-slate-200 rounded-lg cursor-pointer accent-amber-600"
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-amber-600"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Long-term Canadian residential market appreciation (CREA average ~3.2%)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">Long-term Canadian residential market appreciation (CREA average ~3.2%)</span>
                   </div>
                 </div>
               ) : (
-                <div className="bg-slate-50/60 p-4 rounded-xl border border-slate-200/80 flex flex-col justify-center text-xs text-slate-500">
-                  <p className="font-semibold text-slate-700 mb-1">Per-Account Compounding Active</p>
+                <div className="bg-slate-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-col justify-center text-xs text-slate-500 dark:text-slate-400">
+                  <p className="font-semibold text-slate-700 dark:text-slate-300 mb-1">Per-Account Compounding Active</p>
                   <p className="text-[11px] leading-relaxed">
                     Each Canadian vehicle (RRSP, TFSA, FHSA, and Non-Reg) compounds year-over-year strictly using its dedicated expected return rate specified above.
                   </p>
@@ -2902,9 +2902,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB 6: DRAWDOWN STRATEGY */}
         {activeTab === 'strategy' && (
           <div className="flex flex-col gap-5">
-            <div className="border-b border-slate-100 pb-3">
-              <h4 className="text-sm font-bold text-slate-900">Post-Retirement Drawdown Sequencing</h4>
-              <p className="text-xs text-slate-500">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">Post-Retirement Drawdown Sequencing</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Choose how {isMarried ? 'household' : 'personal'} assets are liquidated to minimize Canadian taxes
               </p>
             </div>
@@ -2915,18 +2915,18 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 onClick={() => updateField('drawdownStrategy', 'tax_efficient')}
                 className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
                   inputs.drawdownStrategy === 'tax_efficient'
-                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">1. Tax-Efficient Classic</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">1. Tax-Efficient Classic</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
                     Recommended
                   </span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  <span className="font-semibold text-indigo-700">Non-Reg first → RRSP/RRIF second → TFSA last.</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-indigo-700 dark:text-indigo-400">Non-Reg first → RRSP/RRIF second → TFSA last.</span>
                 </p>
               </div>
 
@@ -2934,18 +2934,18 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 onClick={() => updateField('drawdownStrategy', 'rrsp_meltdown')}
                 className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
                   inputs.drawdownStrategy === 'rrsp_meltdown'
-                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">2. RRSP Meltdown</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">2. RRSP Meltdown</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
                     Bracket Smoothing
                   </span>
                 </div>
-                <p className="text-xs text-slate-600">
-                  <span className="font-semibold text-blue-700">Early RRSP draws before age 71 to fill lower tax brackets.</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-blue-700 dark:text-blue-400">Early RRSP draws before age 71 to fill lower tax brackets.</span>
                 </p>
               </div>
 
@@ -2953,17 +2953,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 onClick={() => updateField('drawdownStrategy', 'proportional')}
                 className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
                   inputs.drawdownStrategy === 'proportional'
-                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">3. Proportional (Pro-Rata)</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">3. Proportional (Pro-Rata)</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                     Balanced
                   </span>
                 </div>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Withdraws evenly across accounts based on asset weighting.
                 </p>
               </div>
@@ -2972,17 +2972,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 onClick={() => updateField('drawdownStrategy', 'tfsa_first')}
                 className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
                   inputs.drawdownStrategy === 'tfsa_first'
-                    ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">4. TFSA First</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">4. TFSA First</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300">
                     Zero-Tax Early
                   </span>
                 </div>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Depletes TFSA first to achieve zero tax early in retirement.
                 </p>
               </div>
@@ -2994,19 +2994,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         {/* TAB: EXPAT EMIGRATION & NON-RESIDENT RETIREMENT */}
         {activeTab === 'expat' && (
           <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
-                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-cyan-600" />
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   <span>Expat Emigration & Non-Resident Retirement Planning</span>
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Plan your departure from Canada, model CRA non-resident Part XIII withholding taxes, departure tax (S. 128.1), and convert your pension to local currency with Purchasing Power Parity (PPP).
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700">Enable Expat Plan:</span>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Enable Expat Plan:</span>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
@@ -3014,29 +3014,29 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     onChange={(e) => updateExpatField('planToEmigrate', e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
                 </label>
               </div>
             </div>
 
             {/* If Expat Plan is Inactive */}
             {!inputs.expat?.planToEmigrate && (
-              <div className="p-6 rounded-2xl border border-dashed border-cyan-300 bg-cyan-50/40 text-center flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-100 text-cyan-700 flex items-center justify-center">
+              <div className="p-6 rounded-2xl border border-dashed border-cyan-300 dark:border-cyan-500/30 bg-cyan-50/40 dark:bg-cyan-500/10 text-center flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 flex items-center justify-center">
                   <Plane className="w-6 h-6" />
                 </div>
                 <div>
-                  <h5 className="text-sm font-bold text-slate-900">
+                  <h5 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                     Are you planning to retire or settle outside Canada?
                   </h5>
-                  <p className="text-xs text-slate-600 max-w-md mt-1">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md mt-1">
                     Toggle on the Expat Plan to model how moving to Mexico, Portugal, Thailand, Costa Rica, Spain, Panama, or other popular destinations stretches your retirement income.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => updateExpatField('planToEmigrate', true)}
-                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 dark:bg-cyan-500 dark:hover:bg-cyan-400 text-white dark:text-slate-950 text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
                 >
                   <Plane className="w-4 h-4" />
                   <span>Activate Expat Retirement Planning</span>
@@ -3050,10 +3050,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 
                 {/* Destination Country Selection */}
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold text-slate-800">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                     <span>1. Which country do you plan to settle in?</span>
-                    <span className="text-[11px] font-normal text-slate-500">
-                      Selected: <strong className="text-cyan-900 font-bold">{EXPAT_DESTINATIONS.find(d => d.id === (inputs.expat?.destinationCountryId || 'mexico'))?.name}</strong>
+                    <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                      Selected: <strong className="text-cyan-900 dark:text-cyan-300 font-bold">{EXPAT_DESTINATIONS.find(d => d.id === (inputs.expat?.destinationCountryId || 'mexico'))?.name}</strong>
                     </span>
                   </div>
 
@@ -3070,8 +3070,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                           onClick={() => setExpatRegionFilter(reg)}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                             expatRegionFilter === reg
-                              ? 'bg-cyan-700 text-white shadow-2xs'
-                              : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                              ? 'bg-cyan-700 dark:bg-cyan-600 text-white shadow-2xs'
+                              : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                           }`}
                         >
                           {reg === 'all' ? 'All Destinations' : reg} ({count})
@@ -3092,20 +3092,20 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                             onClick={() => updateExpatField('destinationCountryId', dest.id)}
                             className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
                               isSelected
-                                ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
-                                : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                                ? 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-400 dark:border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 hover:bg-slate-100/80 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-xl leading-none">{dest.flag}</span>
-                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
                                 {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
                               </span>
                             </div>
-                            <div className="text-xs font-bold text-slate-900 truncate">
+                            <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                               {dest.name}
                             </div>
-                            <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
                               <span>{dest.currencyCode}</span>
                               <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
                             </div>
@@ -3119,13 +3119,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   
                   {/* Exit Age */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2">
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-700 flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-cyan-600" />
+                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                         <span>Planned Departure Age from Canada:</span>
                       </span>
-                      <strong className="text-cyan-900 font-mono text-sm font-bold">
+                      <strong className="text-cyan-900 dark:text-cyan-300 font-mono text-sm font-bold">
                         Age {inputs.expat?.emigrationAge || inputs.retirementAge}
                       </strong>
                     </div>
@@ -3137,16 +3137,16 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       step={1}
                       value={inputs.expat?.emigrationAge || inputs.retirementAge}
                       onChange={(e) => updateExpatField('emigrationAge', Number(e.target.value))}
-                      className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                      className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"
                     />
 
-                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                       <span>Current ({inputs.currentAge})</span>
                       <span>Retire ({inputs.retirementAge})</span>
                       <span>Max ({inputs.lifeExpectancy})</span>
                     </div>
 
-                    <span className="text-[11px] text-slate-500 mt-1">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                       {(inputs.expat?.emigrationAge || inputs.retirementAge) < inputs.retirementAge
                         ? 'Departing before Canadian retirement (early expat phase).'
                         : 'Departing at or after retirement age.'}
@@ -3154,13 +3154,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   {/* OAS 20-Year Residence Rule */}
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col gap-2">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-2">
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-slate-700 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                         <span>Years Lived in Canada After Age 18:</span>
                       </span>
-                      <strong className="text-indigo-900 font-mono text-sm font-bold">
+                      <strong className="text-indigo-900 dark:text-indigo-300 font-mono text-sm font-bold">
                         {inputs.expat?.yearsLivedInCanadaAfter18 || 30} Years
                       </strong>
                     </div>
@@ -3172,23 +3172,23 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       step={1}
                       value={inputs.expat?.yearsLivedInCanadaAfter18 || 30}
                       onChange={(e) => updateExpatField('yearsLivedInCanadaAfter18', Number(e.target.value))}
-                      className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                      className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"
                     />
 
-                    <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                    <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                       <span>5 yrs</span>
-                      <span className="text-indigo-700 font-bold">20 yrs (OAS Worldwide Threshold)</span>
+                      <span className="text-indigo-700 dark:text-indigo-300 font-bold">20 yrs (OAS Worldwide Threshold)</span>
                       <span>40 yrs (Full OAS)</span>
                     </div>
 
                     <div className="text-[11px] mt-1 flex items-center gap-1.5">
                       {(inputs.expat?.yearsLivedInCanadaAfter18 || 30) >= 20 ? (
-                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>OAS Qualified: Payments continue for life worldwide.</span>
                         </span>
                       ) : (
-                        <span className="text-rose-700 font-semibold flex items-center gap-1">
+                        <span className="text-rose-700 dark:text-rose-400 font-semibold flex items-center gap-1">
                           <AlertTriangle className="w-3.5 h-3.5" />
                           <span>Warning: OAS stops after 6 months abroad (under 20 yrs).</span>
                         </span>
@@ -3200,27 +3200,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 {/* Canadian Real Estate Strategy */}
                 {inputs.realEstate?.ownsHome && (
-                  <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div className="bg-amber-50/70 dark:bg-amber-500/10 p-4 rounded-xl border border-amber-200 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                     <div className="flex items-center gap-2">
-                      <Home className="w-4 h-4 text-amber-700 shrink-0" />
+                      <Home className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                       <div>
-                        <strong className="text-amber-950 font-bold block">
+                        <strong className="text-amber-950 dark:text-amber-200 font-bold block">
                           Canadian Home Ownership Strategy:
                         </strong>
-                        <span className="text-amber-800 text-[11px]">
+                        <span className="text-amber-800 dark:text-amber-300 text-[11px]">
                           Choose how you handle your home upon leaving Canada.
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center bg-white rounded-lg p-0.5 border border-amber-300 text-xs shrink-0 font-medium">
+                    <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-amber-300 dark:border-amber-500/30 text-xs shrink-0 font-medium">
                       <button
                         type="button"
                         onClick={() => updateExpatField('realEstateStrategy', 'sell_before_departure')}
                         className={`px-2.5 py-1 rounded transition cursor-pointer ${
                           (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'sell_before_departure'
                             ? 'bg-amber-600 text-white font-bold shadow-xs'
-                            : 'text-amber-900 hover:bg-amber-100'
+                            : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20'
                         }`}
                       >
                         Sell Before Exit (PRE Tax-Free)
@@ -3231,7 +3231,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         className={`px-2.5 py-1 rounded transition cursor-pointer ${
                           (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'keep_and_rent'
                             ? 'bg-amber-600 text-white font-bold shadow-xs'
-                            : 'text-amber-900 hover:bg-amber-100'
+                            : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20'
                         }`}
                       >
                         Keep & Rent (S.216 Net)
@@ -3242,7 +3242,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         className={`px-2.5 py-1 rounded transition cursor-pointer ${
                           (inputs.expat?.realEstateStrategy || 'keep_and_rent') === 'sell_after_departure'
                             ? 'bg-amber-600 text-white font-bold shadow-xs'
-                            : 'text-amber-900 hover:bg-amber-100'
+                            : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20'
                         }`}
                       >
                         Sell as Non-Resident (S.116)
@@ -3252,7 +3252,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 )}
 
                 {/* Direct Jump to Expat Simulator Module */}
-                <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-900 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950 to-slate-950 border border-cyan-800/40 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
                   <div>
                     <h5 className="font-bold text-white text-xs flex items-center gap-1.5">
                       <Sparkles className="w-4 h-4 text-cyan-400" />

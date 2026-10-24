@@ -3,12 +3,17 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Ensure clean light-mode theme state
+// Initialize Strata theme from storage or preference
 if (typeof document !== 'undefined') {
-  document.documentElement.classList.remove('dark');
-  document.documentElement.style.colorScheme = 'light';
   try {
-    localStorage.removeItem('mapleretire_theme');
+    const saved = localStorage.getItem('strata-theme');
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark');
+      document.documentElement.style.colorScheme = 'dark';
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.style.colorScheme = 'light';
+    }
   } catch (e) {
     // ignore
   }

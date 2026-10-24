@@ -165,10 +165,10 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
   };
 
   return (
-    <div id="expat-retirement-section" className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition duration-200">
+    <div id="expat-retirement-section" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col transition duration-200">
       
       {/* 1. Header Banner */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
@@ -242,45 +242,45 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
       {!isExpanded && (
         <div
           onClick={() => setIsExpanded(true)}
-          className="p-3.5 sm:p-4 bg-slate-50 hover:bg-slate-100/90 border-t border-slate-200 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+          className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100/90 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-800 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
         >
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-cyan-600" />
-              <span className="text-slate-600 font-medium">Departure:</span>
-              <strong className="text-slate-900 font-bold font-mono">Age {departureAge}</strong>
+              <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Departure:</span>
+              <strong className="text-slate-900 dark:text-slate-100 font-bold font-mono">Age {departureAge}</strong>
               <span className="text-slate-400 text-[11px]">(Yr {departureYear})</span>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div className="flex items-center gap-1.5">
               <span className="text-base leading-none">{destinationCountry.flag}</span>
-              <span className="text-slate-600 font-medium">Destination:</span>
-              <strong className="text-slate-900 font-bold">{destinationCountry.name}</strong>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Destination:</span>
+              <strong className="text-slate-900 dark:text-slate-100 font-bold">{destinationCountry.name}</strong>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">Net Expat Income: </span>
-              <strong className="text-cyan-950 font-bold font-mono">{formatCur(averageExpatNetCAD)} CAD/yr</strong>
-              <span className="text-slate-500 text-[11px] ml-1">
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Net Expat Income: </span>
+              <strong className="text-cyan-950 dark:text-cyan-300 font-bold font-mono">{formatCur(averageExpatNetCAD)} CAD/yr</strong>
+              <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-1">
                 ({formatCur(averageExpatNetLocalCurrency, destinationCountry.currencySymbol)} {destinationCountry.currencyCode})
               </span>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
-            <div className="bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              <span className="text-emerald-800 font-semibold">PPP Purchasing Power: </span>
-              <strong className="text-emerald-950 font-extrabold font-mono">{formatCur(averagePPPEquivalentCAD)} CAD Equivalent</strong>
-              <span className="text-emerald-700 font-bold ml-1">({purchasingPowerBoostPercent >= 0 ? `+${purchasingPowerBoostPercent}%` : `${purchasingPowerBoostPercent}%`})</span>
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
+              <span className="text-emerald-800 dark:text-emerald-300 font-semibold">PPP Purchasing Power: </span>
+              <strong className="text-emerald-950 dark:text-emerald-200 font-extrabold font-mono">{formatCur(averagePPPEquivalentCAD)} CAD Equivalent</strong>
+              <span className="text-emerald-700 dark:text-emerald-400 font-bold ml-1">({purchasingPowerBoostPercent >= 0 ? `+${purchasingPowerBoostPercent}%` : `${purchasingPowerBoostPercent}%`})</span>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">OAS Abroad: </span>
-              <span className={`font-bold ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-700' : 'text-amber-700'}`}>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">OAS Abroad: </span>
+              <span className={`font-bold ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
                 {qualifiesForLifetimeWorldwideOAS ? '✓ Retained for Life' : '⚠️ At Risk (<20 yrs)'}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-cyan-700 hover:text-cyan-800 font-bold text-xs shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 font-bold text-xs shrink-0 self-end md:self-center">
             <span>Expand Full Expat Planner</span>
             <ChevronDown className="w-4 h-4" />
           </div>
@@ -386,21 +386,21 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
           <div className="p-4 sm:p-5 flex flex-col gap-6">
 
             {/* A. Destination Selector & Relocation Parameters */}
-            <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 flex flex-col gap-4">
+            <div className="bg-slate-50 dark:bg-slate-800/40 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col gap-4">
               
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
                 <div className="flex items-center gap-2">
-                  <Plane className="w-4 h-4 text-cyan-600" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <Plane className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
                     Expat Emigration Parameters & Destination
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500">Destination:</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">Destination:</span>
                   <select
                     value={currentExpatInputs.destinationCountryId}
                     onChange={(e) => updateInputs(prev => ({ ...prev, destinationCountryId: e.target.value }))}
-                    className="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
+                    className="text-xs font-bold bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-200 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
                   >
                     {EXPAT_DESTINATIONS.map(d => (
                       <option key={d.id} value={d.id}>
@@ -424,8 +424,8 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       onClick={() => setRegionFilter(reg)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                         regionFilter === reg
-                          ? 'bg-cyan-700 text-white shadow-2xs font-bold'
-                          : 'bg-white hover:bg-slate-100 text-slate-600 border border-slate-200'
+                          ? 'bg-cyan-700 dark:bg-cyan-600 text-white shadow-2xs font-bold'
+                          : 'bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
                       {reg === 'all' ? 'All Destinations' : reg} ({count})
@@ -447,26 +447,26 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                         onClick={() => updateInputs(prev => ({ ...prev, destinationCountryId: dest.id }))}
                         className={`p-2.5 rounded-xl border text-left transition flex flex-col gap-1 cursor-pointer ${
                           isSelected
-                            ? 'bg-cyan-50 border-cyan-400 ring-2 ring-cyan-400/40 shadow-xs'
-                            : 'bg-white hover:bg-slate-100/80 border-slate-200'
+                            ? 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-400 dark:border-cyan-500/40 ring-2 ring-cyan-400/40 shadow-xs'
+                            : 'bg-white dark:bg-slate-800/70 hover:bg-slate-100/80 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/80'
                         }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xl leading-none">{dest.flag}</span>
                           <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                             dest.costOfLivingIndex <= 0.6 
-                              ? 'bg-emerald-100 text-emerald-800' 
+                              ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300' 
                               : dest.costOfLivingIndex <= 0.85
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-slate-100 text-slate-700'
+                              ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300'
+                              : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                           }`}>
                             {dest.purchasingPowerMultiplier.toFixed(1)}x PPP
                           </span>
                         </div>
-                        <div className="text-xs font-bold text-slate-900 truncate">
+                        <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                           {dest.name}
                         </div>
-                        <div className="text-[10px] text-slate-500 flex items-center justify-between">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
                           <span>{dest.currencyCode}</span>
                           <span>{dest.hasTaxTreaty ? 'Treaty ✓' : '25% Part XIII'}</span>
                         </div>
@@ -476,25 +476,25 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
               </div>
 
               {/* Sliders: Emigration Age & OAS 20-Year Residence Rule */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200/70">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-200/70 dark:border-slate-700/70">
                 
                 {/* Emigration Age Slider */}
-                <div className="flex flex-col gap-1.5 bg-white p-3.5 rounded-xl border border-slate-200">
+                <div className="flex flex-col gap-1.5 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-700 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-cyan-600" />
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                       <span>Emigration / Exit Age:</span>
-                      <strong className="text-cyan-900 font-mono text-sm ml-1">
+                      <strong className="text-cyan-900 dark:text-cyan-300 font-mono text-sm ml-1">
                         Age {departureAge}
                       </strong>
-                      <span className="text-[11px] text-slate-500">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         (Year {departureYear})
                       </span>
                     </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       departureAge < retirementInputs.retirementAge
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300'
+                        : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
                     }`}>
                       {departureAge < retirementInputs.retirementAge ? 'Pre-Retirement Exit' : 'Post-Retirement Exit'}
                     </span>
@@ -507,10 +507,10 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     step={1}
                     value={currentExpatInputs.emigrationAge}
                     onChange={(e) => updateInputs(prev => ({ ...prev, emigrationAge: Number(e.target.value) }))}
-                    className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                    className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"
                   />
 
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                     <span>Current (Age {retirementInputs.currentAge})</span>
                     <span>Retire (Age {retirementInputs.retirementAge})</span>
                     <span>Life Exp (Age {retirementInputs.lifeExpectancy})</span>
@@ -518,28 +518,28 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 </div>
 
                 {/* Years in Canada After 18 (OAS 20-Year Test) */}
-                <div className="flex flex-col gap-1.5 bg-white p-3.5 rounded-xl border border-slate-200">
+                <div className="flex flex-col gap-1.5 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80">
                   <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-700 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>Adult Canadian Residence:</span>
-                      <strong className="text-indigo-900 font-mono text-sm ml-1">
+                      <strong className="text-indigo-900 dark:text-indigo-300 font-mono text-sm ml-1">
                         {yearsInCanadaAfter18} Years
                       </strong>
                     </span>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                       qualifiesForLifetimeWorldwideOAS
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-rose-100 text-rose-800 animate-pulse'
+                        ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 animate-pulse'
                     }`}>
                       {qualifiesForLifetimeWorldwideOAS ? (
                         <>
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           <span>OAS Lifetime Qualified (≥20 yrs)</span>
                         </>
                       ) : (
                         <>
-                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          <AlertTriangle className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                           <span>OAS Lost Abroad (Need {20 - yearsInCanadaAfter18} more yrs)</span>
                         </>
                       )}
@@ -553,12 +553,12 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     step={1}
                     value={currentExpatInputs.yearsLivedInCanadaAfter18}
                     onChange={(e) => updateInputs(prev => ({ ...prev, yearsLivedInCanadaAfter18: Number(e.target.value) }))}
-                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg mt-1"
+                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg mt-1"
                   />
 
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono">
+                  <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                     <span>5 yrs (min)</span>
-                    <span className="text-indigo-600 font-bold">20 yrs (OAS Worldwide Threshold)</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold">20 yrs (OAS Worldwide Threshold)</span>
                     <span>40 yrs (Full OAS)</span>
                   </div>
                 </div>
@@ -567,27 +567,27 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
 
               {/* Real Estate Strategy on Emigration */}
               {retirementInputs.realEstate?.ownsHome && (
-                <div className="bg-amber-50/60 p-3.5 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="bg-amber-50/60 dark:bg-amber-500/10 p-3.5 rounded-xl border border-amber-200 dark:border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2">
-                    <Home className="w-4 h-4 text-amber-700 shrink-0" />
+                    <Home className="w-4 h-4 text-amber-700 dark:text-amber-400 shrink-0" />
                     <div>
-                      <strong className="text-amber-950 font-bold block">
+                      <strong className="text-amber-950 dark:text-amber-200 font-bold block">
                         Canadian Real Estate Strategy Upon Leaving Canada:
                       </strong>
-                      <span className="text-amber-800 text-[11px]">
+                      <span className="text-amber-800 dark:text-amber-300 text-[11px]">
                         {realEstateOutcomeDescription}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center bg-white rounded-lg p-0.5 border border-amber-300 text-xs shrink-0 font-medium">
+                  <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg p-0.5 border border-amber-300 dark:border-amber-600/40 text-xs shrink-0 font-medium">
                     <button
                       type="button"
                       onClick={() => updateInputs(prev => ({ ...prev, realEstateStrategy: 'sell_before_departure' }))}
                       className={`px-2.5 py-1 rounded transition cursor-pointer ${
                         currentExpatInputs.realEstateStrategy === 'sell_before_departure'
                           ? 'bg-amber-600 text-white font-bold shadow-xs'
-                          : 'text-amber-900 hover:bg-amber-100'
+                          : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                       }`}
                     >
                       Sell Before Exit (PRE Tax-Free)
@@ -598,7 +598,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       className={`px-2.5 py-1 rounded transition cursor-pointer ${
                         currentExpatInputs.realEstateStrategy === 'keep_and_rent'
                           ? 'bg-amber-600 text-white font-bold shadow-xs'
-                          : 'text-amber-900 hover:bg-amber-100'
+                          : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                       }`}
                     >
                       Keep & Rent (S.216)
@@ -609,7 +609,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       className={`px-2.5 py-1 rounded transition cursor-pointer ${
                         currentExpatInputs.realEstateStrategy === 'sell_after_departure'
                           ? 'bg-amber-600 text-white font-bold shadow-xs'
-                          : 'text-amber-900 hover:bg-amber-100'
+                          : 'text-amber-900 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30'
                       }`}
                     >
                       Sell As Non-Resident (S.116)
@@ -624,108 +624,108 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
               
               {/* Card 1: Non-Resident Net Income in CAD */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     1. Net Expat Income (CAD)
                   </span>
-                  <span className="p-1.5 rounded-lg bg-blue-50 text-blue-600 border border-blue-100">
+                  <span className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
                     <DollarSign className="w-4 h-4" />
                   </span>
                 </div>
                 <div className="my-2.5">
-                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">
+                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900 dark:text-slate-50">
                     {formatCur(averageExpatNetCAD)}
                     <span className="text-xs font-normal text-slate-400 font-sans ml-1">/yr</span>
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 flex items-center justify-between">
                     <span>Canadian Domestic Baseline:</span>
-                    <span className="font-mono font-semibold">{formatCur(averageDomesticNetCAD)}/yr</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">{formatCur(averageDomesticNetCAD)}/yr</span>
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-100">
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
                   After CRA Part XIII non-resident withholding & local destination tax
                 </div>
               </div>
 
               {/* Card 2: Converted to Destination Local Currency */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     2. Local Currency Income
                   </span>
-                  <span className="p-1.5 rounded-lg bg-cyan-50 text-cyan-600 border border-cyan-100">
+                  <span className="p-1.5 rounded-lg bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-100 dark:border-cyan-500/20">
                     <Coins className="w-4 h-4" />
                   </span>
                 </div>
                 <div className="my-2.5">
-                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-cyan-950 truncate">
+                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-cyan-950 dark:text-cyan-200 truncate">
                     {formatCur(averageExpatNetLocalCurrency, destinationCountry.currencySymbol)}
-                    <span className="text-xs font-bold text-cyan-700 font-sans ml-1">
+                    <span className="text-xs font-bold text-cyan-700 dark:text-cyan-400 font-sans ml-1">
                       {destinationCountry.currencyCode}/yr
                     </span>
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 flex items-center justify-between">
                     <span>Fx Exchange Rate:</span>
-                    <span className="font-mono font-semibold">1 CAD = {destinationCountry.exchangeRateToCAD} {destinationCountry.currencyCode}</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">1 CAD = {destinationCountry.exchangeRateToCAD} {destinationCountry.currencyCode}</span>
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-100">
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
                   Annual funds deposited directly into your foreign bank account
                 </div>
               </div>
 
               {/* Card 3: PPP Purchasing Power Equivalent (THE HERO KPI) */}
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/60 to-emerald-50 border-2 border-emerald-300 shadow-sm flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 w-16 h-16 bg-emerald-200/40 rounded-full blur-xl pointer-events-none" />
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 via-teal-50/60 to-emerald-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-emerald-950/40 border-2 border-emerald-300 dark:border-emerald-500/30 shadow-sm flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 right-0 transform translate-x-2 -translate-y-2 w-16 h-16 bg-emerald-200/40 dark:bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>3. PPP Purchasing Power</span>
                   </span>
-                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 text-white shadow-2xs">
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white shadow-2xs">
                     {purchasingPowerBoostPercent >= 0 ? `+${purchasingPowerBoostPercent}%` : `${purchasingPowerBoostPercent}%`} Boost
                   </span>
                 </div>
                 <div className="my-2.5">
-                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-950">
+                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-950 dark:text-emerald-100">
                     {formatCur(averagePPPEquivalentCAD)}
-                    <span className="text-xs font-semibold text-emerald-800 font-sans ml-1">CAD Equiv</span>
+                    <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 font-sans ml-1">CAD Equiv</span>
                   </div>
-                  <div className="text-[11px] text-emerald-800 mt-1 font-semibold flex items-center justify-between">
+                  <div className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-1 font-semibold flex items-center justify-between">
                     <span>Lifestyle Surplus:</span>
-                    <span className="font-mono font-bold text-emerald-900">
+                    <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200">
                       +{formatCur(averagePPPEquivalentCAD - averageExpatNetCAD)}/yr
                     </span>
                   </div>
                 </div>
-                <div className="text-[10px] text-emerald-700 pt-2 border-t border-emerald-200/80 font-medium">
+                <div className="text-[10px] text-emerald-700 dark:text-emerald-400 pt-2 border-t border-emerald-200/80 dark:border-emerald-500/20 font-medium">
                   What your Canadian dollars actually buy you in {destinationCountry.name} compared to living in Canada
                 </div>
               </div>
 
               {/* Card 4: CRA Part XIII & Departure Tax */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col justify-between">
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 shadow-2xs flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     4. CRA Non-Resident Taxes
                   </span>
-                  <span className="p-1.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
+                  <span className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20">
                     <Scale className="w-4 h-4" />
                   </span>
                 </div>
                 <div className="my-2.5">
-                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">
+                  <div className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900 dark:text-slate-50">
                     {formatCur(lifetimePartXIIIWithholdingCAD)}
                   </div>
-                  <div className="text-[11px] text-slate-600 mt-1 flex items-center justify-between">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 flex items-center justify-between">
                     <span>Exit Departure Tax:</span>
-                    <span className="font-mono font-bold text-rose-600">
+                    <span className="font-mono font-bold text-rose-600 dark:text-rose-400">
                       {departureTaxEstimateCAD === 0 ? '$0 (Exempt)' : formatCur(departureTaxEstimateCAD)}
                     </span>
                   </div>
                 </div>
-                <div className="text-[10px] text-slate-500 pt-2 border-t border-slate-100">
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
                   {destinationCountry.hasTaxTreaty 
                     ? `Treaty capped: ${destinationCountry.treatyRates.rrspPeriodicWithholding}% periodic RRIF, CPP & OAS` 
                     : 'Statutory 25% CRA Part XIII flat withholding'}
@@ -735,17 +735,17 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             </div>
 
             {/* Navigation Tabs for Deep-Dive Sections */}
-            <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 rounded-xl gap-1 text-xs font-semibold overflow-x-auto">
+            <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/60 p-1.5 rounded-xl gap-1 text-xs font-semibold overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'overview'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <TrendingUp className="w-3.5 h-3.5 text-cyan-600" />
+                <TrendingUp className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>Executive Insights & Rules</span>
               </button>
 
@@ -754,13 +754,13 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 onClick={() => setActiveTab('ledger')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'ledger'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200 ring-1 ring-cyan-500/30'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold border border-slate-200 dark:border-slate-700 ring-1 ring-cyan-500/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Table className="w-3.5 h-3.5 text-cyan-600" />
+                <Table className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
                 <span>Expat Simulation Ledger</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 text-cyan-800 border border-cyan-300">
+                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30">
                   {destinationCountry.currencyCode}
                 </span>
               </button>
@@ -770,11 +770,11 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 onClick={() => setActiveTab('assets')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'assets'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Landmark className="w-3.5 h-3.5 text-indigo-600" />
+                <Landmark className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                 <span>Asset-by-Asset Non-Resident Treatment</span>
               </button>
 
@@ -783,11 +783,11 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 onClick={() => setActiveTab('ppp')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'ppp'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
+                <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                 <span>Purchasing Power & Cost of Living</span>
               </button>
 
@@ -796,11 +796,11 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 onClick={() => setActiveTab('checklist')}
                 className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shrink-0 ${
                   activeTab === 'checklist'
-                    ? 'bg-white text-slate-900 shadow-2xs font-bold border border-slate-200'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs font-bold border border-slate-200 dark:border-slate-700'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
-                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>CRA Departure Checklist & Visas</span>
               </button>
             </div>
@@ -819,8 +819,8 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             {/* TAB CONTENT 1: OVERVIEW & INSIGHTS */}
             {activeTab === 'overview' && (
               <div className="flex flex-col gap-3.5">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-cyan-600" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   <span>Strategic Cross-Border Takeaways for {destinationCountry.name}</span>
                 </span>
 
@@ -833,25 +833,25 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                         key={iIdx}
                         className={`p-4 rounded-xl border flex flex-col justify-between gap-2 ${
                           isSuccess
-                            ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
+                            ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300'
                             : isWarning
-                            ? 'bg-rose-50/80 border-rose-200 text-rose-950'
-                            : 'bg-slate-50 border-slate-200 text-slate-900'
+                            ? 'bg-rose-50/80 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-950 dark:text-rose-300'
+                            : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
                           <h5 className="text-xs font-bold flex items-center gap-1.5">
-                            {isSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : isWarning ? <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" /> : <Info className="w-4 h-4 text-cyan-600 shrink-0" />}
+                            {isSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" /> : isWarning ? <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" /> : <Info className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0" />}
                             <span>{ins.title}</span>
                           </h5>
                           <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
-                            isSuccess ? 'bg-emerald-200/80 text-emerald-900' : isWarning ? 'bg-rose-200 text-rose-900' : 'bg-slate-200 text-slate-800'
+                            isSuccess ? 'bg-emerald-200/80 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300' : isWarning ? 'bg-rose-200 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                           }`}>
                             {ins.badge}
                           </span>
                         </div>
 
-                        <p className="text-xs leading-relaxed text-slate-600 font-sans">
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-sans">
                           {ins.description}
                         </p>
                       </div>
@@ -860,7 +860,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 </div>
 
                 {/* Destination Country Lifestyle Profile */}
-                <div className="bg-gradient-to-r from-cyan-900 to-slate-900 text-white p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 mt-1">
+                <div className="bg-gradient-to-r from-cyan-900 to-slate-900 text-white p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4 mt-1 border border-cyan-800/50">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{destinationCountry.flag}</span>
@@ -892,22 +892,22 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 
                 {/* 1. CPP */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-2xs">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Landmark className="w-4 h-4 text-purple-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <Landmark className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                         <span>Canada Pension Plan (CPP)</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 font-bold">
                         {destinationCountry.treatyRates.cppWithholding}% Withholding
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       CPP benefits earned in Canada continue paying for life worldwide regardless of where you reside. The CRA automatically withholds {destinationCountry.treatyRates.cppWithholding}% under the {destinationCountry.hasTaxTreaty ? 'tax treaty' : 'statutory Part XIII'} and deposits directly into your foreign or Canadian bank account.
                     </p>
                   </div>
-                  <div className="text-[11px] font-semibold text-purple-900 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-semibold text-purple-900 dark:text-purple-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     Status: 100% Retained Worldwide
                   </div>
                 </div>
@@ -915,112 +915,112 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 {/* 2. OAS */}
                 <div className={`p-4 rounded-xl border flex flex-col justify-between gap-3 shadow-2xs ${
                   qualifiesForLifetimeWorldwideOAS
-                    ? 'bg-white border-slate-200'
-                    : 'bg-rose-50/60 border-rose-200'
+                    ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/80'
+                    : 'bg-rose-50/60 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20'
                 }`}>
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         <span>Old Age Security (OAS)</span>
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                        qualifiesForLifetimeWorldwideOAS ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        qualifiesForLifetimeWorldwideOAS ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300'
                       }`}>
                         {qualifiesForLifetimeWorldwideOAS ? '20-Year Rule Met ✓' : 'At Risk (<20 Yrs)'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       {oasStatusMessage} Subject to {destinationCountry.treatyRates.oasWithholding}% CRA withholding. Non-residents submit annual Form NR4-OAS to assess Old Age Security Recovery Tax (clawback).
                     </p>
                   </div>
                   <div className={`text-[11px] font-semibold pt-2 border-t ${
-                    qualifiesForLifetimeWorldwideOAS ? 'text-emerald-900 border-slate-100' : 'text-rose-900 border-rose-200'
+                    qualifiesForLifetimeWorldwideOAS ? 'text-emerald-900 dark:text-emerald-300 border-slate-100 dark:border-slate-800' : 'text-rose-900 dark:text-rose-300 border-rose-200 dark:border-rose-500/20'
                   }`}>
                     {qualifiesForLifetimeWorldwideOAS ? 'Status: Fully Protected Worldwide' : 'Warning: Complete 20 years in Canada before leaving'}
                   </div>
                 </div>
 
                 {/* 3. RRSP / RRIF */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-2xs">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Coins className="w-4 h-4 text-emerald-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <Coins className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>RRSP & RRIF Withdrawals</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 font-bold">
                         {destinationCountry.treatyRates.rrspPeriodicWithholding}% Periodic
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       RRSPs are exempt from CRA Departure Tax on exit day! When withdrawing in retirement, periodic RRIF / pension payments face a reduced {destinationCountry.treatyRates.rrspPeriodicWithholding}% withholding under treaty (vs 25% for lump sums). You cannot contribute new amounts after leaving.
                     </p>
                   </div>
-                  <div className="text-[11px] font-semibold text-emerald-900 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-semibold text-emerald-900 dark:text-emerald-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     Tip: Convert RRSP to RRIF to lock periodic treaty rate
                   </div>
                 </div>
 
                 {/* 4. TFSA */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-2xs">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <DollarSign className="w-4 h-4 text-teal-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <DollarSign className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                         <span>Tax-Free Savings Account (TFSA)</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 font-bold">
                         0% CRA Tax
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       Withdrawals remain 100% tax-free in Canada with ZERO non-resident withholding. However: (1) no new contribution room accumulates while non-resident (1%/month penalty if contributed), and (2) destination countries (like the US) do not recognize TFSAs as tax-exempt.
                     </p>
                   </div>
-                  <div className="text-[11px] font-semibold text-teal-900 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-semibold text-teal-900 dark:text-teal-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     CRA: 100% Tax-Free • Local Tax: Check Foreign Rules
                   </div>
                 </div>
 
                 {/* 5. Non-Registered Investments & Departure Tax */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-2xs">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Scale className="w-4 h-4 text-amber-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                         <span>Non-Reg Investments & Exit Tax</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-bold">
                         CRA S. 128.1
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       Taxable stocks/ETFs are deemed sold at FMV on your departure day (Departure Tax). Estimated tax: {departureTaxEstimateCAD === 0 ? '$0' : formatCur(departureTaxEstimateCAD)}. Once non-resident, Canada does NOT tax non-residents on capital gains from Canadian public securities!
                     </p>
                   </div>
-                  <div className="text-[11px] font-semibold text-amber-900 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-semibold text-amber-900 dark:text-amber-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     After Departure: 0% Canadian Capital Gains Tax
                   </div>
                 </div>
 
                 {/* 6. Canadian Real Estate */}
-                <div className="p-4 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-3 shadow-2xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-3 shadow-2xs">
                   <div>
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Home className="w-4 h-4 text-orange-600" />
+                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <Home className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                         <span>Canadian Real Estate</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 font-bold">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-500/20 text-orange-800 dark:text-orange-300 font-bold">
                         S.216 / S.116
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                       Real estate is exempt from Departure Tax upon leaving. If rented, file Form NR6 to elect under Section 216 to pay tax on net rental profit rather than 25% of gross rent. If sold as a non-resident, obtain a Section 116 Certificate to clear withholding.
                     </p>
                   </div>
-                  <div className="text-[11px] font-semibold text-orange-900 pt-2 border-t border-slate-100">
+                  <div className="text-[11px] font-semibold text-orange-900 dark:text-orange-300 pt-2 border-t border-slate-100 dark:border-slate-800">
                     {currentExpatInputs.realEstateStrategy === 'sell_before_departure' ? 'Selling Before Departure: 100% Tax-Free PRE' : 'Renting: Section 216 Net Election Recommended'}
                   </div>
                 </div>
@@ -1031,19 +1031,19 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             {/* TAB CONTENT 3: PURCHASING POWER PARITY & BASKET COMPARATOR */}
             {activeTab === 'ppp' && (
               <div className="flex flex-col gap-4">
-                <div className="bg-emerald-50/80 p-4 rounded-xl border border-emerald-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="bg-emerald-50/80 dark:bg-emerald-500/10 p-4 rounded-xl border border-emerald-200 dark:border-emerald-500/20 flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
-                    <h4 className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-emerald-600" />
+                    <h4 className="font-bold text-emerald-950 dark:text-emerald-200 text-sm flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Purchasing Power Parity (PPP) Breakdown: Canada vs {destinationCountry.name}</span>
                     </h4>
-                    <p className="text-xs text-emerald-800 mt-0.5">
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
                       Purchasing power parity measures what standard household goods, healthcare, housing, and dining cost in {destinationCountry.name} compared to Canadian metropolitan averages.
                     </p>
                   </div>
                   <div className="text-right">
-                    <span className="text-[11px] text-emerald-700 block">Relative Cost Index</span>
-                    <strong className="text-lg font-mono font-extrabold text-emerald-950">
+                    <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block">Relative Cost Index</span>
+                    <strong className="text-lg font-mono font-extrabold text-emerald-950 dark:text-emerald-200">
                       {(destinationCountry.costOfLivingIndex * 100).toFixed(0)}% of Canadian Costs
                     </strong>
                   </div>
@@ -1053,76 +1053,76 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   
                   {/* Housing */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-2 shadow-2xs">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Home className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2 shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Home className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       <span>Housing / Rent</span>
                     </span>
-                    <div className="text-xl font-mono font-bold text-slate-900">
+                    <div className="text-xl font-mono font-bold text-slate-900 dark:text-slate-100">
                       {Math.round(destinationCountry.costOfLivingIndex * 100 * 0.9)}%
-                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">of Canada</span>
+                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans ml-1">of Canada</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       High-end rental or coastal home at major savings
                     </span>
                   </div>
 
                   {/* Groceries & Food */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-2 shadow-2xs">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2 shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
                       <span>Fresh Groceries</span>
                     </span>
-                    <div className="text-xl font-mono font-bold text-slate-900">
+                    <div className="text-xl font-mono font-bold text-slate-900 dark:text-slate-100">
                       {Math.round(destinationCountry.costOfLivingIndex * 100 * 0.95)}%
-                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">of Canada</span>
+                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans ml-1">of Canada</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       Fresh produce, seafood & local markets
                     </span>
                   </div>
 
                   {/* Healthcare */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-2 shadow-2xs">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <HeartPulse className="w-3.5 h-3.5 text-rose-600" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2 shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <HeartPulse className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                       <span>Private Healthcare</span>
                     </span>
-                    <div className="text-xl font-mono font-bold text-slate-900">
+                    <div className="text-xl font-mono font-bold text-slate-900 dark:text-slate-100">
                       {Math.round(destinationCountry.costOfLivingIndex * 100 * 0.75)}%
-                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">of Canada</span>
+                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans ml-1">of Canada</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       {destinationCountry.healthCareNotes.slice(0, 50)}...
                     </span>
                   </div>
 
                   {/* Dining & Leisure */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-2 shadow-2xs">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2 shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                       <span>Dining & Leisure</span>
                     </span>
-                    <div className="text-xl font-mono font-bold text-slate-900">
+                    <div className="text-xl font-mono font-bold text-slate-900 dark:text-slate-100">
                       {Math.round(destinationCountry.costOfLivingIndex * 100 * 0.85)}%
-                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">of Canada</span>
+                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans ml-1">of Canada</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       Frequent restaurant dining, travel & excursions
                     </span>
                   </div>
 
                   {/* Domestic Services */}
-                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex flex-col justify-between gap-2 shadow-2xs">
-                    <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                      <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2 shadow-2xs">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                       <span>Household Help</span>
                     </span>
-                    <div className="text-xl font-mono font-bold text-slate-900">
+                    <div className="text-xl font-mono font-bold text-slate-900 dark:text-slate-100">
                       {Math.round(destinationCountry.costOfLivingIndex * 100 * 0.65)}%
-                      <span className="text-xs font-normal text-slate-500 font-sans ml-1">of Canada</span>
+                      <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans ml-1">of Canada</span>
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       Housekeeping, gardening & personal services
                     </span>
                   </div>
@@ -1130,11 +1130,11 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                 </div>
 
                 {/* Fine-Tuning Exchange Rate & Cost of Living Sliders */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between text-xs">
+                <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 flex flex-col md:flex-row gap-4 items-center justify-between text-xs">
                   <div className="flex-1 w-full">
                     <div className="flex items-center justify-between font-semibold mb-1">
-                      <span className="text-slate-700">Test Custom Exchange Rate:</span>
-                      <strong className="text-cyan-900 font-mono">
+                      <span className="text-slate-700 dark:text-slate-300">Test Custom Exchange Rate:</span>
+                      <strong className="text-cyan-900 dark:text-cyan-300 font-mono">
                         1 CAD = {currentExpatInputs.customExchangeRate || destinationCountry.exchangeRateToCAD} {destinationCountry.currencyCode}
                       </strong>
                     </div>
@@ -1145,14 +1145,14 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       step={destinationCountry.exchangeRateToCAD > 10 ? 0.5 : 0.02}
                       value={currentExpatInputs.customExchangeRate || destinationCountry.exchangeRateToCAD}
                       onChange={(e) => updateInputs(prev => ({ ...prev, customExchangeRate: Number(e.target.value) }))}
-                      className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                      className="w-full accent-cyan-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
                     />
                   </div>
 
                   <div className="flex-1 w-full">
                     <div className="flex items-center justify-between font-semibold mb-1">
-                      <span className="text-slate-700">Test Custom Cost of Living Factor:</span>
-                      <strong className="text-emerald-900 font-mono">
+                      <span className="text-slate-700 dark:text-slate-300">Test Custom Cost of Living Factor:</span>
+                      <strong className="text-emerald-900 dark:text-emerald-300 font-mono">
                         {((currentExpatInputs.customCostOfLivingFactor || destinationCountry.costOfLivingIndex) * 100).toFixed(0)}% of Canada
                       </strong>
                     </div>
@@ -1163,7 +1163,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       step={0.05}
                       value={currentExpatInputs.customCostOfLivingFactor || destinationCountry.costOfLivingIndex}
                       onChange={(e) => updateInputs(prev => ({ ...prev, customCostOfLivingFactor: Number(e.target.value) }))}
-                      className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                      className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
                     />
                   </div>
 
@@ -1171,7 +1171,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     <button
                       type="button"
                       onClick={() => updateInputs(prev => ({ ...prev, customExchangeRate: undefined, customCostOfLivingFactor: undefined }))}
-                      className="px-2.5 py-1 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold shrink-0 cursor-pointer"
                     >
                       Reset Defaults
                     </button>
@@ -1183,8 +1183,8 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             {/* TAB CONTENT 4: CRA DEPARTURE CHECKLIST & VISAS */}
             {activeTab === 'checklist' && (
               <div className="flex flex-col gap-3">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>CRA Non-Resident Departure Action Plan & Statutory Filings</span>
                 </span>
 
@@ -1192,31 +1192,31 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                   {checklist.map((item, cIdx) => (
                     <div
                       key={cIdx}
-                      className="p-3.5 rounded-xl border border-slate-200 bg-white flex flex-col justify-between gap-2 shadow-2xs hover:border-slate-300 transition"
+                      className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900 flex flex-col justify-between gap-2 shadow-2xs hover:border-slate-300 dark:hover:border-slate-600 transition"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2">
-                          <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                            <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-bold flex items-center justify-center shrink-0">
+                          <h5 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 text-[10px] font-bold flex items-center justify-center shrink-0">
                               {cIdx + 1}
                             </span>
                             <span>{item.title}</span>
                           </h5>
                           {item.formNumber && (
-                            <span className="text-[9.5px] px-2 py-0.5 rounded font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <span className="text-[9.5px] px-2 py-0.5 rounded font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                               {item.formNumber}
                             </span>
                           )}
                         </div>
 
-                        <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                           {item.description}
                         </p>
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
-                        <span className="font-semibold text-slate-700">Agency: {item.agency}</span>
-                        <span className="capitalize font-bold text-cyan-700">{item.stage.replace('_', ' ')}</span>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Agency: {item.agency}</span>
+                        <span className="capitalize font-bold text-cyan-700 dark:text-cyan-400">{item.stage.replace('_', ' ')}</span>
                       </div>
                     </div>
                   ))}

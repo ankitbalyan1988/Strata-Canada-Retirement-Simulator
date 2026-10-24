@@ -3,19 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MapleRetire | Canadian Retirement & Wealth Simulator</title>
-    <meta name="description" content="Comprehensive Canadian retirement simulator modeling RRSP, TFSA, FHSA, Non-registered savings, CPP, and OAS with real provincial and federal tax calculations, drawdown strategies, interactive retirement age sliders, and PDF reports." />
-    <meta property="og:title" content="MapleRetire | Canadian Retirement & Wealth Simulator" />
-    <meta property="og:description" content="Comprehensive Canadian retirement simulator modeling RRSP, TFSA, FHSA, Non-registered savings, CPP, and OAS with real provincial and federal tax calculations, drawdown strategies, interactive retirement age sliders, and PDF reports." />
+    <title>Strata | Canadian Wealth & Retirement Intelligence</title>
+    <meta name="description" content="Strata is an institutional-grade Canadian retirement and wealth platform modeling RRSP, TFSA, FHSA, Non-Registered accounts, CPP, and OAS with real provincial and federal tax optimization." />
+    <meta property="og:title" content="Strata | Canadian Wealth & Retirement Intelligence" />
+    <meta property="og:description" content="Institutional-grade Canadian retirement and wealth platform modeling RRSP, TFSA, FHSA, Non-Registered accounts, CPP, and OAS." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          const theme = localStorage.getItem('strata-theme');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

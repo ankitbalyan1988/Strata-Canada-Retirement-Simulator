@@ -198,7 +198,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     <div className={`relative ${containerClassName}`}>
       {!hidePrefix && (
         <span
-          className={`absolute left-2.5 top-2 text-xs text-slate-400 font-mono pointer-events-none select-none ${prefixClassName}`}
+          className={`absolute left-2.5 top-2 text-xs text-slate-400 dark:text-slate-500 font-mono pointer-events-none select-none ${prefixClassName}`}
         >
           {prefix}
         </span>
@@ -214,7 +214,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
         onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full ${!hidePrefix ? 'pl-6' : 'px-2.5'} pr-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400:border-indigo-400 focus:outline-none transition ${className}`}
+        className={`w-full ${!hidePrefix ? 'pl-6' : 'px-2.5'} pr-2.5 py-1.5 text-xs font-mono font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 dark:focus:border-emerald-500 focus:outline-none transition ${className}`}
         {...rest}
       />
     </div>

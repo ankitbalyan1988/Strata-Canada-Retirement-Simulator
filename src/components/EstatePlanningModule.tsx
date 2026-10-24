@@ -188,10 +188,10 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
   };
 
   return (
-    <div id="estate-planning-section" className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition duration-200">
+    <div id="estate-planning-section" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col transition duration-200">
       
       {/* 1. Header Banner */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <span className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
@@ -261,34 +261,34 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
       {!isExpanded && (
         <div
           onClick={() => setIsExpanded(true)}
-          className="p-3.5 sm:p-4 bg-slate-50 hover:bg-slate-100/90 border-t border-slate-200 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+          className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700/80 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
         >
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-indigo-600" />
-              <span className="text-slate-600 font-medium">Simulated Passing:</span>
-              <strong className="text-slate-900 font-bold font-mono">Age {estateInputs.passingAge}</strong>
-              <span className="text-slate-400 text-[11px]">(Yr {reserves.passingYear})</span>
+              <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Simulated Passing:</span>
+              <strong className="text-slate-900 dark:text-slate-50 font-bold font-mono">Age {estateInputs.passingAge}</strong>
+              <span className="text-slate-400 dark:text-slate-500 text-[11px]">(Yr {reserves.passingYear})</span>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">Gross Estate: </span>
-              <strong className="text-indigo-950 font-bold font-mono">{formatCur(reserves.totalGrossEstate)}</strong>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Gross Estate: </span>
+              <strong className="text-slate-900 dark:text-slate-50 font-bold font-mono">{formatCur(reserves.totalGrossEstate)}</strong>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">Est. CRA Terminal Tax: </span>
-              <strong className="text-rose-600 font-bold font-mono">{formatCur(taxAndFees.netIncomeTaxAfterCredits)}</strong>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Est. CRA Terminal Tax: </span>
+              <strong className="text-rose-600 dark:text-rose-400 font-bold font-mono">{formatCur(taxAndFees.netIncomeTaxAfterCredits)}</strong>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">Net to Beneficiaries: </span>
-              <strong className="text-emerald-700 font-bold font-mono">{formatCur(taxAndFees.netEstateRemaining)}</strong>
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Net to Beneficiaries: </span>
+              <strong className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">{formatCur(taxAndFees.netEstateRemaining)}</strong>
             </div>
-            <div className="h-3.5 w-px bg-slate-300 hidden sm:block" />
+            <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
-              <span className="text-slate-600 font-medium">Plan: </span>
-              <span className="text-indigo-900 font-semibold">
+              <span className="text-slate-600 dark:text-slate-400 font-medium">Plan: </span>
+              <span className="text-slate-900 dark:text-slate-200 font-semibold">
                 {estateInputs.hasNextOfKin
                   ? `Next of Kin (${estateInputs.kinCategory === 'spouse' ? 'Spouse' : estateInputs.kinCategory === 'children' ? 'Children' : 'Extended'})`
                   : `No Kin (${estateInputs.noKinStrategy})`}
@@ -296,7 +296,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-bold text-xs shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-bold text-xs shrink-0 self-end md:self-center">
             <span>Expand Plan & Controls</span>
             <ChevronDown className="w-4 h-4" />
           </div>
@@ -402,20 +402,20 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
       <div className="p-4 sm:p-5 flex flex-col gap-6">
         
         {/* Row A: Passing Age Simulator Slider & Reserves Bar */}
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 max-w-md">
             <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-              <span className="text-slate-700 flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-indigo-600" />
+              <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Simulated Passing Age:</span>
-                <strong className="text-indigo-900 font-bold font-mono text-sm ml-1">
+                <strong className="text-slate-900 dark:text-slate-50 font-bold font-mono text-sm ml-1">
                   Age {estateInputs.passingAge}
                 </strong>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
                   (Year {reserves.passingYear})
                 </span>
               </span>
-              <span className="text-[11px] text-slate-500">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
                 Life Expectancy: Age {retirementInputs.lifeExpectancy}
               </span>
             </div>
@@ -427,9 +427,9 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
               step={1}
               value={estateInputs.passingAge}
               onChange={(e) => handlePassingAgeChange(Number(e.target.value))}
-              className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+              className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
             />
-            <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-1">
               <span>Start (Age {yearlyResults[0].age})</span>
               <span>Retire (Age {retirementInputs.retirementAge})</span>
               <span>Max (Age {yearlyResults[yearlyResults.length - 1].age})</span>
@@ -438,25 +438,25 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
 
           {/* Pending Reserves Snapshot Chips */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-left">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">RRSP/RRIF</span>
-              <strong className="text-xs font-mono font-bold text-blue-700">{formatCur(reserves.rrspBalance)}</strong>
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs text-left">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">RRSP/RRIF</span>
+              <strong className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">{formatCur(reserves.rrspBalance)}</strong>
             </div>
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-left">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">TFSA</span>
-              <strong className="text-xs font-mono font-bold text-emerald-700">{formatCur(reserves.tfsaBalance)}</strong>
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs text-left">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">TFSA</span>
+              <strong className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatCur(reserves.tfsaBalance)}</strong>
             </div>
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-left">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">Non-Reg</span>
-              <strong className="text-xs font-mono font-bold text-purple-700">{formatCur(reserves.nonRegBalance)}</strong>
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs text-left">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Non-Reg</span>
+              <strong className="text-xs font-mono font-bold text-purple-600 dark:text-purple-400">{formatCur(reserves.nonRegBalance)}</strong>
             </div>
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs text-left">
-              <span className="text-[10px] text-slate-500 uppercase font-semibold block">Home Equity</span>
-              <strong className="text-xs font-mono font-bold text-orange-700">{formatCur(reserves.homeEquity)}</strong>
+            <div className="bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-2xs text-left">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-semibold block">Home Equity</span>
+              <strong className="text-xs font-mono font-bold text-orange-600 dark:text-orange-400">{formatCur(reserves.homeEquity)}</strong>
             </div>
-            <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-200 shadow-2xs text-left">
-              <span className="text-[10px] text-indigo-700 uppercase font-semibold block">Total Reserves</span>
-              <strong className="text-xs font-mono font-extrabold text-indigo-950">{formatCur(reserves.totalGrossEstate)}</strong>
+            <div className="bg-emerald-50 dark:bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-500/20 shadow-2xs text-left">
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-semibold block">Total Reserves</span>
+              <strong className="text-xs font-mono font-extrabold text-emerald-950 dark:text-emerald-300">{formatCur(reserves.totalGrossEstate)}</strong>
             </div>
           </div>
         </div>
@@ -464,11 +464,11 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
         {/* Row B: Next of Kin vs No Next of Kin Strategic Selector */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Scale className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Succession & Beneficiary Status</span>
             </span>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Select your family circumstance to view legal liquidation rules
             </span>
           </div>
@@ -481,27 +481,27 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
               onClick={() => handleNextOfKinToggle(true)}
               className={`p-4 rounded-2xl border text-left transition flex items-start gap-3.5 relative ${
                 estateInputs.hasNextOfKin
-                  ? 'bg-indigo-50/80 border-indigo-400 ring-2 ring-indigo-400/20 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
+                  ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-400 dark:border-emerald-500/30 ring-2 ring-emerald-400/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
               <div className={`p-2.5 rounded-xl ${
-                estateInputs.hasNextOfKin ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                estateInputs.hasNextOfKin ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
               }`}>
                 <Users className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-slate-900">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                     I Have Next of Kin
                   </h4>
                   {estateInputs.hasNextOfKin && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-600 text-white">
                       Active Mode
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
                   Surviving spouse, children, or direct family heirs. Access CRA Section 70(6) spousal rollovers, TFSA successor annuitant status, and probate-exempt beneficiary designations.
                 </p>
               </div>
@@ -513,18 +513,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
               onClick={() => handleNextOfKinToggle(false)}
               className={`p-4 rounded-2xl border text-left transition flex items-start gap-3.5 relative ${
                 !estateInputs.hasNextOfKin
-                  ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/20 shadow-xs'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
+                  ? 'bg-amber-50/80 dark:bg-amber-500/10 border-amber-400 dark:border-amber-500/30 ring-2 ring-amber-400/20 shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
               }`}
             >
               <div className={`p-2.5 rounded-xl ${
-                !estateInputs.hasNextOfKin ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'
+                !estateInputs.hasNextOfKin ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
               }`}>
                 <UserX className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-slate-900">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                     I Do NOT Have Next of Kin
                   </h4>
                   {!estateInputs.hasNextOfKin && (
@@ -533,7 +533,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
                   No surviving spouse or direct family. Model philanthropic bequests to eliminate the heavy 53% RRSP terminal tax, gift to chosen friends/caregivers, or fund perpetual endowments.
                 </p>
               </div>
@@ -543,18 +543,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
         </div>
 
         {/* Row C: Dynamic Strategy Controls based on Selection */}
-        <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-200">
+        <div className="bg-slate-50/90 dark:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80">
           
           {estateInputs.hasNextOfKin ? (
             /* --- NEXT OF KIN CONTROLS --- */
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
                   <Heart className="w-4 h-4 text-rose-500" />
                   <span>Next of Kin Liquidation & Rollover Parameters</span>
                 </span>
-                <span className="text-xs text-slate-500">
-                  Province: <strong className="text-slate-800">{retirementInputs.province}</strong>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Province: <strong className="text-slate-800 dark:text-slate-200">{retirementInputs.province}</strong>
                 </span>
               </div>
 
@@ -565,15 +565,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleKinCategoryChange('spouse')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.kinCategory === 'spouse'
-                      ? 'bg-white border-indigo-400 shadow-2xs font-bold text-indigo-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-emerald-400 dark:border-emerald-500/50 shadow-2xs font-bold text-slate-900 dark:text-slate-50 ring-1 ring-emerald-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>💍</span>
                     <span>Surviving Spouse</span>
                   </div>
-                  <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     100% spousal rollover of RRSP/RRIF & TFSA
                   </p>
                 </button>
@@ -583,15 +583,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleKinCategoryChange('children')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.kinCategory === 'children'
-                      ? 'bg-white border-indigo-400 shadow-2xs font-bold text-indigo-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-emerald-400 dark:border-emerald-500/50 shadow-2xs font-bold text-slate-900 dark:text-slate-50 ring-1 ring-emerald-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>👨‍👩‍👧‍👦</span>
                     <span>Children / Direct Heirs</span>
                   </div>
-                  <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Terminal tax paid by estate; net cash to heirs
                   </p>
                 </button>
@@ -601,15 +601,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleKinCategoryChange('family_charity_split')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.kinCategory === 'family_charity_split'
-                      ? 'bg-white border-indigo-400 shadow-2xs font-bold text-indigo-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-emerald-400 dark:border-emerald-500/50 shadow-2xs font-bold text-slate-900 dark:text-slate-50 ring-1 ring-emerald-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>🤝</span>
                     <span>Family + Charity Split</span>
                   </div>
-                  <p className="text-[11px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[11px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Bequest to charity to shield family from tax
                   </p>
                 </button>
@@ -620,13 +620,13 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                 
                 {/* Spousal Rollover Toggle (if spouse) */}
                 {estateInputs.kinCategory === 'spouse' && (
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                      <div className="text-xs font-bold text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         <span>CRA Section 70(6) Spousal Rollover</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Transfers RRSP/RRIF directly to spouse with 0% immediate tax hit
                       </p>
                     </div>
@@ -637,19 +637,19 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                         onChange={(e) => setEstateInputs(prev => ({ ...prev, spousalRolloverEnabled: e.target.checked }))}
                         className="sr-only peer"
                       />
-                      <div className="w-10 h-5.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      <div className="w-10 h-5.5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600 dark:peer-checked:bg-emerald-500"></div>
                     </label>
                   </div>
                 )}
 
                 {/* Direct Beneficiary Designation (Probate Bypass) */}
-                <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-indigo-600" />
+                    <div className="text-xs font-bold text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       <span>Name Direct Beneficiaries on Accounts</span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                       Bypasses provincial probate fees ({retirementInputs.province}) on RRSP & TFSA
                     </p>
                   </div>
@@ -660,19 +660,19 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                       onChange={(e) => setEstateInputs(prev => ({ ...prev, directBeneficiariesDesignated: e.target.checked }))}
                       className="sr-only peer"
                     />
-                    <div className="w-10 h-5.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    <div className="w-10 h-5.5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600 dark:peer-checked:bg-emerald-500"></div>
                   </label>
                 </div>
 
                 {/* Real Estate Liquidation on Death */}
                 {reserves.homeEquity > 0 && (
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Home className="w-4 h-4 text-orange-600" />
+                      <div className="text-xs font-bold text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
+                        <Home className="w-4 h-4 text-orange-600 dark:text-orange-400" />
                         <span>Liquidate & Sell Home on Settlement</span>
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Sell property to distribute cash ({estateInputs.realtorAndClosingPercent}% fees) vs in-kind transfer
                       </p>
                     </div>
@@ -683,20 +683,20 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                         onChange={(e) => setEstateInputs(prev => ({ ...prev, liquidateRealEstateOnDeath: e.target.checked }))}
                         className="sr-only peer"
                       />
-                      <div className="w-10 h-5.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-orange-600"></div>
+                      <div className="w-10 h-5.5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-orange-600 dark:peer-checked:bg-orange-500"></div>
                     </label>
                   </div>
                 )}
 
                 {/* Charity Split Slider (if split) */}
                 {estateInputs.kinCategory === 'family_charity_split' && (
-                  <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-col gap-1.5 md:col-span-2">
+                  <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-1.5 md:col-span-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 flex items-center gap-1">
-                        <Gift className="w-3.5 h-3.5 text-indigo-600" />
+                      <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                        <Gift className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Charitable Bequest Share:</span>
                       </span>
-                      <strong className="font-mono text-indigo-600 text-sm font-bold">
+                      <strong className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-bold">
                         {estateInputs.charityShareWithKinPercent}% ({formatCur((reserves.totalGrossEstate * estateInputs.charityShareWithKinPercent) / 100)})
                       </strong>
                     </div>
@@ -707,9 +707,9 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                       step={5}
                       value={estateInputs.charityShareWithKinPercent}
                       onChange={(e) => setEstateInputs(prev => ({ ...prev, charityShareWithKinPercent: Number(e.target.value) }))}
-                      className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                      className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
                     />
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
                       Family receives {100 - estateInputs.charityShareWithKinPercent}%. Generates a dollar-for-dollar tax credit reducing terminal CRA taxes.
                     </span>
                   </div>
@@ -721,11 +721,11 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             /* --- NO NEXT OF KIN CONTROLS --- */
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
                   <UserX className="w-4 h-4 text-amber-600" />
                   <span>No Next-of-Kin Liquidation & Legacy Strategies</span>
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   Without spouse or heirs, strategic planning avoids heavy 53% terminal tax
                 </span>
               </div>
@@ -737,15 +737,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleNoKinStrategyChange('charitable_legacy')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.noKinStrategy === 'charitable_legacy'
-                      ? 'bg-white border-emerald-400 shadow-2xs font-bold text-emerald-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-emerald-400 dark:border-emerald-500 shadow-2xs font-bold text-emerald-950 dark:text-emerald-300 ring-1 ring-emerald-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>🏛️</span>
                     <span>100% Charity Shield</span>
                   </div>
-                  <p className="text-[10.5px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Eliminates CRA terminal tax completely
                   </p>
                 </button>
@@ -755,15 +755,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleNoKinStrategyChange('named_friends_heirs')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.noKinStrategy === 'named_friends_heirs'
-                      ? 'bg-white border-indigo-400 shadow-2xs font-bold text-indigo-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-indigo-400 dark:border-indigo-500 shadow-2xs font-bold text-indigo-950 dark:text-indigo-300 ring-1 ring-indigo-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>👥</span>
                     <span>Friends & Mentees</span>
                   </div>
-                  <p className="text-[10.5px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Bequests to chosen non-relatives
                   </p>
                 </button>
@@ -773,15 +773,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleNoKinStrategyChange('endowment_daf')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.noKinStrategy === 'endowment_daf'
-                      ? 'bg-white border-purple-400 shadow-2xs font-bold text-purple-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-purple-400 dark:border-purple-500 shadow-2xs font-bold text-purple-950 dark:text-purple-300 ring-1 ring-purple-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>🎓</span>
                     <span>Endowment / DAF</span>
                   </div>
-                  <p className="text-[10.5px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     Perpetual scholarship / community trust
                   </p>
                 </button>
@@ -791,25 +791,25 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   onClick={() => handleNoKinStrategyChange('balanced_legacy')}
                   className={`p-3 rounded-xl border text-left transition ${
                     estateInputs.noKinStrategy === 'balanced_legacy'
-                      ? 'bg-white border-blue-400 shadow-2xs font-bold text-blue-950'
-                      : 'bg-slate-100/70 border-slate-200 text-slate-700 hover:bg-white'
+                      ? 'bg-white dark:bg-slate-900 border-blue-400 dark:border-blue-500 shadow-2xs font-bold text-blue-950 dark:text-blue-300 ring-1 ring-blue-400/20'
+                      : 'bg-slate-100/70 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
                   }`}
                 >
                   <div className="text-xs font-bold flex items-center gap-1.5">
                     <span>⚖️</span>
                     <span>Balanced Legacy</span>
                   </div>
-                  <p className="text-[10.5px] font-normal text-slate-500 mt-0.5">
+                  <p className="text-[10.5px] font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     50% Charity / 30% Friends / 20% DAF
                   </p>
                 </button>
               </div>
 
               {/* Sliders for No-Kin Percentages */}
-              <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-3">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-3">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
                   <span>Custom Liquidation Distribution Split:</span>
-                  <span className="text-[11px] font-normal text-slate-500">
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
                     Total: {estateInputs.charityAllocationPercent + estateInputs.namedFriendsAllocationPercent + estateInputs.endowmentAllocationPercent}%
                   </span>
                 </div>
@@ -817,11 +817,11 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                 {/* Charity Slider */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
                       <Gift className="w-3.5 h-3.5" />
                       <span>Registered Canadian Charities (Generates 53% tax credit):</span>
                     </span>
-                    <strong className="font-mono text-emerald-800 font-bold">{estateInputs.charityAllocationPercent}%</strong>
+                    <strong className="font-mono text-emerald-800 dark:text-emerald-300 font-bold">{estateInputs.charityAllocationPercent}%</strong>
                   </div>
                   <input
                     type="range"
@@ -839,18 +839,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                         endowmentAllocationPercent: Math.max(0, rem - Math.min(prev.namedFriendsAllocationPercent, rem))
                       }));
                     }}
-                    className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    className="w-full accent-emerald-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
                   />
                 </div>
 
                 {/* Friends Slider */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-indigo-700 font-semibold flex items-center gap-1">
+                    <span className="text-indigo-700 dark:text-indigo-400 font-semibold flex items-center gap-1">
                       <Users className="w-3.5 h-3.5" />
                       <span>Named Friends, Mentorees & Caregivers:</span>
                     </span>
-                    <strong className="font-mono text-indigo-800 font-bold">{estateInputs.namedFriendsAllocationPercent}%</strong>
+                    <strong className="font-mono text-indigo-800 dark:text-indigo-300 font-bold">{estateInputs.namedFriendsAllocationPercent}%</strong>
                   </div>
                   <input
                     type="range"
@@ -866,18 +866,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                         endowmentAllocationPercent: Math.max(0, 100 - prev.charityAllocationPercent - val)
                       }));
                     }}
-                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 rounded-lg"
+                    className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
                   />
                 </div>
 
                 {/* Endowment Slider */}
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-purple-700 font-semibold flex items-center gap-1">
+                    <span className="text-purple-700 dark:text-purple-400 font-semibold flex items-center gap-1">
                       <Building2 className="w-3.5 h-3.5" />
                       <span>Testamentary Endowment / Donor-Advised Fund:</span>
                     </span>
-                    <strong className="font-mono text-purple-800 font-bold">{estateInputs.endowmentAllocationPercent}%</strong>
+                    <strong className="font-mono text-purple-800 dark:text-purple-300 font-bold">{estateInputs.endowmentAllocationPercent}%</strong>
                   </div>
                   <input
                     type="range"
@@ -885,19 +885,19 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     max={100}
                     disabled
                     value={estateInputs.endowmentAllocationPercent}
-                    className="w-full accent-purple-600 h-2 bg-slate-200 rounded-lg opacity-70"
+                    className="w-full accent-purple-600 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg opacity-70"
                   />
                 </div>
               </div>
 
               {/* Valid Will Toggle & Escheat Risk */}
-              <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex items-center justify-between gap-3">
+              <div className="bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-indigo-600" />
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <span>I Have an Active, Legal Canadian Will</span>
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Without a legal will and no next of kin, all estate assets escheat 100% to the Crown by law
                   </p>
                 </div>
@@ -908,15 +908,15 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     onChange={(e) => setEstateInputs(prev => ({ ...prev, hasValidWill: e.target.checked }))}
                     className="sr-only peer"
                   />
-                  <div className="w-10 h-5.5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  <div className="w-10 h-5.5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-4.5 after:w-4.5 after:transition-all peer-checked:bg-emerald-600 dark:peer-checked:bg-emerald-500"></div>
                 </label>
               </div>
 
               {!estateInputs.hasValidWill && (
-                <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-300 text-xs text-rose-950 flex items-start gap-2.5 animate-pulse">
-                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-300 dark:border-rose-500/20 text-xs text-rose-950 dark:text-rose-300 flex items-start gap-2.5 animate-pulse">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="font-bold block text-rose-900">
+                    <strong className="font-bold block text-rose-900 dark:text-rose-200">
                       CRITICAL LEGAL WARNING: Intestate Escheat to Provincial Government
                     </strong>
                     Under Canadian provincial succession laws (e.g. Ontario Escheats Act), when a resident dies intestate with zero legal next-of-kin, 100% of the remaining estate ($
@@ -933,11 +933,11 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
         {/* Row D: Estate Liquidation & Settlement Waterfall */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>Estate Settlement & Liquidation Waterfall</span>
             </span>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+            <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20">
               Tax Efficiency: {taxAndFees.taxEfficiencyScore}%
             </span>
           </div>
@@ -945,7 +945,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             
             {/* 1. Gross Reserves */}
-            <div className="p-3.5 rounded-2xl bg-slate-900 text-white flex flex-col justify-between">
+            <div className="p-3.5 rounded-2xl bg-slate-900 dark:bg-slate-950 border border-slate-800 text-white flex flex-col justify-between">
               <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
                 1. Gross Reserves at Death
               </span>
@@ -965,21 +965,21 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             {/* 2. CRA Terminal T1 Tax */}
             <div className={`p-3.5 rounded-2xl border flex flex-col justify-between ${
               taxAndFees.netIncomeTaxAfterCredits === 0
-                ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950'
-                : 'bg-rose-50/70 border-rose-200 text-rose-950'
+                ? 'bg-emerald-50/70 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300'
+                : 'bg-rose-50/70 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-950 dark:text-rose-300'
             }`}>
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">
                   2. CRA Terminal Tax
                 </span>
                 {taxAndFees.charitableTaxCredit > 0 && (
-                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-600 text-white font-bold">
+                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-600 dark:bg-emerald-500 text-white font-bold">
                     Shielded
                   </span>
                 )}
               </div>
               <div className="my-2">
-                <div className="text-2xl font-extrabold font-mono text-slate-900">
+                <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-slate-100">
                   {formatCur(taxAndFees.netIncomeTaxAfterCredits)}
                 </div>
                 <div className="text-[11px] mt-0.5">
@@ -988,7 +988,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     : `Before credits: ${formatCur(taxAndFees.totalTerminalIncomeTax)}`}
                 </div>
               </div>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
                 {taxAndFees.charitableTaxCredit > 0 
                   ? `Saved ${formatCur(taxAndFees.charitableTaxCredit)} via donation credits` 
                   : 'CRA deemed disposition on T1 return'}
@@ -996,26 +996,26 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             </div>
 
             {/* 3. Provincial Probate & Fees */}
-            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 text-amber-950 flex flex-col justify-between">
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-950 dark:text-amber-300 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">
                   3. Probate & Settlement
                 </span>
                 {taxAndFees.probateAvoidedByBeneficiaryDesignation > 0 && (
-                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-600 text-white font-bold">
+                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-600 dark:bg-amber-500 text-white font-bold">
                     Bypassed
                   </span>
                 )}
               </div>
               <div className="my-2">
-                <div className="text-2xl font-extrabold font-mono text-slate-900">
+                <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-slate-100">
                   {formatCur(taxAndFees.probateFee + taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation)}
                 </div>
-                <div className="text-[11px] mt-0.5 text-amber-900">
+                <div className="text-[11px] mt-0.5 text-amber-900 dark:text-amber-400">
                   Probate: {formatCur(taxAndFees.probateFee)} • Admin: {formatCur(taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation)}
                 </div>
               </div>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
                 {taxAndFees.probateAvoidedByBeneficiaryDesignation > 0 
                   ? `Avoided ${formatCur(taxAndFees.probateAvoidedByBeneficiaryDesignation)} probate via beneficiary naming` 
                   : `${retirementInputs.province} court tariffs`}
@@ -1023,19 +1023,19 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             </div>
 
             {/* 4. Final Net Liquidated Estate */}
-            <div className="p-3.5 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-indigo-950 flex flex-col justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-800">
+            <div className="p-3.5 rounded-2xl bg-indigo-50/90 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-950 dark:text-indigo-300 flex flex-col justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-800 dark:text-indigo-400">
                 4. Net Estate for Distribution
               </span>
               <div className="my-2">
-                <div className="text-2xl font-extrabold font-mono text-indigo-950">
+                <div className="text-2xl font-extrabold font-mono text-indigo-950 dark:text-indigo-200">
                   {formatCur(taxAndFees.netEstateRemaining)}
                 </div>
-                <div className="text-[11px] text-indigo-700 mt-0.5 font-medium">
+                <div className="text-[11px] text-indigo-700 dark:text-indigo-400 mt-0.5 font-medium">
                   {((taxAndFees.netEstateRemaining / (reserves.totalGrossEstate || 1)) * 100).toFixed(1)}% of gross wealth preserved
                 </div>
               </div>
-              <span className="text-[10px] text-indigo-600">
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400">
                 Delivered 100% clean of debt & tax
               </span>
             </div>
@@ -1045,14 +1045,14 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
 
         {/* Row E: Distribution Schedule Table */}
         <div className="flex flex-col gap-2.5">
-          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-            <Gift className="w-4 h-4 text-indigo-600" />
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+            <Gift className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>Liquidated Estate Beneficiary Distribution Breakdown</span>
           </span>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/80">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px]">
+              <thead className="bg-slate-50 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold uppercase text-[10px]">
                 <tr>
                   <th className="py-2.5 px-3">Beneficiary / Recipient</th>
                   <th className="py-2.5 px-3 text-right">Amount ($)</th>
@@ -1062,7 +1062,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   <th className="py-2.5 px-3">Notes & Succession Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
                 {distributions.map((item) => {
                   const isTax = item.category === 'taxes';
                   const isProbate = item.category === 'probate';
@@ -1073,16 +1073,16 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   return (
                     <tr 
                       key={item.id}
-                      className={`hover:bg-slate-50/80 transition-colors ${
+                      className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors ${
                         isCrown 
-                          ? 'bg-rose-100/70 font-semibold text-rose-950' 
+                          ? 'bg-rose-100/70 dark:bg-rose-500/20 font-semibold text-rose-950 dark:text-rose-200' 
                           : isTax 
-                          ? 'bg-rose-50/40 text-rose-900' 
+                          ? 'bg-rose-50/40 dark:bg-rose-500/10 text-rose-900 dark:text-rose-300' 
                           : isCharity 
-                          ? 'bg-emerald-50/40 text-emerald-950'
+                          ? 'bg-emerald-50/40 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-300'
                           : isSpouse
-                          ? 'bg-indigo-50/40 text-indigo-950 font-semibold'
-                          : 'bg-white text-slate-800'
+                          ? 'bg-indigo-50/40 dark:bg-indigo-500/10 text-indigo-950 dark:text-indigo-300 font-semibold'
+                          : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 even:bg-slate-50/50 dark:even:bg-slate-800/40'
                       }`}
                     >
                       <td className="py-2.5 px-3 font-sans font-bold flex items-center gap-1.5">
@@ -1107,18 +1107,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                       <td className="py-2.5 px-3 font-sans">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                           isCrown
-                            ? 'bg-rose-200 text-rose-900 border border-rose-300'
+                            ? 'bg-rose-200 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30'
                             : isTax
-                            ? 'bg-rose-100 text-rose-800'
+                            ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-300'
                             : isCharity
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-indigo-100 text-indigo-800'
+                            ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-800 dark:text-indigo-300'
                         }`}>
                           {item.taxStatus}
                         </span>
                       </td>
 
-                      <td className="py-2.5 px-3 font-sans text-[11px] text-slate-600">
+                      <td className="py-2.5 px-3 font-sans text-[11px] text-slate-600 dark:text-slate-400">
                         {item.notes}
                       </td>
                     </tr>
@@ -1131,7 +1131,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
 
         {/* Row F: Strategic Estate Recommendations & Insights */}
         <div className="flex flex-col gap-2.5 pt-1">
-          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500" />
             <span>Canadian Estate Optimization Insights</span>
           </span>
@@ -1146,32 +1146,32 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   key={sIdx}
                   className={`p-3.5 rounded-xl border flex flex-col justify-between gap-2 ${
                     isSuccess
-                      ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950'
+                      ? 'bg-emerald-50/60 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300'
                       : isWarning
-                      ? 'bg-rose-50/70 border-rose-200 text-rose-950'
-                      : 'bg-slate-50 border-slate-200 text-slate-900'
+                      ? 'bg-rose-50/70 dark:bg-rose-500/10 border-rose-200 dark:border-rose-500/20 text-rose-950 dark:text-rose-300'
+                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/80 text-slate-900 dark:text-slate-100'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <h5 className="text-xs font-bold flex items-center gap-1.5">
-                      {isSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+                      {isSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />}
                       <span>{strat.title}</span>
                     </h5>
                     <span className={`text-[9.5px] px-2 py-0.5 rounded-full font-bold ${
-                      isSuccess ? 'bg-emerald-200/80 text-emerald-900' : isWarning ? 'bg-rose-200 text-rose-900' : 'bg-slate-200 text-slate-800'
+                      isSuccess ? 'bg-emerald-200/80 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300' : isWarning ? 'bg-rose-200 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-300'
                     }`}>
                       {strat.badge}
                     </span>
                   </div>
 
-                  <p className="text-xs leading-relaxed text-slate-600 font-sans">
+                  <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 font-sans">
                     {strat.description}
                   </p>
 
                   {strat.taxSavedOrBenefit > 0 && (
-                    <div className="text-[11px] font-semibold text-emerald-800 flex items-center gap-1 pt-1 border-t border-emerald-100">
+                    <div className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 flex items-center gap-1 pt-1 border-t border-emerald-100 dark:border-emerald-500/20">
                       <span>Quantified Benefit:</span>
-                      <strong className="font-mono font-bold text-emerald-900">+{formatCur(strat.taxSavedOrBenefit)}</strong>
+                      <strong className="font-mono font-bold text-emerald-900 dark:text-emerald-300">+{formatCur(strat.taxSavedOrBenefit)}</strong>
                     </div>
                   )}
                 </div>

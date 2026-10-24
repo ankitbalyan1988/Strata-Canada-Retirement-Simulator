@@ -94,55 +94,55 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
 
   if (retirementData.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-6 border border-slate-200 text-center text-slate-500 text-sm">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700/80 text-center text-slate-500 dark:text-slate-400 text-sm">
         Select a retirement age below life expectancy to view post-retirement cash flow breakdown.
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-col gap-4 transition-colors">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/80 shadow-xs flex flex-col gap-4 transition-colors">
       
       {/* Title & Legend */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+            <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Wallet className="w-4 h-4" />
             </span>
-            <h3 className="font-bold text-slate-900 text-base">
+            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">
               Post-Retirement Income Streams & Cash Flow
             </h3>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Year-by-year cash flow sources: Government pensions (CPP, OAS) and Account Drawdowns vs Target Spending
           </p>
         </div>
 
         {/* Legend */}
         <div className="flex items-center flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
             <span className="w-2.5 h-2.5 rounded-sm bg-blue-700"></span>
             CPP
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
             <span className="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
             OAS (Net)
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
             <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500"></span>
             RRSP/RRIF Draw
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
             <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
             TFSA (Tax-Free)
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
             <span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span>
             Non-Reg Draw
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
-            <span className="w-3 h-0.5 bg-rose-600"></span>
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+            <span className="w-3 h-0.5 bg-emerald-500"></span>
             Target Spending
           </span>
         </div>
@@ -164,7 +164,8 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   y1={y}
                   x2={svgWidth - padding.right}
                   y2={y}
-                  stroke="#f1f5f9"
+                  stroke="currentColor"
+                  className="text-slate-200 dark:text-slate-800"
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -172,7 +173,7 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   x={padding.left - 10}
                   y={y + 3.5}
                   textAnchor="end"
-                  className="text-[10px] fill-slate-400 font-mono"
+                  className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
                 >
                   {formatCur(val)}
                 </text>
@@ -190,14 +191,15 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   y1={padding.top + chartHeight}
                   x2={x}
                   y2={padding.top + chartHeight + 6}
-                  stroke="#cbd5e1"
+                  stroke="currentColor"
+                  className="text-slate-300 dark:text-slate-700"
                   strokeWidth="1.5"
                 />
                 <text
                   x={x}
                   y={padding.top + chartHeight + 18}
                   textAnchor="middle"
-                  className="text-[10px] fill-slate-500 font-mono font-medium"
+                  className="text-[10px] fill-slate-500 dark:fill-slate-400 font-mono font-medium"
                 >
                   Age {d.age}
                 </text>
@@ -336,7 +338,7 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
           {/* Target Spending Line */}
           <polyline
             fill="none"
-            stroke="#e11d48"
+            stroke="#10b981"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"

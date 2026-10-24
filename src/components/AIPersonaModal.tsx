@@ -6,16 +6,9 @@ import {
   Loader2, 
   Wand2, 
   Check, 
-  AlertCircle, 
-  User, 
-  Users, 
-  MapPin, 
-  DollarSign, 
-  ShieldCheck, 
-  HelpCircle 
+  AlertCircle 
 } from 'lucide-react';
 import { RetirementInputs } from '../types/retirement';
-import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface AIPersonaModalProps {
@@ -89,24 +82,24 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 flex flex-col transition-colors">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col transition-colors">
         
         {/* Modal Header */}
-        <div className="p-5 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center text-white shadow-sm">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-50">
                   AI Persona Generator
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20">
                   Powered by Gemini
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Prompt any Canadian career, income, lifestyle, or family scenario into reality
               </p>
             </div>
@@ -115,7 +108,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -126,9 +119,9 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
           
           {/* Prompt Descriptor Input Box */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-800 flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
               <span>Describe Your Target Persona:</span>
-              <span className="text-[11px] font-normal text-slate-400">Natural English / Canadian details</span>
+              <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">Natural English / Canadian details</span>
             </label>
 
             <div className="relative">
@@ -137,13 +130,13 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="e.g. A 32-year-old software architect in Vancouver earning $135,000 with $60,000 in TFSA and $40,000 in RRSP, wanting to retire at age 54 with a comfortable lifestyle..."
-                className="w-full p-3 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none font-medium text-slate-800 leading-relaxed placeholder:text-slate-400"
+                className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none font-medium text-slate-800 dark:text-slate-100 leading-relaxed placeholder:text-slate-400 dark:placeholder:text-slate-600"
               />
             </div>
 
             {/* Quick Example Prompt Chips */}
             <div className="flex flex-col gap-1.5 mt-1">
-              <span className="text-[10.5px] font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-[10.5px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Or Try an Example Scenario:
               </span>
               <div className="flex flex-wrap gap-1.5">
@@ -152,7 +145,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
                     key={idx}
                     type="button"
                     onClick={() => setPrompt(p)}
-                    className="text-[11px] text-left px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200/80:bg-slate-750 text-slate-700 border border-slate-200/80 transition cursor-pointer"
+                    className="text-[11px] text-left px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 transition cursor-pointer"
                   >
                     "{p.substring(0, 48)}..."
                   </button>
@@ -166,7 +159,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
             type="button"
             onClick={handleGenerate}
             disabled={isLoading || !prompt.trim()}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isLoading ? (
               <>
@@ -183,64 +176,64 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
 
           {/* Error Message if any */}
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Generated Persona Preview Card */}
           {generatedPersona && (
-            <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/30 flex flex-col gap-3 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+            <div className="p-4 rounded-xl border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-500/10 flex flex-col gap-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-emerald-100 dark:border-emerald-500/20 pb-2">
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-950">
+                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-950 dark:text-emerald-200">
                     AI Synthesized Canadian Profile
                   </span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 uppercase">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 uppercase">
                   {generatedPersona.maritalStatus === 'married' ? 'Couple Plan' : 'Individual Plan'}
                 </span>
               </div>
 
               {/* Grid of Key Synthesized Attributes */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-mono">
-                <div className="bg-white p-2 rounded-lg border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-sans">Age & Target</span>
-                  <span className="font-bold text-slate-800">
+                <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-sans">Age & Target</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
                     Age {generatedPersona.currentAge} → {generatedPersona.retirementAge}
                   </span>
                 </div>
 
-                <div className="bg-white p-2 rounded-lg border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-sans">Salary & Province</span>
-                  <span className="font-bold text-slate-800">
+                <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-sans">Salary & Province</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">
                     {formatCur(generatedPersona.currentAnnualIncome)} ({generatedPersona.province})
                   </span>
                 </div>
 
-                <div className="bg-white p-2 rounded-lg border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-sans">RRSP / TFSA</span>
-                  <span className="font-bold text-blue-700">
+                <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-sans">RRSP / TFSA</span>
+                  <span className="font-bold text-blue-700 dark:text-blue-400">
                     {formatCur(generatedPersona.rrspBalance)} / {formatCur(generatedPersona.tfsaBalance)}
                   </span>
                 </div>
 
-                <div className="bg-white p-2 rounded-lg border border-slate-200">
-                  <span className="text-[10px] text-slate-400 block font-sans">Target Spending</span>
-                  <span className="font-bold text-emerald-700">
+                <div className="bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-sans">Target Spending</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
                     {formatCur(generatedPersona.targetRetirementSpendingToday)}/yr
                   </span>
                 </div>
               </div>
 
               {generatedPersona.maritalStatus === 'married' && generatedPersona.spouse && (
-                <div className="text-[11px] text-slate-600 bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between">
+                <div className="text-[11px] text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 p-2 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                   <span>
                     Spouse: {generatedPersona.spouse.name} (Age {generatedPersona.spouse.currentAge}, Retire @ {generatedPersona.spouse.retirementAge})
                   </span>
-                  <span className="font-mono font-bold text-slate-800">
+                  <span className="font-mono font-bold text-slate-800 dark:text-slate-100">
                     Salary: {formatCur(generatedPersona.spouse.annualIncome)}
                   </span>
                 </div>
@@ -250,7 +243,7 @@ export const AIPersonaModal: React.FC<AIPersonaModalProps> = (props) => {
               <button
                 type="button"
                 onClick={handleApply}
-                className="w-full mt-1 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+                className="w-full mt-1 py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
                 <span>Load This Persona into Simulator</span>
                 <ArrowRight className="w-4 h-4" />

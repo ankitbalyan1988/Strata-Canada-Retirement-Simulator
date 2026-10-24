@@ -39,6 +39,7 @@ export interface SimulationState {
   };
 
   // UI & Modals
+  theme: 'light' | 'dark';
   activeChartTab: 'networth' | 'cashflow';
   isExportingPdf: boolean;
   isCompareModalOpen: boolean;
@@ -48,6 +49,8 @@ export interface SimulationState {
   whatIfSettings: WhatIfSettings;
 
   // Actions
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
   setInputs: (inputs: RetirementInputs | ((prev: RetirementInputs) => RetirementInputs)) => void;
   updateField: <K extends keyof RetirementInputs>(
     field: K,
@@ -126,6 +129,18 @@ function scheduleWorkerCalculation(
 const initialSim = runRetirementSimulation(DEFAULT_INPUTS);
 const initialPulse = calculateSavingsPulse(DEFAULT_INPUTS, initialSim.summary);
 
+// Theme detection
+const getInitialTheme = (): 'light' | 'dark' => {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('strata-theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+    } catch (_) {}
+  }
+  return 'light';
+};
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   inputs: DEFAULT_INPUTS,
   activePresetId: 'canadian_average',
@@ -142,11 +157,38 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     isCalculating: false
   },
 
+  theme: getInitialTheme(),
   activeChartTab: 'networth',
   isExportingPdf: false,
   isCompareModalOpen: false,
   isAIPersonaModalOpen: false,
   whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
+
+  setTheme: (theme) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata-theme', theme);
+      } catch (_) {}
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    }
+    set({ theme });
+  },
+
+  toggleTheme: () => {
+    const current = get().theme;
+    const next = current === 'dark' ? 'light' : 'dark';
+    get().setTheme(next);
+  },
 
   setInputs: (newInputs) => {
     set((state) => ({

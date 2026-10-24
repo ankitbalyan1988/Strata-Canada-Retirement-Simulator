@@ -26,7 +26,7 @@ export interface PdfExportOptions {
 }
 
 /**
- * Brand color palette matching the MapleRetire UI
+ * Brand color palette matching the Strata UI
  */
 const BRAND = {
   darkSlate: [15, 23, 42] as [number, number, number],   // #0F172A
@@ -212,14 +212,11 @@ function drawPageHeader(
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-  doc.text('Maple', 40, 24);
+  doc.text('Strata', 40, 24);
 
-  const mapleWidth = doc.getTextWidth('Maple');
-  doc.setTextColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
-  doc.text('Retire', 40 + mapleWidth, 24);
+  const brandWidth = doc.getTextWidth('Strata');
 
   // Separator & Page Title
-  const brandWidth = mapleWidth + doc.getTextWidth('Retire');
   doc.setTextColor(BRAND.slate500[0], BRAND.slate500[1], BRAND.slate500[2]);
   doc.text(' | ', 40 + brandWidth, 24);
 
@@ -555,18 +552,14 @@ export function generateRetirementPdfReport(
     doc.rect(0, 74, pageWidth, 3, 'F');
 
     // Brand Title Top Left
-    doc.setFontSize(20);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-    doc.text('Maple', 40, 36);
-
-    const mapleWidth = doc.getTextWidth('Maple');
-    doc.setTextColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
-    doc.text('Retire', 40 + mapleWidth, 36);
+    doc.text('Strata', 40, 36);
 
     // Pill badge: Canada
-    const badgeX = 40 + mapleWidth + doc.getTextWidth('Retire') + 8;
-    doc.setFillColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
+    const badgeX = 40 + doc.getTextWidth('Strata') + 10;
+    doc.setFillColor(BRAND.emerald[0], BRAND.emerald[1], BRAND.emerald[2]);
     doc.roundedRect(badgeX, 23, 40, 15, 3, 3, 'F');
     doc.setFontSize(7.5);
     doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
@@ -1395,15 +1388,13 @@ export function generateRetirementPdfReport(
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-        doc.text('Maple', 35, 23);
+        doc.text('Strata', 35, 23);
 
-        const mWidth = doc.getTextWidth('Maple');
-        doc.setTextColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
-        doc.text('Retire', 35 + mWidth, 23);
+        const mWidth = doc.getTextWidth('Strata');
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(BRAND.slate300[0], BRAND.slate300[1], BRAND.slate300[2]);
-        doc.text(' | Annual Simulation Ledger & Cash Flow Projections', 35 + mWidth + doc.getTextWidth('Retire'), 23);
+        doc.text(' | Annual Simulation Ledger & Cash Flow Projections', 35 + mWidth, 23);
 
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'bold');
@@ -1430,7 +1421,7 @@ export function generateRetirementPdfReport(
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(BRAND.slate500[0], BRAND.slate500[1], BRAND.slate500[2]);
     doc.text(
-      'MapleRetire • Canadian Retirement Wealth Advisory Dossier • CRA 2025/2026 Indexed • Confidential',
+      'Strata • Canadian Retirement Wealth Advisory Dossier • CRA 2025/2026 Indexed • Confidential',
       35,
       pageHeight - 12
     );
@@ -1442,5 +1433,5 @@ export function generateRetirementPdfReport(
 
   // Save PDF with descriptive filename
   const cleanClient = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  doc.save(`MapleRetire_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`);
+  doc.save(`Strata_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`);
 }

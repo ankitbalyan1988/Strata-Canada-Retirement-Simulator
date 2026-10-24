@@ -347,24 +347,24 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col transition duration-200">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden flex flex-col transition duration-200">
       
       {/* 1. Header & Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-indigo-50 text-indigo-700">
+            <span className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Table className="w-4 h-4" />
             </span>
-            <h3 className="font-bold text-slate-900 text-base">
+            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">
               Annual Simulation Ledger & Milestone Schedule
             </h3>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
             <span>Year-by-year compounding balances, living expenses crossover, coasting viability, taxes & pensions</span>
-            <span className="hidden md:inline text-slate-300">•</span>
-            <span className="text-indigo-600 font-medium inline-flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-indigo-500" />
+            <span className="hidden md:inline text-slate-300 dark:text-slate-600">•</span>
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-emerald-500" />
               <span>Click any number or milestone card to inspect actuarial formulas</span>
             </span>
           </p>
@@ -376,41 +376,41 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           <button
             type="button"
             onClick={() => setIsAiOpen(prev => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs border ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs border ${
               isAiOpen
-                ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-600 text-white border-transparent shadow-md ring-2 ring-indigo-400/30'
-                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200 hover:border-indigo-300'
+                ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs ring-2 ring-emerald-400/30'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/80'
             }`}
             title="Ask AI to explain any number, calculation formula, or milestone in this table"
           >
-            <Sparkles className={`w-3.5 h-3.5 ${isAiOpen ? 'text-amber-300 animate-pulse' : 'text-indigo-600'}`} />
+            <Sparkles className={`w-3.5 h-3.5 ${isAiOpen ? 'text-amber-300 animate-pulse' : 'text-emerald-600 dark:text-emerald-400'}`} />
             <span>Ask AI</span>
             <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-semibold ${
-              isAiOpen ? 'bg-white/20 text-white' : 'bg-indigo-200/70 text-indigo-900'
+              isAiOpen ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
             }`}>
               Formulas & Help
             </span>
           </button>
 
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
               placeholder="Search age, milestone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 pr-3 py-1 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400 w-32 sm:w-40"
+              className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 w-32 sm:w-40"
             />
           </div>
 
-          <div className="flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs font-semibold">
+          <div className="flex rounded-xl border border-slate-200 dark:border-slate-700/80 p-0.5 bg-slate-100 dark:bg-slate-800 text-xs font-semibold">
             <button
               type="button"
               onClick={() => setFilterMode('milestones')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-lg transition ${
                 filterMode === 'milestones'
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Milestones ({filteredData.length})
@@ -418,10 +418,10 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <button
               type="button"
               onClick={() => setFilterMode('retirement')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-lg transition ${
                 filterMode === 'retirement'
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               Retirement
@@ -429,10 +429,10 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <button
               type="button"
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-md transition ${
+              className={`px-2.5 py-1 rounded-lg transition ${
                 filterMode === 'all'
-                  ? 'bg-white text-slate-900 shadow-xs font-bold'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               All Years ({yearlyResults.length})
@@ -445,16 +445,16 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             onClick={handleExportExcel}
             disabled={isExporting}
             title={`Export ${getModeLabel()} view to Excel spreadsheet with live dynamic formulas`}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 shadow-2xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/20 shadow-xs transition active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {isExporting ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700 dark:text-emerald-400" />
                 <span>Exporting...</span>
               </>
             ) : (
               <>
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Export Excel</span>
               </>
             )}
@@ -463,13 +463,13 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
       </div>
 
       {/* 2. Key Milestone Schedule Showcase Cards (Top Dashboard) */}
-      <div className="bg-slate-50/80 p-3 sm:p-4 border-b border-slate-200">
+      <div className="bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Target className="w-3.5 h-3.5 text-indigo-600" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Strategic Milestone Schedule & Velocity Markers</span>
           </span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
             Click any milestone card to highlight and jump to that year in the ledger
           </span>
         </div>
@@ -482,26 +482,26 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             onClick={() => summary?.crossoverAge && scrollToAge(summary.crossoverAge)}
             className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
               summary?.crossoverAge
-                ? 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200/90 text-emerald-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-emerald-800 flex items-center gap-1">
-                <Zap className="w-3 h-3 text-emerald-600 fill-emerald-500" />
+              <span className="text-[10.5px] font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 fill-emerald-500" />
                 <span>Crossover Point</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-emerald-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 {summary?.crossoverAge ? `Age ${summary.crossoverAge}` : 'Post-Plan'}
               </div>
-              <div className="text-[10px] text-emerald-700 font-medium">
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
                 {summary?.crossoverAge ? 'Returns > Expenses' : 'Requires higher capital'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.crossoverAge ? `+${formatCur(summary.crossoverInvestmentGrowth)}/yr return` : 'Ongoing saving'}
             </div>
           </button>
@@ -512,28 +512,28 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             onClick={() => summary?.coastFireAge && scrollToAge(summary.coastFireAge)}
             className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
               summary?.coastFireAge !== undefined && summary?.coastFireAge !== null
-                ? 'bg-cyan-50/70 hover:bg-cyan-100/80 border-cyan-200/90 text-cyan-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20 border-cyan-200 dark:border-cyan-500/20 text-cyan-950 dark:text-cyan-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-cyan-800 flex items-center gap-1">
-                <Anchor className="w-3 h-3 text-cyan-600" />
+              <span className="text-[10.5px] font-bold text-cyan-800 dark:text-cyan-400 flex items-center gap-1">
+                <Anchor className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                 <span>Coast FIRE</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-cyan-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 {summary?.coastFireAge !== undefined && summary?.coastFireAge !== null
                   ? (summary.coastFireAge === inputs?.currentAge ? 'Viable Today!' : `Age ${summary.coastFireAge}`)
                   : 'Requires Work'}
               </div>
-              <div className="text-[10px] text-cyan-700 font-medium">
+              <div className="text-[10px] text-cyan-700 dark:text-cyan-400 font-medium">
                 {summary?.coastFireAge !== undefined && summary?.coastFireAge !== null ? '$0 Future Savings' : 'Keep contributing'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.coastFireAge !== undefined && summary?.coastFireAge !== null ? `${formatCur(summary.coastFireNetWorth)} invested` : 'N/A'}
             </div>
           </button>
@@ -544,26 +544,26 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             onClick={() => summary?.millionaireAge && scrollToAge(summary.millionaireAge)}
             className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
               summary?.millionaireAge
-                ? 'bg-blue-50/70 hover:bg-blue-100/80 border-blue-200/90 text-blue-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-cyan-50 dark:bg-cyan-500/10 hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20 border-cyan-200 dark:border-cyan-500/20 text-cyan-950 dark:text-cyan-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-blue-800 flex items-center gap-1">
-                <Gem className="w-3 h-3 text-blue-600" />
+              <span className="text-[10.5px] font-bold text-cyan-800 dark:text-cyan-400 flex items-center gap-1">
+                <Gem className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                 <span>$1M Net Worth</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-blue-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 {summary?.millionaireAge ? `Age ${summary.millionaireAge}` : 'N/A'}
               </div>
-              <div className="text-[10px] text-blue-700 font-medium">
+              <div className="text-[10px] text-cyan-700 dark:text-cyan-400 font-medium">
                 {summary?.millionaireAge ? '7-Figure Portfolio' : 'Below $1M'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.millionaireAge ? '$1,000,000+ Net Worth' : 'Target'}
             </div>
           </button>
@@ -574,26 +574,26 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             onClick={() => summary?.mortgagePayoffAge && scrollToAge(summary.mortgagePayoffAge)}
             className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
               summary?.mortgagePayoffAge
-                ? 'bg-teal-50/70 hover:bg-teal-100/80 border-teal-200/90 text-teal-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-teal-800 flex items-center gap-1">
-                <Home className="w-3 h-3 text-teal-600" />
+              <span className="text-[10.5px] font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                <Home className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                 <span>Mortgage Free</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-teal-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 {summary?.mortgagePayoffAge ? `Age ${summary.mortgagePayoffAge}` : (inputs?.realEstate?.ownsHome ? 'Paid Off' : 'No Mortgage')}
               </div>
-              <div className="text-[10px] text-teal-700 font-medium">
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
                 {summary?.mortgagePayoffAge ? 'Debt Eliminated' : 'No loan active'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               $0 Loan Balance
             </div>
           </button>
@@ -602,24 +602,24 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           <button
             type="button"
             onClick={() => scrollToAge(retirementAge)}
-            className="text-left p-2.5 rounded-xl border border-rose-200/90 bg-rose-50/70 hover:bg-rose-100/80 text-rose-950 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            className="text-left p-2.5 rounded-xl border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 text-rose-950 dark:text-rose-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-rose-800 flex items-center gap-1">
-                <Target className="w-3 h-3 text-rose-600" />
+              <span className="text-[10.5px] font-bold text-rose-800 dark:text-rose-400 flex items-center gap-1">
+                <Target className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                 <span>Retire Target</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-rose-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-rose-600 dark:text-rose-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 Age {retirementAge}
               </div>
-              <div className="text-[10px] text-rose-700 font-medium">
+              <div className="text-[10px] text-rose-700 dark:text-rose-400 font-medium">
                 Decumulation Starts
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.netWorthAtRetirement ? `${formatCur(summary.netWorthAtRetirement)} nest egg` : 'Starting wealth'}
             </div>
           </button>
@@ -628,24 +628,24 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           <button
             type="button"
             onClick={() => summary?.peakNetWorthAge && scrollToAge(summary.peakNetWorthAge)}
-            className="text-left p-2.5 rounded-xl border border-indigo-200/90 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-950 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            className="text-left p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 text-indigo-950 dark:text-indigo-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-indigo-800 flex items-center gap-1">
-                <Mountain className="w-3 h-3 text-indigo-600" />
+              <span className="text-[10.5px] font-bold text-indigo-800 dark:text-indigo-400 flex items-center gap-1">
+                <Mountain className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>Peak Wealth</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-indigo-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-indigo-600 dark:text-indigo-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
                 {summary?.peakNetWorthAge ? `Age ${summary.peakNetWorthAge}` : 'Apex'}
               </div>
-              <div className="text-[10px] text-indigo-700 font-medium">
+              <div className="text-[10px] text-indigo-700 dark:text-indigo-400 font-medium">
                 Lifetime Maximum
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.peakNetWorth ? formatCur(summary.peakNetWorth) : 'Peak Assets'}
             </div>
           </button>
@@ -914,29 +914,29 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
       {/* 4. Table Data Container */}
       <div ref={tableContainerRef} className="overflow-x-auto max-h-[500px]">
         <table className="w-full text-left text-xs border-collapse">
-          <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
+          <thead className="bg-slate-50 dark:bg-slate-800/90 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="py-2.5 px-3 min-w-[190px]">Age / Milestone Phase</th>
               <th className="py-2.5 px-3 text-right">RRSP / RRIF</th>
               <th className="py-2.5 px-3 text-right">TFSA</th>
               <th className="py-2.5 px-3 text-right">FHSA</th>
               <th className="py-2.5 px-3 text-right">Non-Reg</th>
-              <th className="py-2.5 px-3 text-right text-orange-800">Home Equity</th>
-              <th className="py-2.5 px-3 text-right font-bold text-slate-900 bg-slate-100/50">Total Net Worth</th>
-              <th className="py-2.5 px-3 text-right font-bold text-emerald-800 bg-emerald-50/50">Inv. Returns</th>
+              <th className="py-2.5 px-3 text-right text-orange-600 dark:text-orange-400">Home Equity</th>
+              <th className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-100/50 dark:bg-slate-800/40">Total Net Worth</th>
+              <th className="py-2.5 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10">Inv. Returns</th>
               <th className="py-2.5 px-3 text-right">CPP</th>
               <th className="py-2.5 px-3 text-right">OAS (Net)</th>
               <th className="py-2.5 px-3 text-right">Withdrawals</th>
               <th className="py-2.5 px-3 text-right">Tax Paid</th>
-              <th className="py-2.5 px-3 text-right font-bold text-slate-900">Spendable Cash</th>
-              <th className="py-2.5 px-3 text-right text-slate-500">Living Target</th>
+              <th className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">Spendable Cash</th>
+              <th className="py-2.5 px-3 text-right text-slate-400 dark:text-slate-500">Living Target</th>
               <th className="py-2.5 px-3 min-w-[260px]">Milestone Schedule Notes</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={15} className="py-8 text-center text-slate-400 font-sans text-xs">
+                <td colSpan={15} className="py-8 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
                   No simulation years match the current search or filter criteria.
                 </td>
               </tr>
@@ -962,29 +962,31 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   key={virtualRow.key}
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
-                  className={`hover:bg-slate-50/80 transition-all ${
+                  className={`hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all ${
                     isHighlighted
-                      ? 'bg-indigo-100/90 ring-2 ring-indigo-500 z-10'
+                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 ring-2 ring-emerald-500 z-10'
                       : row.isCrossoverMilestone
-                      ? 'bg-emerald-50/60 font-semibold'
+                      ? 'bg-emerald-50/70 dark:bg-emerald-500/10 font-semibold text-emerald-950 dark:text-emerald-300'
                       : row.isCoastFireMilestone
-                      ? 'bg-cyan-50/60 font-semibold'
+                      ? 'bg-cyan-50/70 dark:bg-cyan-500/10 font-semibold text-cyan-950 dark:text-cyan-300'
                       : isRetirementMilestone
-                      ? 'bg-rose-50/70 font-semibold'
+                      ? 'bg-rose-50/70 dark:bg-rose-500/10 font-semibold text-rose-950 dark:text-rose-300'
                       : isRrifMandatory
-                      ? 'bg-amber-50/50'
+                      ? 'bg-amber-50/50 dark:bg-amber-500/10'
                       : row.isRetired
-                      ? 'bg-slate-50/30'
-                      : 'bg-white'
+                      ? 'bg-slate-50/60 dark:bg-slate-800/50'
+                      : virtualRow.index % 2 === 1
+                      ? 'bg-slate-50/40 dark:bg-slate-800/40'
+                      : 'bg-white dark:bg-slate-900'
                   }`}
                 >
                   {/* Age & Milestone Phase Badges */}
                   <td className="py-2.5 px-3 whitespace-nowrap font-sans">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-900 font-mono text-xs">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs">
                         Age {row.age}
                         {row.isCouple && row.spouseAge !== undefined && (
-                          <span className="text-[10px] text-slate-500 font-normal"> (Sp {row.spouseAge})</span>
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal"> (Sp {row.spouseAge})</span>
                         )}
                       </span>
 
@@ -996,12 +998,12 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                         </span>
                       )}
                       {!row.isRetired && !isRetirementMilestone && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 text-slate-600">
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                           Work
                         </span>
                       )}
                       {row.isRetired && !isRetirementMilestone && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
                           Retire
                         </span>
                       )}
@@ -1010,9 +1012,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isCrossoverMilestone && (
                         <span 
                           title={`Crossover Milestone: Returns ($${Math.round(row.totalInvestmentGrowth).toLocaleString()}/yr) outgrow living expenses ($${Math.round(row.targetSpendingNominal).toLocaleString()}/yr)`}
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs animate-pulse"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1 shadow-2xs animate-pulse"
                         >
-                          <Zap className="w-2.5 h-2.5 text-emerald-600 fill-emerald-500" />
+                          <Zap className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 fill-emerald-500" />
                           <span>Crossover</span>
                         </span>
                       )}
@@ -1021,9 +1023,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isCoastFireMilestone && (
                         <span 
                           title="Coast FIRE: Zero further contributions needed to 100% fund retirement living expenses"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-100 text-cyan-800 border border-cyan-300 flex items-center gap-1 shadow-2xs"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1 shadow-2xs"
                         >
-                          <Anchor className="w-2.5 h-2.5 text-cyan-600" />
+                          <Anchor className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
                           <span>Coast FIRE</span>
                         </span>
                       )}
@@ -1032,9 +1034,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isMillionaireMilestone && (
                         <span 
                           title="Millionaire Milestone: Total Net Worth surpasses $1,000,000"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-800 border border-blue-300 flex items-center gap-1"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1"
                         >
-                          <Gem className="w-2.5 h-2.5 text-blue-600" />
+                          <Gem className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
                           <span>$1M NW</span>
                         </span>
                       )}
@@ -1043,9 +1045,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isMortgageFreeMilestone && (
                         <span 
                           title="Mortgage Free: Home loan amortized to $0 balance"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-teal-100 text-teal-800 border border-teal-300 flex items-center gap-1"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"
                         >
-                          <Home className="w-2.5 h-2.5 text-teal-600" />
+                          <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
                           <span>Debt Free</span>
                         </span>
                       )}
@@ -1054,9 +1056,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isPeakWealthMilestone && (
                         <span 
                           title="Peak Lifetime Wealth Apex"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-purple-100 text-purple-800 border border-purple-300 flex items-center gap-1"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1"
                         >
-                          <Mountain className="w-2.5 h-2.5 text-purple-600" />
+                          <Mountain className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
                           <span>Peak Wealth</span>
                         </span>
                       )}
@@ -1070,7 +1072,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                           setAiQuestion(q);
                           handleAskAi(q, row.age);
                         }}
-                        className="opacity-40 hover:opacity-100 p-0.5 rounded text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 transition ml-auto"
+                        className="opacity-40 hover:opacity-100 p-0.5 rounded text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition ml-auto"
                         title={`Ask AI to explain Age ${row.age} calculations`}
                       >
                         <Sparkles className="w-3 h-3" />
@@ -1082,7 +1084,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('RRSP / RRIF', row.rrspBalance, row.age)}
                     title={`Click to ask AI how RRSP/RRIF balance (${formatCur(row.rrspBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-blue-700 cursor-pointer hover:bg-blue-50/80 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.rrspBalance)}
                   </td>
@@ -1091,7 +1093,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('TFSA', row.tfsaBalance, row.age)}
                     title={`Click to ask AI how TFSA balance (${formatCur(row.tfsaBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-emerald-700 cursor-pointer hover:bg-emerald-50/80 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.tfsaBalance)}
                   </td>
@@ -1100,7 +1102,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('FHSA', row.fhsaBalance, row.age)}
                     title={`Click to ask AI how FHSA balance (${formatCur(row.fhsaBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-amber-700 cursor-pointer hover:bg-amber-50/80 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.fhsaBalance)}
                   </td>
@@ -1109,7 +1111,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('Non-Reg', row.nonRegBalance, row.age)}
                     title={`Click to ask AI how Non-Registered balance (${formatCur(row.nonRegBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-purple-700 cursor-pointer hover:bg-purple-50/80 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400 cursor-pointer hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.nonRegBalance)}
                   </td>
@@ -1122,7 +1124,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       }
                     }}
                     title={row.realEstateShare > 0 ? `Click to ask AI how Home Equity (${formatCur(row.realEstateShare)}) was calculated at Age ${row.age}` : undefined}
-                    className={`py-2.5 px-3 text-right text-orange-700 font-medium select-none ${row.realEstateShare > 0 ? 'cursor-pointer hover:bg-orange-50/80 hover:underline transition-colors' : ''}`}
+                    className={`py-2.5 px-3 text-right text-orange-600 dark:text-orange-400 font-medium select-none ${row.realEstateShare > 0 ? 'cursor-pointer hover:bg-orange-50/80 dark:hover:bg-orange-950/40 hover:underline transition-colors' : ''}`}
                   >
                     {row.realEstateShare > 0 ? formatCur(row.realEstateShare) : row.homeSoldThisYear ? 'Sold' : '-'}
                   </td>
@@ -1131,19 +1133,19 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('Total Net Worth', row.totalNetWorth, row.age)}
                     title={`Click to ask AI how Total Net Worth (${formatCur(row.totalNetWorth)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right font-bold text-slate-900 bg-slate-100/30 cursor-pointer hover:bg-indigo-50/80 hover:text-indigo-700 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-100/40 dark:bg-slate-800/40 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-300 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.totalNetWorth)}
                   </td>
 
-                  {/* NEW: Investment Returns / Compounding Growth */}
+                  {/* Investment Returns / Compounding Growth */}
                   <td 
                     onClick={() => handleCellClick('Investment Returns', row.totalInvestmentGrowth, row.age)}
                     title={`Click to ask AI how Investment Returns (${formatCur(row.totalInvestmentGrowth)}) were generated at Age ${row.age}`}
                     className={`py-2.5 px-3 text-right font-bold cursor-pointer transition-colors select-none ${
                       row.totalInvestmentGrowth >= row.targetSpendingNominal && row.targetSpendingNominal > 0
-                        ? 'text-emerald-700 bg-emerald-50/60 hover:bg-emerald-100/90 underline decoration-emerald-400'
-                        : 'text-emerald-600/90 hover:bg-emerald-50/60 hover:underline'
+                        ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-500/10 hover:bg-emerald-100/90 dark:hover:bg-emerald-500/20 underline decoration-emerald-400'
+                        : 'text-emerald-600/90 dark:text-emerald-400 hover:bg-emerald-50/60 dark:hover:bg-emerald-500/10 hover:underline'
                     }`}
                   >
                     +{formatCur(row.totalInvestmentGrowth)}
@@ -1153,7 +1155,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('CPP', row.cppIncome, row.age)}
                     title={`Click to ask AI how CPP pension (${formatCur(row.cppIncome)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-600 cursor-pointer hover:bg-slate-100 hover:text-slate-900 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
                   >
                     {formatCur(row.cppIncome)}
                   </td>
@@ -1162,7 +1164,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('OAS (Net)', row.oasNetIncome, row.age)}
                     title={`Click to ask AI how Net OAS pension (${formatCur(row.oasNetIncome)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-600 cursor-pointer hover:bg-slate-100 hover:text-slate-900 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
                   >
                     {formatCur(row.oasNetIncome)}
                   </td>
@@ -1171,7 +1173,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('Withdrawals', row.totalWithdrawals, row.age)}
                     title={`Click to ask AI how withdrawals (${formatCur(row.totalWithdrawals)}) were calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-700 cursor-pointer hover:bg-slate-100 hover:text-slate-900 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
                   >
                     {formatCur(row.totalWithdrawals)}
                   </td>
@@ -1180,7 +1182,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('Tax Paid', row.totalTaxPaid, row.age)}
                     title={`Click to ask AI how Canadian tax paid (${formatCur(row.totalTaxPaid)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-rose-600 font-medium cursor-pointer hover:bg-rose-50/80 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400 font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.totalTaxPaid)}
                   </td>
@@ -1189,13 +1191,13 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   <td 
                     onClick={() => handleCellClick('Spendable Cash', row.netSpendableCashflow, row.age)}
                     title={`Click to ask AI how Net Spendable Cashflow (${formatCur(row.netSpendableCashflow)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right font-bold text-slate-900 cursor-pointer hover:bg-indigo-50/80 hover:text-indigo-700 hover:underline transition-colors select-none"
+                    className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors select-none"
                   >
                     {formatCur(row.netSpendableCashflow)}
                   </td>
 
                   {/* Living Target (Expenses) */}
-                  <td className="py-2.5 px-3 text-right text-slate-500 font-mono">
+                  <td className="py-2.5 px-3 text-right text-slate-500 dark:text-slate-400 font-mono">
                     {formatCur(row.targetSpendingNominal)}
                   </td>
 
@@ -1216,18 +1218,18 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                               key={nIdx}
                               className={`p-1 px-1.5 rounded-md text-[10.5px] ${
                                 isCrossover
-                                  ? 'bg-emerald-50 text-emerald-900 font-semibold border border-emerald-200'
+                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
                                   : isCoast
-                                  ? 'bg-cyan-50 text-cyan-900 font-semibold border border-cyan-200'
+                                  ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
                                   : isMillionaire
-                                  ? 'bg-blue-50 text-blue-900 font-semibold border border-blue-200'
+                                  ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
                                   : isMortgage
-                                  ? 'bg-teal-50 text-teal-900 font-semibold border border-teal-200'
+                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
                                   : isRetire
-                                  ? 'bg-rose-50 text-rose-900 font-semibold border border-rose-200'
+                                  ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-900 dark:text-rose-400 font-semibold border border-rose-200 dark:border-rose-500/20'
                                   : isPeak
-                                  ? 'bg-purple-50 text-purple-900 font-semibold border border-purple-200'
-                                  : 'text-slate-700 font-medium'
+                                  ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-500/20'
+                                  : 'text-slate-700 dark:text-slate-300 font-medium'
                               }`}
                             >
                               {note}
@@ -1236,7 +1238,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                         })}
                       </div>
                     ) : (
-                      <span className="text-slate-400">-</span>
+                      <span className="text-slate-400 dark:text-slate-500">-</span>
                     )}
                   </td>
                 </tr>

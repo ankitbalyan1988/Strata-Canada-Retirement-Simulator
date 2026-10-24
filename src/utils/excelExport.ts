@@ -17,8 +17,8 @@ export async function exportMilestoneTableToExcel({
   inputs
 }: ExcelExportOptions): Promise<void> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'MapleRetire Canadian Wealth Planner';
-  workbook.lastModifiedBy = 'MapleRetire';
+  workbook.creator = 'Strata Canadian Wealth Platform';
+  workbook.lastModifiedBy = 'Strata';
   workbook.created = new Date();
   workbook.modified = new Date();
 
@@ -60,7 +60,7 @@ export async function exportMilestoneTableToExcel({
   // 2. Title Block
   worksheet.mergeCells('A1:O1');
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = '🍁 MapleRetire — Canadian Retirement Simulation & Annual Ledger';
+  titleCell.value = 'Strata — Canadian Wealth & Retirement Simulation Annual Ledger';
   titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.fill = {
     type: 'pattern',
@@ -93,7 +93,7 @@ export async function exportMilestoneTableToExcel({
   // Explanation note for formula
   worksheet.mergeCells('A4:O4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = '💡 MapleRetire Dynamic Model: ALL cells across Age, Sim Year, Phase, RRSP, TFSA, FHSA, Non-Reg, Home Equity, Net Worth, CPP, OAS, Withdrawals, Taxes, and Spendable Cash contain live Excel formulas. Every cell dynamically recalculates when values are updated.';
+  noteCell.value = '💡 Strata Dynamic Model: ALL cells across Age, Sim Year, Phase, RRSP, TFSA, FHSA, Non-Reg, Home Equity, Net Worth, CPP, OAS, Withdrawals, Taxes, and Spendable Cash contain live Excel formulas. Every cell dynamically recalculates when values are updated.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -526,7 +526,7 @@ export async function exportMilestoneTableToExcel({
   const anchor = document.createElement('a');
   const safeModeName = filterMode.replace(/\s+/g, '_');
   anchor.href = url;
-  anchor.download = `MapleRetire_${safeModeName}_Ledger_${todayStr}.xlsx`;
+  anchor.download = `Strata_${safeModeName}_Ledger_${todayStr}.xlsx`;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);

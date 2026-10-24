@@ -328,10 +328,10 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden flex flex-col gap-0 transition-colors">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col gap-0 transition-colors">
       
       {/* 1. Header Bar & Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900 text-white">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900 dark:bg-slate-950 text-white">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-cyan-950/50">
             <Plane className="w-5 h-5" />
@@ -437,13 +437,13 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
       </div>
 
       {/* 3. Key Milestone Schedule Showcase Cards (Top Dashboard) */}
-      <div className="bg-slate-50/90 p-3 sm:p-4 border-b border-slate-200">
+      <div className="bg-slate-50/90 dark:bg-slate-800/50 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Target className="w-3.5 h-3.5 text-cyan-600" />
+          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+            <Target className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
             <span>Expat Strategic Milestone Schedule & Velocity Markers</span>
           </span>
-          <span className="text-[11px] text-slate-500 hidden sm:inline">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:inline">
             Click any milestone card to jump and highlight that year in the expat ledger
           </span>
         </div>
@@ -454,28 +454,28 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.crossoverAge && scrollToAge(summary.crossoverAge)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
+            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
               summary?.crossoverAge
-                ? 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200/90 text-emerald-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200/90 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-emerald-800 flex items-center gap-1">
-                <Zap className="w-3 h-3 text-emerald-600 fill-emerald-500" />
+              <span className="text-[10.5px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
+                <Zap className="w-3 h-3 text-emerald-600 dark:text-emerald-400 fill-emerald-500" />
                 <span>Crossover Point</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-emerald-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 {summary?.crossoverAge ? `Age ${summary.crossoverAge}` : 'Post-Plan'}
               </div>
-              <div className="text-[10px] text-emerald-700 font-medium">
+              <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
                 {summary?.crossoverAge ? 'Returns > Expenses' : 'Ongoing saving'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.crossoverAge ? `+${formatCad(summary.crossoverInvestmentGrowth)}/yr` : '—'}
             </div>
           </button>
@@ -484,28 +484,28 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.coastFireAge && scrollToAge(summary.coastFireAge)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
+            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
               summary?.coastFireAge !== undefined && summary?.coastFireAge !== null
-                ? 'bg-cyan-50/70 hover:bg-cyan-100/80 border-cyan-200/90 text-cyan-950 shadow-2xs hover:shadow-xs'
-                : 'bg-slate-100/60 border-slate-200 text-slate-500 opacity-70'
+                ? 'bg-cyan-50/70 dark:bg-cyan-500/10 hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20 border-cyan-200/90 dark:border-cyan-500/20 text-cyan-950 dark:text-cyan-300 shadow-2xs hover:shadow-xs'
+                : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-cyan-800 flex items-center gap-1">
-                <Anchor className="w-3 h-3 text-cyan-600" />
+              <span className="text-[10.5px] font-bold text-cyan-800 dark:text-cyan-300 flex items-center gap-1">
+                <Anchor className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                 <span>Coast FIRE</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-cyan-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-cyan-600 dark:text-cyan-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 {summary?.coastFireAge ? `Age ${summary.coastFireAge}` : 'Age 65+'}
               </div>
-              <div className="text-[10px] text-cyan-700 font-medium">
+              <div className="text-[10px] text-cyan-700 dark:text-cyan-400 font-medium">
                 Zero-Contribution
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.coastFireNetWorth ? `${formatCad(summary.coastFireNetWorth)} CAD` : '—'}
             </div>
           </button>
@@ -514,24 +514,24 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(departureAge)}
-            className="text-left p-2.5 rounded-xl border border-cyan-300 bg-gradient-to-br from-cyan-50 to-blue-50 text-cyan-950 hover:bg-cyan-100/90 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            className="text-left p-2.5 rounded-xl border border-cyan-300 dark:border-cyan-500/30 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/40 dark:to-blue-950/30 text-cyan-950 dark:text-cyan-200 hover:bg-cyan-100/90 dark:hover:bg-cyan-900/40 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-cyan-900 flex items-center gap-1">
-                <Plane className="w-3 h-3 text-cyan-700" />
+              <span className="text-[10.5px] font-bold text-cyan-900 dark:text-cyan-300 flex items-center gap-1">
+                <Plane className="w-3 h-3 text-cyan-700 dark:text-cyan-400" />
                 <span>Emigration Day</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-cyan-700 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-cyan-700 dark:text-cyan-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 Age {departureAge} ({departureYear})
               </div>
-              <div className="text-[10px] text-cyan-800 font-medium truncate">
+              <div className="text-[10px] text-cyan-800 dark:text-cyan-300 font-medium truncate">
                 {destinationCountry.flag} Move to {destinationCountry.name}
               </div>
             </div>
-            <div className="text-[9.5px] text-cyan-900 font-mono font-bold truncate">
+            <div className="text-[9.5px] text-cyan-900 dark:text-cyan-300 font-mono font-bold truncate">
               {departureTaxEstimateCAD === 0 ? '$0 Exit Tax' : `Exit Tax: ${formatCad(departureTaxEstimateCAD)}`}
             </div>
           </button>
@@ -540,28 +540,28 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(65)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
+            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
               qualifiesForLifetimeWorldwideOAS
-                ? 'bg-emerald-50/70 hover:bg-emerald-100/80 border-emerald-200/90 text-emerald-950'
-                : 'bg-rose-50/70 hover:bg-rose-100/80 border-rose-200/90 text-rose-950'
+                ? 'bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200/90 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300'
+                : 'bg-rose-50/70 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 border-rose-200/90 dark:border-rose-500/20 text-rose-950 dark:text-rose-300'
             }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className={`text-[10.5px] font-bold flex items-center gap-1 ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-800' : 'text-rose-800'}`}>
+              <span className={`text-[10.5px] font-bold flex items-center gap-1 ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300'}`}>
                 <Landmark className="w-3 h-3" />
                 <span>OAS Abroad (A65)</span>
               </span>
               <ArrowUpRight className="w-3 h-3 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 {qualifiesForLifetimeWorldwideOAS ? 'Lifetime OAS' : 'OAS Lost'}
               </div>
-              <div className={`text-[10px] font-medium truncate ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-700' : 'text-rose-700'}`}>
+              <div className={`text-[10px] font-medium truncate ${qualifiesForLifetimeWorldwideOAS ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                 {qualifiesForLifetimeWorldwideOAS ? '>= 20 yrs satisfied' : '< 20 yrs (stops in 6 mo)'}
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {expatInputs.yearsLivedInCanadaAfter18} adult years in Canada
             </div>
           </button>
@@ -570,24 +570,24 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(retirementAge)}
-            className="text-left p-2.5 rounded-xl border border-rose-200/90 bg-rose-50/70 hover:bg-rose-100/80 text-rose-950 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            className="text-left p-2.5 rounded-xl border border-rose-200/90 dark:border-rose-500/20 bg-rose-50/70 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 text-rose-950 dark:text-rose-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-rose-800 flex items-center gap-1">
-                <Target className="w-3 h-3 text-rose-600" />
+              <span className="text-[10.5px] font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1">
+                <Target className="w-3 h-3 text-rose-600 dark:text-rose-400" />
                 <span>Retire Target</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-rose-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-rose-600 dark:text-rose-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 Age {retirementAge}
               </div>
-              <div className="text-[10px] text-rose-700 font-medium">
+              <div className="text-[10px] text-rose-700 dark:text-rose-400 font-medium">
                 Decumulation Phase
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.netWorthAtRetirement ? `${formatCad(summary.netWorthAtRetirement)} CAD` : 'Starting wealth'}
             </div>
           </button>
@@ -596,24 +596,24 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.peakNetWorthAge && scrollToAge(summary.peakNetWorthAge)}
-            className="text-left p-2.5 rounded-xl border border-indigo-200/90 bg-indigo-50/70 hover:bg-indigo-100/80 text-indigo-950 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            className="text-left p-2.5 rounded-xl border border-indigo-200/90 dark:border-indigo-500/20 bg-indigo-50/70 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 text-indigo-950 dark:text-indigo-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
           >
             <div className="flex items-center justify-between gap-1 w-full">
-              <span className="text-[10.5px] font-bold text-indigo-800 flex items-center gap-1">
-                <Mountain className="w-3 h-3 text-indigo-600" />
+              <span className="text-[10.5px] font-bold text-indigo-800 dark:text-indigo-300 flex items-center gap-1">
+                <Mountain className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                 <span>Peak Wealth</span>
               </span>
-              <ArrowUpRight className="w-3 h-3 text-indigo-600 opacity-60 group-hover:opacity-100 transition" />
+              <ArrowUpRight className="w-3 h-3 text-indigo-600 dark:text-indigo-400 opacity-60 group-hover:opacity-100 transition" />
             </div>
             <div className="my-1">
-              <div className="text-sm font-extrabold text-slate-900">
+              <div className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                 {summary?.peakNetWorthAge ? `Age ${summary.peakNetWorthAge}` : 'Apex'}
               </div>
-              <div className="text-[10px] text-indigo-700 font-medium">
+              <div className="text-[10px] text-indigo-700 dark:text-indigo-400 font-medium">
                 Lifetime Maximum
               </div>
             </div>
-            <div className="text-[9.5px] text-slate-600 font-mono truncate">
+            <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
               {summary?.peakNetWorth ? `${formatCad(summary.peakNetWorth)} CAD` : 'Peak Assets'}
             </div>
           </button>
@@ -624,65 +624,65 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
       {/* 4. The Virtualized Expat Ledger Table */}
       <div ref={tableContainerRef} className="overflow-x-auto max-h-[540px]">
         <table className="w-full text-left text-xs border-collapse">
-          <thead className="bg-slate-100/90 sticky top-0 z-10 border-b border-slate-300 text-slate-700 font-bold uppercase text-[10px] tracking-wider backdrop-blur-sm">
+          <thead className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 z-10 border-b border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider backdrop-blur-sm">
             <tr>
-              <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200 bg-slate-100">
+              <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
                 Age / Phase / Residency
               </th>
               
               {/* Canadian Investments Group (Held in CAD) */}
-              <th className="py-2.5 px-3 text-right bg-blue-50/70 text-blue-900 border-r border-slate-200" title="RRSP / RRIF balance in Canadian Dollars">
+              <th className="py-2.5 px-3 text-right bg-blue-50/70 dark:bg-blue-500/10 text-blue-900 dark:text-blue-300 border-r border-slate-200 dark:border-slate-700" title="RRSP / RRIF balance in Canadian Dollars">
                 RRSP/RRIF (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right bg-emerald-50/70 text-emerald-900 border-r border-slate-200" title="TFSA balance in Canadian Dollars (Tax-Free in Canada)">
+              <th className="py-2.5 px-3 text-right bg-emerald-50/70 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 border-r border-slate-200 dark:border-slate-700" title="TFSA balance in Canadian Dollars (Tax-Free in Canada)">
                 TFSA (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right bg-amber-50/70 text-amber-900 border-r border-slate-200" title="FHSA balance in Canadian Dollars">
+              <th className="py-2.5 px-3 text-right bg-amber-50/70 dark:bg-amber-500/10 text-amber-900 dark:text-amber-300 border-r border-slate-200 dark:border-slate-700" title="FHSA balance in Canadian Dollars">
                 FHSA (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right bg-purple-50/70 text-purple-900 border-r border-slate-200" title="Taxable Non-Registered portfolio in Canadian Dollars">
+              <th className="py-2.5 px-3 text-right bg-purple-50/70 dark:bg-purple-500/10 text-purple-900 dark:text-purple-300 border-r border-slate-200 dark:border-slate-700" title="Taxable Non-Registered portfolio in Canadian Dollars">
                 Non-Reg (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right text-orange-900 border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right text-orange-900 dark:text-orange-300 border-r border-slate-200 dark:border-slate-700">
                 Home Equity (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right font-extrabold text-slate-900 bg-slate-200/80 border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-slate-100 bg-slate-200/80 dark:bg-slate-700/80 border-r border-slate-200 dark:border-slate-700">
                 Total Net Worth (CAD)
               </th>
               
               {/* Compounding & Cash Generation (CAD) */}
-              <th className="py-2.5 px-3 text-right font-bold text-emerald-900 bg-emerald-100/50 border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right font-bold text-emerald-900 dark:text-emerald-300 bg-emerald-100/50 dark:bg-emerald-500/20 border-r border-slate-200 dark:border-slate-700">
                 Inv. Return (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right border-r border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                 CPP (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right border-r border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                 OAS Net (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-200">
+              <th className="py-2.5 px-3 text-right border-r border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
                 Withdrawals (CAD)
               </th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-200 text-rose-900" title="Taxes: Canadian domestic tax when resident, or CRA Part XIII withholding + destination local tax when non-resident">
+              <th className="py-2.5 px-3 text-right border-r border-slate-200 dark:border-slate-700 text-rose-900 dark:text-rose-300" title="Taxes: Canadian domestic tax when resident, or CRA Part XIII withholding + destination local tax when non-resident">
                 Taxes (CAD)
               </th>
 
               {/* The Hero Expat Columns: Spendable Cash & Living Target in Local Currency post-exit */}
-              <th className="py-2.5 px-3 text-right font-extrabold text-cyan-950 bg-cyan-100/80 border-r border-slate-200 min-w-[150px]">
+              <th className="py-2.5 px-3 text-right font-extrabold text-cyan-950 dark:text-cyan-200 bg-cyan-100/80 dark:bg-cyan-500/20 border-r border-slate-200 dark:border-slate-700 min-w-[150px]">
                 Spendable Cash ({currencyCode} / CAD)
               </th>
-              <th className="py-2.5 px-3 text-right text-slate-800 bg-slate-100 border-r border-slate-200 min-w-[140px]">
+              <th className="py-2.5 px-3 text-right text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 min-w-[140px]">
                 Living Target ({currencyCode} / CAD)
               </th>
 
               {/* Notes */}
-              <th className="py-2.5 px-3 min-w-[280px]">
+              <th className="py-2.5 px-3 min-w-[280px] text-slate-700 dark:text-slate-300">
                 Expat & Canadian Milestone Notes
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono text-[11px]">
             {filteredData.length === 0 ? (
               <tr>
                 <td colSpan={15} className="py-8 text-center text-slate-400 font-sans text-xs">
@@ -711,22 +711,22 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                   key={virtualRow.key}
                   data-index={virtualRow.index}
                   ref={rowVirtualizer.measureElement}
-                  className={`transition-all hover:bg-slate-50/90 ${
+                  className={`transition-all hover:bg-slate-50/90 dark:hover:bg-slate-800/60 ${
                     isDeparture
-                      ? 'bg-cyan-50/80 border-y-2 border-cyan-400 font-medium'
+                      ? 'bg-cyan-50/80 dark:bg-cyan-500/10 border-y-2 border-cyan-400 dark:border-cyan-500 font-medium'
                       : isRetirement
-                      ? 'bg-rose-50/60 border-y-2 border-rose-300'
+                      ? 'bg-rose-50/60 dark:bg-rose-500/10 border-y-2 border-rose-300 dark:border-rose-500'
                       : isHighlighted
-                      ? 'bg-amber-100 ring-2 ring-amber-400 font-bold z-10'
+                      ? 'bg-amber-100 dark:bg-amber-500/20 ring-2 ring-amber-400 font-bold z-10'
                       : isNonResident
-                      ? 'bg-slate-50/40'
-                      : ''
+                      ? 'bg-slate-50/40 dark:bg-slate-850/50'
+                      : 'bg-white dark:bg-slate-900'
                   }`}
                 >
                   {/* 1. Age / Phase / Residency */}
-                  <td className="py-2.5 px-3 border-r border-slate-200/80 font-sans">
+                  <td className="py-2.5 px-3 border-r border-slate-200/80 dark:border-slate-700/80 font-sans">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-extrabold text-slate-900 font-mono text-xs">
+                      <span className="font-extrabold text-slate-900 dark:text-slate-100 font-mono text-xs">
                         Age {row.age}
                       </span>
                       <span className="text-[10.5px] text-slate-400 font-mono">
@@ -735,12 +735,12 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
 
                       {/* Residency Badge */}
                       {isNonResident ? (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30">
                           <span>{destinationCountry.flag}</span>
                           <span>Non-Res</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-200/70 text-slate-700">
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                           <span>🇨🇦</span>
                           <span>Resident</span>
                         </span>
@@ -748,7 +748,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
 
                       {/* Event flags */}
                       {isDeparture && (
-                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-700 text-white">
+                        <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-cyan-700 dark:bg-cyan-600 text-white">
                           ✈️ Departure Day
                         </span>
                       )}
@@ -771,65 +771,65 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                   </td>
 
                   {/* 2. RRSP / RRIF (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-blue-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-blue-900 dark:text-blue-300">
                     {formatCad(row.rrspBalance)}
                   </td>
 
                   {/* 3. TFSA (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-emerald-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-emerald-900 dark:text-emerald-300">
                     {formatCad(row.tfsaBalance)}
                   </td>
 
                   {/* 4. FHSA (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-amber-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-amber-900 dark:text-amber-300">
                     {formatCad(row.fhsaBalance)}
                   </td>
 
                   {/* 5. Non-Reg (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-purple-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-purple-900 dark:text-purple-300">
                     {formatCad(row.nonRegBalance)}
                   </td>
 
                   {/* 6. Home Equity (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-orange-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-orange-900 dark:text-orange-300">
                     {formatCad(row.homeEquity)}
                   </td>
 
                   {/* 7. Total Net Worth (CAD) */}
-                  <td className="py-2.5 px-3 text-right font-extrabold text-slate-900 bg-slate-100/70 border-r border-slate-200/80">
+                  <td className="py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-slate-100 bg-slate-100/70 dark:bg-slate-800/70 border-r border-slate-200/80 dark:border-slate-700/80">
                     {formatCad(row.totalNetWorth)}
                   </td>
 
                   {/* 8. Inv. Returns (CAD) */}
-                  <td className="py-2.5 px-3 text-right text-emerald-800 font-semibold border-r border-slate-200/80">
+                  <td className="py-2.5 px-3 text-right text-emerald-800 dark:text-emerald-300 font-semibold border-r border-slate-200/80 dark:border-slate-700/80">
                     {row.investmentGrowth > 0 ? `+${formatCad(row.investmentGrowth)}` : '-'}
                   </td>
 
                   {/* 9. CPP (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-slate-700">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
                     {formatCad(row.cppIncomeCAD)}
                   </td>
 
                   {/* 10. OAS Net (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-slate-700">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
                     {row.age >= 65 && !qualifiesForLifetimeWorldwideOAS && isNonResident ? (
-                      <span className="text-rose-600 font-bold" title="OAS ceased under 20-year rule">$0 (Lost)</span>
+                      <span className="text-rose-600 dark:text-rose-400 font-bold" title="OAS ceased under 20-year rule">$0 (Lost)</span>
                     ) : (
                       formatCad(row.oasNetIncomeCAD)
                     )}
                   </td>
 
                   {/* 11. Withdrawals (CAD) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-slate-700">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
                     {formatCad(row.totalWithdrawalsCAD)}
                   </td>
 
                   {/* 12. Taxes Paid (CAD & Local) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-rose-900">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-rose-900 dark:text-rose-300">
                     <div>
                       {formatCad(row.totalTaxPaidCAD)}
                       {isNonResident && (
-                        <span className="block text-[9.5px] text-slate-500 font-sans">
+                        <span className="block text-[9.5px] text-slate-500 dark:text-slate-400 font-sans">
                           Part XIII: {formatCad(row.craPartXIIICAD)}
                         </span>
                       )}
@@ -837,33 +837,33 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                   </td>
 
                   {/* 13. SPENDABLE CASH (HERO COLUMN) */}
-                  <td className={`py-2.5 px-3 text-right border-r border-slate-200/80 font-bold ${
-                    isNonResident ? 'bg-cyan-50/70' : 'bg-slate-50/50'
+                  <td className={`py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 font-bold ${
+                    isNonResident ? 'bg-cyan-50/70 dark:bg-cyan-500/10' : 'bg-slate-50/50 dark:bg-slate-800/40'
                   }`}>
                     {isNonResident ? (
                       <div>
                         {/* Primary: In Destination Local Currency */}
-                        <div className="text-cyan-900 font-extrabold text-xs">
+                        <div className="text-cyan-900 dark:text-cyan-200 font-extrabold text-xs">
                           {formatLocal(row.spendableCashLocal)}{' '}
-                          <span className="text-[10px] text-cyan-700 font-sans font-bold">
+                          <span className="text-[10px] text-cyan-700 dark:text-cyan-400 font-sans font-bold">
                             {currencyCode}
                           </span>
                         </div>
                         {/* Secondary Subtext: Equivalent CAD */}
-                        <div className="text-[10px] text-slate-500 font-normal font-sans">
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal font-sans">
                           ≈ {formatCad(row.spendableCashCAD)} CAD
                         </div>
                       </div>
                     ) : (
                       <div>
                         {/* Primary: In Canadian Dollars */}
-                        <div className="text-slate-900 font-extrabold text-xs">
+                        <div className="text-slate-900 dark:text-slate-100 font-extrabold text-xs">
                           {formatCad(row.spendableCashCAD)}{' '}
-                          <span className="text-[10px] text-slate-500 font-sans font-semibold">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-semibold">
                             CAD
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal font-sans">
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal font-sans">
                           Canadian Resident
                         </div>
                       </div>
@@ -871,31 +871,31 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                   </td>
 
                   {/* 14. LIVING TARGET (HERO COLUMN) */}
-                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 text-slate-800">
+                  <td className="py-2.5 px-3 text-right border-r border-slate-200/80 dark:border-slate-700/80 text-slate-800 dark:text-slate-200">
                     {isNonResident ? (
                       <div>
                         {/* Primary: In Destination Local Currency */}
-                        <div className="font-bold text-slate-900 text-xs">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
                           {formatLocal(row.livingTargetLocal)}{' '}
-                          <span className="text-[10px] text-slate-600 font-sans">
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 font-sans">
                             {currencyCode}
                           </span>
                         </div>
                         {/* Subtext: PPP relative saving */}
-                        <div className="text-[10px] text-emerald-700 font-sans font-semibold">
+                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-sans font-semibold">
                           PPP {(colIndex * 100).toFixed(0)}% cost
                         </div>
                       </div>
                     ) : (
                       <div>
                         {/* Primary: In Canadian Dollars */}
-                        <div className="font-bold text-slate-900 text-xs">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 text-xs">
                           {formatCad(row.livingTargetCAD)}{' '}
-                          <span className="text-[10px] text-slate-500 font-sans font-semibold">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-semibold">
                             CAD
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal font-sans">
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-normal font-sans">
                           Baseline Canada
                         </div>
                       </div>
@@ -903,7 +903,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                   </td>
 
                   {/* 15. Notes */}
-                  <td className="py-2.5 px-3 font-sans text-xs text-slate-600">
+                  <td className="py-2.5 px-3 font-sans text-xs text-slate-600 dark:text-slate-400">
                     {row.notes.length > 0 ? (
                       <div className="space-y-1">
                         {row.notes.map((note, nIdx) => (
@@ -911,12 +911,12 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                             key={nIdx}
                             className={`p-1.5 rounded-lg text-[11px] leading-tight ${
                               note.includes('✈️')
-                                ? 'bg-cyan-100/90 text-cyan-950 border border-cyan-300 font-medium'
+                                ? 'bg-cyan-100/90 dark:bg-cyan-500/20 text-cyan-950 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-500/30 font-medium'
                                 : note.includes('⚠️')
-                                ? 'bg-amber-100/80 text-amber-950 border border-amber-300 font-medium'
+                                ? 'bg-amber-100/80 dark:bg-amber-500/20 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-500/30 font-medium'
                                 : note.includes('🚀') || note.includes('🇨🇦')
-                                ? 'bg-emerald-100/70 text-emerald-950 border border-emerald-300'
-                                : 'bg-slate-100 text-slate-700'
+                                ? 'bg-emerald-100/70 dark:bg-emerald-500/20 text-emerald-950 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-500/30'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                             }`}
                           >
                             {note}
@@ -924,7 +924,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                         ))}
                       </div>
                     ) : (
-                      <span className="text-slate-400 text-[10.5px]">Standard trajectory</span>
+                      <span className="text-slate-400 dark:text-slate-500 text-[10.5px]">Standard trajectory</span>
                     )}
                   </td>
                 </tr>
@@ -935,17 +935,17 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
       </div>
 
       {/* Table Footer Summary & Legend */}
-      <div className="p-3 bg-slate-50 border-t border-slate-200 text-slate-600 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-[11px] flex flex-col sm:flex-row items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-bold text-slate-700">Currency Legend:</span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200 font-mono">
+          <span className="font-bold text-slate-700 dark:text-slate-300">Currency Legend:</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 font-mono">
             CAD (C$) = Canadian Portfolios & Benefits
           </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-100 text-cyan-900 border border-cyan-300 font-mono font-bold">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-900 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-500/30 font-mono font-bold">
             {currencyCode} ({currencySymbol}) = Post-Emigration Spendable Cash & Living Target
           </span>
         </div>
-        <div className="text-slate-500 text-[10.5px]">
+        <div className="text-slate-500 dark:text-slate-400 text-[10.5px]">
           Fulfills CRA Section 128.1 (Departure Tax), CRA Part XIII Non-Resident Withholding, and Bilateral Tax Treaty Protocols.
         </div>
       </div>
