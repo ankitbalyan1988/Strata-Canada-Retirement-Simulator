@@ -46,6 +46,7 @@ export interface MilestoneTableProps {
   province?: CanadianProvince;
   inputs?: RetirementInputs;
   summary?: SimulationSummary;
+  isRecalculatingLedger?: boolean;
 }
 
 export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
@@ -54,12 +55,14 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   const storeProvince = useSimulationStore((state) => state.inputs.province);
   const storeInputs = useSimulationStore((state) => state.inputs);
   const storeSummary = useSimulationStore((state) => state.summary);
+  const storeIsRecalculatingLedger = useSimulationStore((state) => state.isRecalculatingLedger);
 
   const yearlyResults = props.yearlyResults ?? storeYearlyResults;
   const retirementAge = props.retirementAge ?? storeRetirementAge;
   const province = props.province ?? storeProvince;
   const inputs = props.inputs ?? storeInputs;
   const summary = props.summary ?? storeSummary;
+  const isRecalculatingLedger = props.isRecalculatingLedger ?? storeIsRecalculatingLedger;
 
   const [filterMode, setFilterMode] = useState<'milestones' | 'retirement' | 'all'>('milestones');
   const [searchTerm, setSearchTerm] = useState('');
@@ -376,11 +379,17 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <span className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Table className="w-4 h-4" />
             </span>
-            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base flex items-center gap-2">
+            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base flex items-center gap-2 flex-wrap">
               <span>Annual Simulation Ledger & Milestone Schedule</span>
               {isFullscreen && (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   Full Screen View
+                </span>
+              )}
+              {isRecalculatingLedger && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20 text-[10px] font-semibold animate-pulse">
+                  <Loader2 className="w-3 h-3 animate-spin text-emerald-600 dark:text-emerald-400" />
+                  <span>Updating ledger...</span>
                 </span>
               )}
             </h3>
@@ -1003,7 +1012,18 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
       )}
 
       {/* 4. Table Data Container */}
-      <div ref={tableContainerRef} className={`overflow-x-auto ${isFullscreen ? 'flex-1 max-h-none h-full' : 'max-h-[520px]'}`}>
+      <div
+        ref={tableContainerRef}
+        className={`overflow-x-auto relative transition-opacity duration-200 ${
+          isRecalculatingLedger ? 'opacity-60' : 'opacity-100'
+        } ${isFullscreen ? 'flex-1 max-h-none h-full' : 'max-h-[520px]'}`}
+      >
+        {isRecalculatingLedger && (
+          <div className="sticky top-12 left-4 z-20 pointer-events-none inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 dark:bg-slate-800/95 text-white text-xs font-sans font-medium shadow-md backdrop-blur-xs border border-slate-700/60 mb-2">
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+            <span>Updating deep ledger...</span>
+          </div>
+        )}
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-800/90 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
             <tr>

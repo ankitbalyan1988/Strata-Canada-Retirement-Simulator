@@ -26,8 +26,10 @@ export interface SimulationState {
   activePresetId: string;
   yearlyResults: YearSimulationResult[];
   summary: SimulationSummary;
+  optimisticSummary: SimulationSummary;
   pulse: SavingsPulseResult;
   isCalculating: boolean;
+  isRecalculatingLedger: boolean;
 
   // Stress test
   isStressTestActive: boolean;
@@ -75,11 +77,51 @@ export interface SimulationState {
   exportPdf: () => Promise<void>;
 }
 
-// Module-scoped timer and request tracker for debounced worker execution
+/**
+ * Fast-pass synchronous calculator:
+ * Uses fastSimulateEndNetWorth to immediately compute responsive KPI values
+ * (funded status, readiness score, nest egg at retirement & life expectancy) in <0.1ms.
+ */
+export function computeOptimisticSummary(
+  inputs: RetirementInputs,
+  baseSummary: SimulationSummary
+): SimulationSummary {
+  const fastRes = fastSimulateEndNetWorth(inputs);
+  const totalYearsInRetirement = Math.max(1, inputs.lifeExpectancy - inputs.retirementAge);
+  const yearsFunded = fastRes.isFullyFunded
+    ? totalYearsInRetirement
+    : (fastRes.depletionAge !== null && fastRes.depletionAge !== undefined
+        ? Math.max(0, fastRes.depletionAge - inputs.retirementAge)
+        : 0);
+  const readinessScore = fastRes.isFullyFunded
+    ? 100
+    : Math.min(99, Math.max(0, Math.round((yearsFunded / totalYearsInRetirement) * 100)));
+
+  const netWorthAtRetire = Math.round(fastRes.netWorthAtRetirement);
+  const netWorthAtEnd = Math.round(fastRes.netWorthAtLifeExpectancy);
+
+  return {
+    ...baseSummary,
+    isFullyFunded: fastRes.isFullyFunded,
+    netWorthAtRetirement: netWorthAtRetire,
+    netWorthAtLifeExpectancy: netWorthAtEnd,
+    portfolioDepletionAge: fastRes.depletionAge,
+    totalYearsInRetirement,
+    yearsFunded,
+    readinessScore,
+    retirementAge: inputs.retirementAge,
+    cppStartAge: inputs.cppStartAge,
+    oasStartAge: inputs.oasStartAge,
+    peakNetWorth: Math.max(baseSummary.peakNetWorth, netWorthAtRetire),
+    peakNetWorthAge: netWorthAtRetire > baseSummary.peakNetWorth ? inputs.retirementAge : baseSummary.peakNetWorthAge
+  };
+}
+
+// Module-scoped timer and request tracker for debounced execution (250ms)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let currentRunId = 0;
 
-function scheduleWorkerCalculation(
+function scheduleHeavyCalculation(
   get: () => SimulationState,
   set: (fn: (state: SimulationState) => Partial<SimulationState>) => void
 ) {
@@ -87,7 +129,11 @@ function scheduleWorkerCalculation(
     clearTimeout(debounceTimer);
   }
 
-  set(() => ({ isCalculating: true }));
+  // Set isRecalculatingLedger and isCalculating to true while waiting or running
+  set(() => ({
+    isRecalculatingLedger: true,
+    isCalculating: true
+  }));
 
   debounceTimer = setTimeout(async () => {
     const runId = ++currentRunId;
@@ -105,6 +151,7 @@ function scheduleWorkerCalculation(
         set((state) => ({
           yearlyResults: mainResult.yearlyResults,
           summary: mainResult.summary,
+          optimisticSummary: mainResult.summary,
           pulse: mainResult.pulse,
           stressSimulation: stressResult
             ? {
@@ -113,16 +160,36 @@ function scheduleWorkerCalculation(
                 isCalculating: false
               }
             : state.stressSimulation,
-          isCalculating: false
+          isCalculating: false,
+          isRecalculatingLedger: false
         }));
       }
     } catch (err) {
-      console.error('Failed to run simulation in worker:', err);
-      if (runId === currentRunId) {
-        set(() => ({ isCalculating: false }));
+      console.warn('Simulation worker execution failed, running synchronous fallback:', err);
+      try {
+        const sim = runRetirementSimulation(inputs);
+        const pulse = calculateSavingsPulse(inputs, sim.summary);
+        if (runId === currentRunId) {
+          set(() => ({
+            yearlyResults: sim.yearlyResults,
+            summary: sim.summary,
+            optimisticSummary: sim.summary,
+            pulse,
+            isCalculating: false,
+            isRecalculatingLedger: false
+          }));
+        }
+      } catch (fallbackErr) {
+        console.error('Fatal simulation error:', fallbackErr);
+        if (runId === currentRunId) {
+          set(() => ({
+            isCalculating: false,
+            isRecalculatingLedger: false
+          }));
+        }
       }
     }
-  }, 50);
+  }, 250);
 }
 
 // Compute initial state synchronously on first load
@@ -146,8 +213,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   activePresetId: 'canadian_average',
   yearlyResults: initialSim.yearlyResults,
   summary: initialSim.summary,
+  optimisticSummary: initialSim.summary,
   pulse: initialPulse,
   isCalculating: false,
+  isRecalculatingLedger: false,
 
   isStressTestActive: false,
   stressTiming: 'at_retirement',
@@ -191,20 +260,33 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   setInputs: (newInputs) => {
-    set((state) => ({
-      inputs: typeof newInputs === 'function' ? newInputs(state.inputs) : newInputs
-    }));
-    scheduleWorkerCalculation(get, set);
+    const prevInputs = get().inputs;
+    const nextInputs = typeof newInputs === 'function' ? newInputs(prevInputs) : newInputs;
+    const optimisticSummary = computeOptimisticSummary(nextInputs, get().summary);
+
+    set({
+      inputs: nextInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
+    });
+    scheduleHeavyCalculation(get, set);
   },
 
   updateField: (field, value) => {
-    set((state) => ({
-      inputs: {
-        ...state.inputs,
-        [field]: typeof value === 'function' ? (value as any)(state.inputs[field]) : value
-      }
-    }));
-    scheduleWorkerCalculation(get, set);
+    const prevInputs = get().inputs;
+    const nextValue = typeof value === 'function' ? (value as any)(prevInputs[field]) : value;
+    const nextInputs = {
+      ...prevInputs,
+      [field]: nextValue
+    };
+    const optimisticSummary = computeOptimisticSummary(nextInputs, get().summary);
+
+    set({
+      inputs: nextInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
+    });
+    scheduleHeavyCalculation(get, set);
   },
 
   setActivePresetId: (id) => {
@@ -212,71 +294,90 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   selectPreset: (preset) => {
+    const optimisticSummary = computeOptimisticSummary(preset.inputs, get().summary);
     set({
       inputs: preset.inputs,
-      activePresetId: preset.id
+      activePresetId: preset.id,
+      optimisticSummary,
+      isRecalculatingLedger: true
     });
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   resetToDefault: () => {
+    const optimisticSummary = computeOptimisticSummary(DEFAULT_INPUTS, get().summary);
     set({
       inputs: DEFAULT_INPUTS,
-      activePresetId: 'canadian_average'
+      activePresetId: 'canadian_average',
+      optimisticSummary,
+      isRecalculatingLedger: true
     });
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   applyRetirementAge: (age) => {
+    const prevInputs = get().inputs;
     const prevSummary = get().summary;
-    set((state) => {
-      const updated = {
-        ...state.inputs,
-        retirementAge: age
-      };
+    const updatedInputs = {
+      ...prevInputs,
+      retirementAge: age
+    };
 
-      const testRes = fastSimulateEndNetWorth(updated);
-      if (testRes.isFullyFunded && !prevSummary.isFullyFunded) {
-        triggerConfetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 }
-        });
-      }
+    const optimisticSummary = computeOptimisticSummary(updatedInputs, prevSummary);
 
-      return { inputs: updated };
+    if (optimisticSummary.isFullyFunded && !prevSummary.isFullyFunded) {
+      triggerConfetti({
+        particleCount: 50,
+        spread: 60,
+        origin: { y: 0.7 }
+      });
+    }
+
+    set({
+      inputs: updatedInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
     });
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   applyProvince: (province) => {
-    set((state) => ({
-      inputs: {
-        ...state.inputs,
-        province
-      }
-    }));
-    scheduleWorkerCalculation(get, set);
+    const nextInputs = {
+      ...get().inputs,
+      province
+    };
+    const optimisticSummary = computeOptimisticSummary(nextInputs, get().summary);
+
+    set({
+      inputs: nextInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
+    });
+    scheduleHeavyCalculation(get, set);
   },
 
   applyMonthlyBoost: (additionalMonthly) => {
-    set((state) => {
-      const annualAddition = additionalMonthly * 12;
-      const rrspRoomLeft = Math.max(0, 32490 - state.inputs.rrspAnnualContribution);
-      const toRrsp = Math.min(annualAddition, rrspRoomLeft);
-      const remainder = annualAddition - toRrsp;
-      const tfsaRoomLeft = Math.max(0, 7000 - state.inputs.tfsaAnnualContribution);
-      const toTfsa = Math.min(remainder, tfsaRoomLeft);
-      const toNonReg = remainder - toTfsa;
+    const state = get();
+    const annualAddition = additionalMonthly * 12;
+    const rrspRoomLeft = Math.max(0, 32490 - state.inputs.rrspAnnualContribution);
+    const toRrsp = Math.min(annualAddition, rrspRoomLeft);
+    const remainder = annualAddition - toRrsp;
+    const tfsaRoomLeft = Math.max(0, 7000 - state.inputs.tfsaAnnualContribution);
+    const toTfsa = Math.min(remainder, tfsaRoomLeft);
+    const toNonReg = remainder - toTfsa;
 
-      return {
-        inputs: {
-          ...state.inputs,
-          rrspAnnualContribution: state.inputs.rrspAnnualContribution + toRrsp,
-          tfsaAnnualContribution: state.inputs.tfsaAnnualContribution + toTfsa,
-          nonRegAnnualContribution: state.inputs.nonRegAnnualContribution + toNonReg
-        }
-      };
+    const nextInputs = {
+      ...state.inputs,
+      rrspAnnualContribution: state.inputs.rrspAnnualContribution + toRrsp,
+      tfsaAnnualContribution: state.inputs.tfsaAnnualContribution + toTfsa,
+      nonRegAnnualContribution: state.inputs.nonRegAnnualContribution + toNonReg
+    };
+    const optimisticSummary = computeOptimisticSummary(nextInputs, state.summary);
+
+    set({
+      inputs: nextInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
     });
 
     triggerConfetti({
@@ -285,13 +386,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       origin: { y: 0.6 }
     });
 
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   applyAIPersona: (newInputs) => {
+    const optimisticSummary = computeOptimisticSummary(newInputs, get().summary);
     set({
       inputs: newInputs,
-      activePresetId: 'custom_ai'
+      activePresetId: 'custom_ai',
+      optimisticSummary,
+      isRecalculatingLedger: true
     });
 
     triggerConfetti({
@@ -300,29 +404,35 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       origin: { y: 0.6 }
     });
 
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   updateExpatInputs: (newExpat) => {
-    set((state) => ({
-      inputs: {
-        ...state.inputs,
-        expat: newExpat
-      }
-    }));
-    scheduleWorkerCalculation(get, set);
+    const nextInputs = {
+      ...get().inputs,
+      expat: newExpat
+    };
+    const optimisticSummary = computeOptimisticSummary(nextInputs, get().summary);
+
+    set({
+      inputs: nextInputs,
+      optimisticSummary,
+      isRecalculatingLedger: true
+    });
+    scheduleHeavyCalculation(get, set);
   },
 
   setIsStressTestActive: (active) => {
     set((state) => ({
-      isStressTestActive: typeof active === 'function' ? active(state.isStressTestActive) : active
+      isStressTestActive: typeof active === 'function' ? active(state.isStressTestActive) : active,
+      isRecalculatingLedger: true
     }));
-    scheduleWorkerCalculation(get, set);
+    scheduleHeavyCalculation(get, set);
   },
 
   setStressTiming: (timing) => {
-    set({ stressTiming: timing });
-    scheduleWorkerCalculation(get, set);
+    set({ stressTiming: timing, isRecalculatingLedger: true });
+    scheduleHeavyCalculation(get, set);
   },
 
   setIsWhatIfActive: (active) => {

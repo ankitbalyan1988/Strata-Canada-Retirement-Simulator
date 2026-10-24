@@ -488,8 +488,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   y1={y}
                   x2={svgWidth - padding.right}
                   y2={y}
-                  stroke="currentColor"
-                  className="text-slate-200 dark:text-slate-800"
+                  stroke="var(--chart-grid)"
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -497,7 +496,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   x={padding.left - 10}
                   y={y + 3.5}
                   textAnchor="end"
-                  className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
+                  fill="var(--chart-text-muted)"
+                  className="text-[10px] font-mono"
                 >
                   {formatCurrency(tickVal)}
                 </text>
@@ -515,15 +515,15 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   y1={padding.top + chartHeight}
                   x2={x}
                   y2={padding.top + chartHeight + 6}
-                  stroke="currentColor"
-                  className="text-slate-300 dark:text-slate-700"
+                  stroke="var(--chart-axis)"
                   strokeWidth="1.5"
                 />
                 <text
                   x={x}
                   y={padding.top + chartHeight + 18}
                   textAnchor="middle"
-                  className="text-[10px] fill-slate-500 dark:fill-slate-400 font-mono font-medium"
+                  fill="var(--chart-text-secondary)"
+                  className="text-[10px] font-mono font-medium"
                 >
                   Age {d.age}
                 </text>
@@ -571,7 +571,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 y1={padding.top + 10}
                 x2={getX(71)}
                 y2={padding.top + chartHeight}
-                stroke="#64748b"
+                stroke="var(--chart-milestone-line)"
                 strokeWidth="1.5"
                 strokeDasharray="3 3"
               />
@@ -579,7 +579,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 x={getX(71)}
                 y={padding.top + 22}
                 textAnchor="middle"
-                fill="#64748b"
+                fill="var(--chart-milestone-text)"
                 className="text-[9px] font-semibold"
               >
                 Age 71 RRIF Roll
@@ -981,7 +981,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 y1={padding.top}
                 x2={getX(hoveredData.age)}
                 y2={padding.top + chartHeight}
-                stroke="#0f172a"
+                stroke="var(--chart-crosshair)"
                 strokeWidth="1.5"
                 strokeDasharray="2 2"
               />
@@ -990,7 +990,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 cy={getY(hoveredData.totalNetWorth)}
                 r="5"
                 fill="#10b981"
-                stroke="#ffffff"
+                stroke="var(--chart-marker-stroke)"
                 strokeWidth="2"
               />
 
@@ -1000,7 +1000,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   cy={getY(hoveredStressData.totalNetWorth)}
                   r="4"
                   fill="#d97706"
-                  stroke="#ffffff"
+                  stroke="var(--chart-marker-stroke)"
                   strokeWidth="1.5"
                 />
               )}
@@ -1011,7 +1011,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                   cy={getY(hoveredWhatIfData.totalNetWorth)}
                   r="4.5"
                   fill="#9333ea"
-                  stroke="#ffffff"
+                  stroke="var(--chart-marker-stroke)"
                   strokeWidth="1.5"
                 />
               )}

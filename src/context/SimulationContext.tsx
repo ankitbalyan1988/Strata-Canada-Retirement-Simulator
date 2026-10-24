@@ -25,8 +25,10 @@ export interface SimulationContextValue {
   // Simulation output
   yearlyResults: YearSimulationResult[];
   summary: SimulationSummary;
+  optimisticSummary: SimulationSummary;
   pulse: SavingsPulseResult;
   isCalculating: boolean;
+  isRecalculatingLedger: boolean;
 
   // Stress test
   isStressTestActive: boolean;
@@ -94,8 +96,10 @@ export function useSimulationInputs() {
 export function useSimulationResults() {
   const yearlyResults = useSimulationStore((state) => state.yearlyResults);
   const summary = useSimulationStore((state) => state.summary);
+  const optimisticSummary = useSimulationStore((state) => state.optimisticSummary);
   const isCalculating = useSimulationStore((state) => state.isCalculating);
-  return { yearlyResults, summary, isCalculating };
+  const isRecalculatingLedger = useSimulationStore((state) => state.isRecalculatingLedger);
+  return { yearlyResults, summary, optimisticSummary, isCalculating, isRecalculatingLedger };
 }
 
 /**

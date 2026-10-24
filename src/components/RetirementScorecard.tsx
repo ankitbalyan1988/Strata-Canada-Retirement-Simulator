@@ -14,16 +14,18 @@ import { useSimulationStore } from '../store/useSimulationStore';
 export interface RetirementScorecardProps {
   inputs?: RetirementInputs;
   summary?: SimulationSummary;
+  optimisticSummary?: SimulationSummary;
   yearlyResults?: YearSimulationResult[];
 }
 
 export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) => {
   const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeOptimisticSummary = useSimulationStore((state) => state.optimisticSummary);
   const storeSummary = useSimulationStore((state) => state.summary);
   const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
 
   const inputs = props.inputs ?? storeInputs;
-  const summary = props.summary ?? storeSummary;
+  const summary = props.optimisticSummary ?? props.summary ?? storeOptimisticSummary ?? storeSummary;
   const yearlyResults = props.yearlyResults ?? storeYearlyResults;
 
   const formatCur = (val: number) => {

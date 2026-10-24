@@ -2,9 +2,36 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  /* Chart theme variables - Light Mode */
+  --chart-grid: #e2e8f0;           /* slate-200 */
+  --chart-axis: #cbd5e1;           /* slate-300 */
+  --chart-text-muted: #94a3b8;     /* slate-400 */
+  --chart-text-secondary: #64748b; /* slate-500 */
+  --chart-text-main: #334155;      /* slate-700 */
+  --chart-crosshair: #0f172a;      /* slate-900 */
+  --chart-milestone-line: #94a3b8; /* slate-400 */
+  --chart-milestone-text: #64748b; /* slate-500 */
+  --chart-marker-stroke: #ffffff;
+}
+
+.dark {
+  /* Chart theme variables - Dark Mode */
+  --chart-grid: #1e293b;           /* slate-800 */
+  --chart-axis: #334155;           /* slate-700 */
+  --chart-text-muted: #64748b;     /* slate-500 */
+  --chart-text-secondary: #94a3b8; /* slate-400 */
+  --chart-text-main: #cbd5e1;      /* slate-300 */
+  --chart-crosshair: #94a3b8;      /* slate-400 */
+  --chart-milestone-line: #475569; /* slate-600 */
+  --chart-milestone-text: #94a3b8; /* slate-400 */
+  --chart-marker-stroke: #0f172a;
+}
+
 @layer base {
   body {
     @apply antialiased text-slate-900 bg-slate-100 dark:bg-[#0B0F17] dark:text-slate-100 transition-colors duration-200;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
 }
+

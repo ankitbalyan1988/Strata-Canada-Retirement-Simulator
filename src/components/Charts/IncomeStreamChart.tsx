@@ -164,8 +164,7 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   y1={y}
                   x2={svgWidth - padding.right}
                   y2={y}
-                  stroke="currentColor"
-                  className="text-slate-200 dark:text-slate-800"
+                  stroke="var(--chart-grid)"
                   strokeDasharray="4 4"
                   strokeWidth="1"
                 />
@@ -173,7 +172,8 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   x={padding.left - 10}
                   y={y + 3.5}
                   textAnchor="end"
-                  className="text-[10px] fill-slate-400 dark:fill-slate-500 font-mono"
+                  fill="var(--chart-text-muted)"
+                  className="text-[10px] font-mono"
                 >
                   {formatCur(val)}
                 </text>
@@ -191,15 +191,15 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                   y1={padding.top + chartHeight}
                   x2={x}
                   y2={padding.top + chartHeight + 6}
-                  stroke="currentColor"
-                  className="text-slate-300 dark:text-slate-700"
+                  stroke="var(--chart-axis)"
                   strokeWidth="1.5"
                 />
                 <text
                   x={x}
                   y={padding.top + chartHeight + 18}
                   textAnchor="middle"
-                  className="text-[10px] fill-slate-500 dark:fill-slate-400 font-mono font-medium"
+                  fill="var(--chart-text-secondary)"
+                  className="text-[10px] font-mono font-medium"
                 >
                   Age {d.age}
                 </text>
