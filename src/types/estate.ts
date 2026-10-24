@@ -25,6 +25,10 @@ export interface EstatePlanningInputs {
   liquidateRealEstateOnDeath: boolean;
   realtorAndClosingPercent: number; // ~3.5%
   executorCompensationPercent: number; // 0% to 5% (standard Canadian executor tariff)
+  
+  // Funeral & Final Arrangements (First-Charge Estate Debt)
+  estimatedFuneralCost: number; // Typical Canadian funeral/cremation cost: $5,000 - $15,000
+  includeCppDeathBenefitOffset: boolean; // Offsets statutory $2,500 Canadian CPP/QPP death benefit
 }
 
 export interface EstateReservesAtDeath {
@@ -51,6 +55,9 @@ export interface EstateTaxAndFeesBreakdown {
   
   closingAndLiquidationCosts: number;
   executorCompensation: number;
+  funeralCosts: number;
+  cppDeathBenefit: number;
+  netFuneralBurden: number;
   charitableDonationAmount: number;
   charitableTaxCredit: number;
   netIncomeTaxAfterCredits: number;
@@ -63,7 +70,7 @@ export interface EstateTaxAndFeesBreakdown {
 export interface EstateDistributionItem {
   id: string;
   recipient: string;
-  category: 'spouse' | 'children' | 'friends' | 'charity' | 'endowment' | 'taxes' | 'probate' | 'crown';
+  category: 'spouse' | 'children' | 'friends' | 'charity' | 'endowment' | 'taxes' | 'probate' | 'funeral' | 'crown';
   amount: number;
   percentOfGross: number;
   percentOfNet: number;

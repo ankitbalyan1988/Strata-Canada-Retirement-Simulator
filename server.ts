@@ -429,6 +429,32 @@ function generateRuleBasedLedgerExplanation(
   const province = planContext?.province || 'ON';
   const fmt = (v?: number) => (v !== undefined ? `$${Math.round(v).toLocaleString()}` : '$0');
 
+  // Estate Planning, Funeral Costs & Succession
+  if (q.includes('funeral') || q.includes('death benefit') || q.includes('estate') || q.includes('escheat') || q.includes('spousal rollover') || q.includes('deemed disposition') || selectedMetric === 'Estate Planning') {
+    const grossEstate = rowData?.totalNetWorth || 0;
+    const rrsp = rowData?.rrspBalance || 0;
+    const tfsa = rowData?.tfsaBalance || 0;
+    const nonReg = rowData?.nonRegBalance || 0;
+    const homeEq = rowData?.homeEquity || 0;
+
+    return {
+      summary: `Under Canadian succession law, at Age ${age}, the deceased estate ($${Math.round(grossEstate).toLocaleString()}) must first settle priority debts—including funeral and burial costs—and CRA terminal T1 taxes before any beneficiary or charitable inheritances are paid.`,
+      formula: `Net Liquidated Estate = Gross Reserves (RRSP + TFSA + Non-Reg + Home Equity) - Terminal CRA Taxes (T1 deemed disposition) - Provincial Probate Fees - Net Funeral Burden (Gross Funeral - $2,500 CPP Death Benefit) - Executor/Closing Admin.`,
+      mathBreakdown: [
+        `1. Priority First-Charge Debt: Funeral, memorial, and burial/cremation costs are legally paid directly from estate funds before heirs receive any bequests.`,
+        `2. Canada Pension Plan (CPP) Death Benefit: The estate or executor can claim the statutory one-time lump-sum benefit of up to $2,500 from Service Canada to offset funeral bills.`,
+        `3. CRA Deemed Disposition: Registered accounts (RRSP/RRIF: $${Math.round(rrsp).toLocaleString()}) are taxed as 100% ordinary terminal income unless transferred to a surviving spouse via CRA s. 70(6) rollover.`,
+        `4. Probate Protection: TFSA ($${Math.round(tfsa).toLocaleString()}) and named beneficiary RRSPs bypass probate court, while non-reg accounts ($${Math.round(nonReg).toLocaleString()}) and real estate ($${Math.round(homeEq).toLocaleString()}) pay provincial estate administration taxes.`
+      ],
+      contextualGuidance: `Funeral homes in Canada can directly bill the deceased's bank account with proof of death and the funeral invoice, prior to probate approval. Utilizing the $2,500 CPP Death Benefit reduces this first-charge burden, protecting remaining capital for your beneficiaries.`,
+      suggestedFollowUps: [
+        `How can direct beneficiary designations help my family avoid provincial probate?`,
+        `How does a CRA Section 70(6) spousal rollover defer RRSP terminal tax?`,
+        `How can charitable donations offset up to 100% of terminal income tax on death?`
+      ]
+    };
+  }
+
   // 1. Crossover Point (Returns Outgrow Living Expenses)
   if (q.includes('crossover') || q.includes('outgrow') || q.includes('surpass') || selectedMetric === 'Investment Returns' || selectedMetric === 'Crossover') {
     const returns = rowData?.totalInvestmentGrowth ?? 0;

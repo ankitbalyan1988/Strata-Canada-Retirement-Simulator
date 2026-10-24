@@ -112,7 +112,9 @@ export const DEFAULT_ESTATE_INPUTS: EstatePlanningInputs = {
   hasValidWill: true,
   liquidateRealEstateOnDeath: false,
   realtorAndClosingPercent: 3.5,
-  executorCompensationPercent: 2.0
+  executorCompensationPercent: 2.0,
+  estimatedFuneralCost: 10000,
+  includeCppDeathBenefitOffset: true
 };
 
 /**
@@ -201,22 +203,27 @@ export function calculateEstatePlan(
   const potentialTotalProbate = calculateProvincialProbate(totalGrossEstate, province);
   const probateAvoidedByBeneficiaryDesignation = Math.max(0, potentialTotalProbate - probateFee);
 
-  // 4. Real Estate Liquidation Costs & Executor Fees
+  // 4. Funeral Expenses & Statutory CPP Death Benefit (First-Charge Estate Debt)
+  const funeralCosts = Math.max(0, inputs.estimatedFuneralCost ?? 10000);
+  const cppDeathBenefit = inputs.includeCppDeathBenefitOffset ? 2500 : 0;
+  const netFuneralBurden = Math.max(0, funeralCosts - cppDeathBenefit);
+
+  // 5. Real Estate Liquidation Costs & Executor Fees
   const closingAndLiquidationCosts = (inputs.liquidateRealEstateOnDeath && homeEquity > 0)
     ? Math.round(homeEquity * (inputs.realtorAndClosingPercent / 100))
     : 0;
 
   const executorCompensation = Math.round(
-    (totalGrossEstate - closingAndLiquidationCosts) * (inputs.executorCompensationPercent / 100)
+    Math.max(0, totalGrossEstate - closingAndLiquidationCosts - netFuneralBurden) * (inputs.executorCompensationPercent / 100)
   );
 
-  // 5. Charitable Donations & Canadian Tax Shielding
+  // 6. Charitable Donations & Canadian Tax Shielding
   let charitableDonationAmount = 0;
 
   if (inputs.hasNextOfKin) {
     if (inputs.kinCategory === 'family_charity_split' && inputs.charityShareWithKinPercent > 0) {
       charitableDonationAmount = Math.round(
-        (totalGrossEstate - closingAndLiquidationCosts - executorCompensation) * 
+        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden) * 
         (inputs.charityShareWithKinPercent / 100)
       );
     }
@@ -224,7 +231,7 @@ export function calculateEstatePlan(
     // No Next of Kin
     if (inputs.hasValidWill) {
       charitableDonationAmount = Math.round(
-        (totalGrossEstate - closingAndLiquidationCosts - executorCompensation) * 
+        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden) * 
         (inputs.charityAllocationPercent / 100)
       );
     }
@@ -242,7 +249,8 @@ export function calculateEstatePlan(
   const totalEstateDeductions = netIncomeTaxAfterCredits + 
     probateFee + 
     closingAndLiquidationCosts + 
-    executorCompensation;
+    executorCompensation +
+    netFuneralBurden;
 
   const netEstateRemaining = Math.max(0, totalGrossEstate - totalEstateDeductions);
 
@@ -260,6 +268,9 @@ export function calculateEstatePlan(
     probateAvoidedByBeneficiaryDesignation,
     closingAndLiquidationCosts,
     executorCompensation,
+    funeralCosts,
+    cppDeathBenefit,
+    netFuneralBurden,
     charitableDonationAmount,
     charitableTaxCredit,
     netIncomeTaxAfterCredits,
@@ -303,7 +314,23 @@ export function calculateEstatePlan(
     });
   }
 
-  // C. Settlement & Executor
+  // C. Funeral & Final Arrangements (First-Charge Estate Debt)
+  if (netFuneralBurden > 0) {
+    distributions.push({
+      id: 'funeral_expenses',
+      recipient: 'Funeral & Burial/Cremation Services',
+      category: 'funeral',
+      amount: netFuneralBurden,
+      percentOfGross: totalGrossEstate > 0 ? (netFuneralBurden / totalGrossEstate) * 100 : 0,
+      percentOfNet: 0,
+      taxStatus: 'First-Charge Priority Debt',
+      notes: inputs.includeCppDeathBenefitOffset
+        ? `Gross funeral cost: $${Math.round(funeralCosts).toLocaleString()} offset by $2,500 Canadian CPP Death Benefit. Priority debt settled before beneficiary distribution.`
+        : `Gross funeral cost: $${Math.round(funeralCosts).toLocaleString()}. First-charge estate debt settled before beneficiary distribution.`
+    });
+  }
+
+  // D. Settlement & Executor
   if (closingAndLiquidationCosts + executorCompensation > 0) {
     distributions.push({
       id: 'settlement_costs',
@@ -317,7 +344,7 @@ export function calculateEstatePlan(
     });
   }
 
-  // D. Distribution to Beneficiaries / Charities / Heirs
+  // E. Distribution to Beneficiaries / Charities / Heirs
   if (inputs.hasNextOfKin) {
     // Next of Kin Flow
     if (inputs.kinCategory === 'spouse') {
@@ -504,6 +531,17 @@ export function calculateEstatePlan(
       taxSavedOrBenefit: 0,
       badge: 'Critical Legal Risk',
       type: 'warning'
+    });
+  }
+
+  // Strategy 5: Funeral Expenses & Statutory CPP Death Benefit
+  if (funeralCosts > 0) {
+    keyStrategies.push({
+      title: 'Funeral Arrangements & $2,500 CPP Death Benefit',
+      description: `Under Canadian law, funeral and burial expenses ($${Math.round(funeralCosts).toLocaleString()}) are a first-charge debt payable before heirs or charities inherit.${inputs.includeCppDeathBenefitOffset ? ` The statutory $2,500 Canadian CPP Death Benefit offsets this cost, resulting in a net estate burden of $${Math.round(netFuneralBurden).toLocaleString()}.` : ' Claiming the $2,500 statutory CPP Death Benefit will reduce this estate burden.'}`,
+      taxSavedOrBenefit: cppDeathBenefit,
+      badge: inputs.includeCppDeathBenefitOffset ? 'CPP $2,500 Offset' : 'Estate Priority Debt',
+      type: 'info'
     });
   }
 

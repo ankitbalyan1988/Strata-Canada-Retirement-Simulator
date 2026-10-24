@@ -2987,6 +2987,63 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </p>
               </div>
 
+              <div
+                onClick={() => updateField('drawdownStrategy', 'minimize_overall_tax')}
+                className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
+                  inputs.drawdownStrategy === 'minimize_overall_tax'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">5. Minimize Overall Tax</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300">
+                    Lifetime Optimizer
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-400">Equalizes taxable income across all career & retirement brackets.</span>
+                </p>
+              </div>
+
+              <div
+                onClick={() => updateField('drawdownStrategy', 'maximize_govt_pensions')}
+                className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
+                  inputs.drawdownStrategy === 'maximize_govt_pensions'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">6. Maximize Govt Pensions</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300">
+                    CPP/OAS Maximizer
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-cyan-700 dark:text-cyan-400">Bridges with portfolio to Age 70 for +42% permanent indexed benefits.</span>
+                </p>
+              </div>
+
+              <div
+                onClick={() => updateField('drawdownStrategy', 'minimize_post_retirement_tax')}
+                className={`p-4 rounded-xl border cursor-pointer transition flex flex-col gap-2 ${
+                  inputs.drawdownStrategy === 'minimize_post_retirement_tax'
+                    ? 'border-indigo-600 dark:border-indigo-400 bg-indigo-50/50 dark:bg-indigo-500/15 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-50">7. Minimize Post-Retirement Tax</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300">
+                    Decumulation Focus
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-semibold text-purple-700 dark:text-purple-400">Keeps withdrawals strictly within BPA & lowest brackets; rest tax-free.</span>
+                </p>
+              </div>
+
             </div>
           </div>
         )}

@@ -249,8 +249,8 @@ export function fastSimulateEndNetWorth(
         i,
         pensions,
         {
-          pRrspWithdrawal: decumulationResult.pRrspWithdrawal,
-          sRrspWithdrawal: decumulationResult.sRrspWithdrawal,
+          pRrspWithdrawal: decumulationResult.pRrspWithdrawal + decumulationResult.pRrifWithdrawal,
+          sRrspWithdrawal: decumulationResult.sRrspWithdrawal + decumulationResult.sRrifWithdrawal,
           pTfsaWithdrawal: decumulationResult.pTfsaWithdrawal,
           sTfsaWithdrawal: decumulationResult.sTfsaWithdrawal,
           pNonRegWithdrawal: decumulationResult.pNonRegWithdrawal,

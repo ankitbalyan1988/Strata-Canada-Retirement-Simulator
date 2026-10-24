@@ -16,7 +16,10 @@ export type DrawdownStrategyType =
   | 'tax_efficient' // Non-Reg -> RRSP/RRIF -> TFSA (protects TFSA tax-free compounding)
   | 'rrsp_meltdown' // Early RRSP withdrawals to smooth brackets & avoid OAS clawback at 71+
   | 'proportional'  // Pro-rata across all available accounts
-  | 'tfsa_first';   // TFSA -> Non-Reg -> RRSP
+  | 'tfsa_first'    // TFSA -> Non-Reg -> RRSP
+  | 'minimize_overall_tax' // Lifetime bracket equalization across all career and retirement years
+  | 'maximize_govt_pensions' // Maximize guaranteed lifetime CPP & OAS via bridge funding to age 70
+  | 'minimize_post_retirement_tax'; // Minimizes cumulative taxes during post-retirement phase
 
 export type MaritalStatus = 'single' | 'married' | 'divorced';
 
@@ -218,6 +221,7 @@ export interface YearSimulationResult {
 
   // Account Balances at start/end of year
   rrspBalance: number;
+  rrifBalance: number; // separate RRIF balance for age 72+
   tfsaBalance: number;
   fhsaBalance: number;
   nonRegBalance: number;
@@ -242,10 +246,12 @@ export interface YearSimulationResult {
 
   // Withdrawals in retirement
   rrspWithdrawal: number;
+  rrifWithdrawal: number; // separate RRIF withdrawal for age 72+
   tfsaWithdrawal: number;
   nonRegWithdrawal: number;
   fhsaWithdrawalOrTransfer: number;
   totalWithdrawals: number;
+  isRrifMinMet?: boolean; // whether RRIF minimum prescribed withdrawal guideline was met
 
   // Growth / Investment return
   totalInvestmentGrowth: number;

@@ -259,12 +259,17 @@ export function runRetirementSimulation(
     let pensions: GovernmentPensionsResult = { pCppIncome: 0, sCppIncome: 0, pGrossOas: 0, sGrossOas: 0 };
     let pRrspWithdrawal = 0;
     let sRrspWithdrawal = 0;
+    let pRrifWithdrawal = 0;
+    let sRrifWithdrawal = 0;
     let pTfsaWithdrawal = 0;
     let sTfsaWithdrawal = 0;
     let pNonRegWithdrawal = 0;
     let sNonRegWithdrawal = 0;
-    let isRrifMandatory = Boolean(age >= 72 || (isCouple && spouse && spouseAge !== undefined && spouseAge >= 72));
+    const isPrimaryRrif = age >= 72;
+    const isSpouseRrif = Boolean(isCouple && spouse && spouseAge !== undefined && spouseAge >= 72);
+    let isRrifMandatory = Boolean(isPrimaryRrif || isSpouseRrif);
     let rrifMinimumWithdrawal = 0;
+    let isRrifMinMet = true;
 
     let pTaxable = contributionResult.pTaxable;
     let sTaxable = contributionResult.sTaxable;
@@ -308,12 +313,15 @@ export function runRetirementSimulation(
 
       pRrspWithdrawal = decumulationResult.pRrspWithdrawal;
       sRrspWithdrawal = decumulationResult.sRrspWithdrawal;
+      pRrifWithdrawal = decumulationResult.pRrifWithdrawal;
+      sRrifWithdrawal = decumulationResult.sRrifWithdrawal;
       pTfsaWithdrawal = decumulationResult.pTfsaWithdrawal;
       sTfsaWithdrawal = decumulationResult.sTfsaWithdrawal;
       pNonRegWithdrawal = decumulationResult.pNonRegWithdrawal;
       sNonRegWithdrawal = decumulationResult.sNonRegWithdrawal;
       rrifMinimumWithdrawal = decumulationResult.rrifMinimumWithdrawal;
       isRrifMandatory = decumulationResult.isRrifMandatory;
+      isRrifMinMet = decumulationResult.isRrifMinMet;
 
       // Sub-Routine 4C: Retirement Taxes, T1032 Splitting & Cashflow Gap
       const taxCashflowResult = calculateRetirementTaxesAndCashflow(
@@ -322,8 +330,8 @@ export function runRetirementSimulation(
         i,
         pensions,
         {
-          pRrspWithdrawal,
-          sRrspWithdrawal,
+          pRrspWithdrawal: pRrspWithdrawal + pRrifWithdrawal,
+          sRrspWithdrawal: sRrspWithdrawal + sRrifWithdrawal,
           pTfsaWithdrawal,
           sTfsaWithdrawal,
           pNonRegWithdrawal,
@@ -376,7 +384,22 @@ export function runRetirementSimulation(
       yearNotes.push(`Age ${age}: Household portfolio and assets depleted. Shortfall starts.`);
     }
 
-    const yearTotalWithdrawals = pRrspWithdrawal + sRrspWithdrawal + pTfsaWithdrawal + sTfsaWithdrawal + pNonRegWithdrawal + sNonRegWithdrawal;
+    if (age === 71 && (balances.pRrsp > 0 || (isCouple && spouse && balances.sRrsp > 0))) {
+      yearNotes.push(`Age 71: Mandatory CRA RRSP to RRIF conversion by Dec 31.`);
+    }
+    if (age >= 72 && rrifMinimumWithdrawal > 0) {
+      yearNotes.push(`Age ${age}: Statutory CRA RRIF minimum withdrawal guideline ($${Math.round(rrifMinimumWithdrawal).toLocaleString()}) active.`);
+    }
+
+    const yearTotalWithdrawals =
+      pRrspWithdrawal +
+      sRrspWithdrawal +
+      pRrifWithdrawal +
+      sRrifWithdrawal +
+      pTfsaWithdrawal +
+      sTfsaWithdrawal +
+      pNonRegWithdrawal +
+      sNonRegWithdrawal;
     const totalYearContributions =
       contributionResult.pRrspContrib +
       contributionResult.sRrspContrib +
@@ -398,7 +421,8 @@ export function runRetirementSimulation(
       oasGrossIncome: Math.round(pensions.pGrossOas + pensions.sGrossOas),
       oasClawback: Math.round(pOasClawback + sOasClawback),
       oasNetIncome: Math.round(pNetOas + sNetOas),
-      rrspBalance: Math.round(balances.pRrsp + balances.sRrsp),
+      rrspBalance: age < 72 ? Math.round(balances.pRrsp + balances.sRrsp) : 0,
+      rrifBalance: age >= 72 ? Math.round(balances.pRrsp + balances.sRrsp) : 0,
       tfsaBalance: Math.round(balances.pTfsa + balances.sTfsa),
       fhsaBalance: Math.round(balances.pFhsa + balances.sFhsa),
       nonRegBalance: Math.round(balances.pNonReg + balances.sNonReg),
@@ -417,6 +441,8 @@ export function runRetirementSimulation(
       fhsaContribution: Math.round(contributionResult.pFhsaContrib + contributionResult.sFhsaContrib),
       nonRegContribution: Math.round(contributionResult.pNonRegContrib + contributionResult.sNonRegContrib),
       rrspWithdrawal: Math.round(pRrspWithdrawal + sRrspWithdrawal),
+      rrifWithdrawal: Math.round(pRrifWithdrawal + sRrifWithdrawal),
+      isRrifMinMet,
       tfsaWithdrawal: Math.round(pTfsaWithdrawal + sTfsaWithdrawal),
       nonRegWithdrawal: Math.round(pNonRegWithdrawal + sNonRegWithdrawal),
       fhsaWithdrawalOrTransfer: Math.round(housingResult.yearFhsaWithdrawalOrTransfer + contributionResult.yearFhsaWithdrawalOrTransfer),

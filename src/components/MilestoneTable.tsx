@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { YearSimulationResult, RetirementInputs, CanadianProvince, SimulationSummary } from '../types/retirement';
 import { 
@@ -24,7 +24,10 @@ import {
   FileText,
   Calendar,
   DollarSign,
-  ArrowUpRight
+  ArrowUpRight,
+  Maximize2,
+  Minimize2,
+  Percent
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 
@@ -62,7 +65,20 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [taxRateMode, setTaxRateMode] = useState<'effective' | 'marginal' | 'both'>('effective');
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close full screen on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   // AI Explainer State
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -347,21 +363,30 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden flex flex-col transition duration-200">
+    <div className={
+      isFullscreen
+        ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col p-3 sm:p-5 shadow-2xl overflow-hidden transition duration-200"
+        : "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-xs overflow-hidden flex flex-col transition duration-200"
+    }>
       
       {/* 1. Header & Controls */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <Table className="w-4 h-4" />
             </span>
-            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">
-              Annual Simulation Ledger & Milestone Schedule
+            <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base flex items-center gap-2">
+              <span>Annual Simulation Ledger & Milestone Schedule</span>
+              {isFullscreen && (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  Full Screen View
+                </span>
+              )}
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>Year-by-year compounding balances, living expenses crossover, coasting viability, taxes & pensions</span>
+            <span>Compounding balances, decumulation sources, CRA RRIF guidelines, and marginal vs effective taxes</span>
             <span className="hidden md:inline text-slate-300 dark:text-slate-600">•</span>
             <span className="text-emerald-600 dark:text-emerald-400 font-medium inline-flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-emerald-500" />
@@ -370,13 +395,57 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           </p>
         </div>
 
-        {/* Filter Controls, Ask AI & Export Button */}
-        <div className="flex items-center flex-wrap gap-2.5">
+        {/* Filter Controls, Tax Rate Selector, Fullscreen & Export */}
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Tax Rate Mode Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 px-1.5 hidden sm:inline flex items-center gap-1">
+              <Percent className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+              <span>Tax Rate:</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setTaxRateMode('effective')}
+              className={`px-2 py-1 rounded-lg text-xs transition cursor-pointer ${
+                taxRateMode === 'effective'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Show Effective Tax Rate % (Total tax paid divided by gross income)"
+            >
+              Effective %
+            </button>
+            <button
+              type="button"
+              onClick={() => setTaxRateMode('marginal')}
+              className={`px-2 py-1 rounded-lg text-xs transition cursor-pointer ${
+                taxRateMode === 'marginal'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Show Marginal Tax Bracket % (Highest bracket rate applied to taxable income)"
+            >
+              Marginal %
+            </button>
+            <button
+              type="button"
+              onClick={() => setTaxRateMode('both')}
+              className={`px-2 py-1 rounded-lg text-xs transition cursor-pointer ${
+                taxRateMode === 'both'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Show both Effective and Marginal Tax Rates side-by-side"
+            >
+              Both
+            </button>
+          </div>
+
           {/* Ask AI Explainer Button */}
           <button
             type="button"
             onClick={() => setIsAiOpen(prev => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs border ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs border cursor-pointer ${
               isAiOpen
                 ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs ring-2 ring-emerald-400/30'
                 : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/70 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/80'
@@ -385,21 +454,16 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           >
             <Sparkles className={`w-3.5 h-3.5 ${isAiOpen ? 'text-amber-300 animate-pulse' : 'text-emerald-600 dark:text-emerald-400'}`} />
             <span>Ask AI</span>
-            <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-semibold ${
-              isAiOpen ? 'bg-white/20 text-white' : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
-            }`}>
-              Formulas & Help
-            </span>
           </button>
 
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 dark:text-slate-500" />
             <input
               type="text"
-              placeholder="Search age, milestone..."
+              placeholder="Search age, note..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 w-32 sm:w-40"
+              className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 w-28 sm:w-36"
             />
           </div>
 
@@ -407,7 +471,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <button
               type="button"
               onClick={() => setFilterMode('milestones')}
-              className={`px-2.5 py-1 rounded-lg transition ${
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
                 filterMode === 'milestones'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -418,7 +482,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <button
               type="button"
               onClick={() => setFilterMode('retirement')}
-              className={`px-2.5 py-1 rounded-lg transition ${
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
                 filterMode === 'retirement'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -429,7 +493,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             <button
               type="button"
               onClick={() => setFilterMode('all')}
-              className={`px-2.5 py-1 rounded-lg transition ${
+              className={`px-2 py-1 rounded-lg transition cursor-pointer ${
                 filterMode === 'all'
                   ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -438,6 +502,31 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               All Years ({yearlyResults.length})
             </button>
           </div>
+
+          {/* Full Screen / Maximize Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen(prev => !prev)}
+            title={isFullscreen ? 'Exit Full Screen View (Press Esc)' : 'Maximize Table to Full Screen'}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition shadow-xs cursor-pointer ${
+              isFullscreen
+                ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-500 shadow-sm ring-2 ring-amber-400/30'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200/80 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700/80'
+            }`}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-white" />
+                <span>Exit Fullscreen</span>
+                <span className="text-[9.5px] px-1 py-0.2 rounded bg-black/20 text-white font-mono hidden md:inline">Esc</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                <span>Maximize</span>
+              </>
+            )}
+          </button>
 
           {/* Export to Excel Button */}
           <button
@@ -450,12 +539,12 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             {isExporting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-700 dark:text-emerald-400" />
-                <span>Exporting...</span>
+                <span className="hidden sm:inline">Exporting...</span>
               </>
             ) : (
               <>
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Export Excel</span>
+                <span className="hidden sm:inline">Export Excel</span>
               </>
             )}
           </button>
@@ -748,6 +837,8 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               <option value="Tax Paid">Tax Paid</option>
               <option value="CPP">CPP</option>
               <option value="OAS (Net)">OAS (Net)</option>
+              <option value="RRSP">RRSP</option>
+              <option value="RRIF">RRIF (CRA Guidelines)</option>
               <option value="RRSP / RRIF">RRSP / RRIF</option>
               <option value="TFSA">TFSA</option>
               <option value="FHSA">FHSA</option>
@@ -912,12 +1003,13 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
       )}
 
       {/* 4. Table Data Container */}
-      <div ref={tableContainerRef} className="overflow-x-auto max-h-[500px]">
+      <div ref={tableContainerRef} className={`overflow-x-auto ${isFullscreen ? 'flex-1 max-h-none h-full' : 'max-h-[520px]'}`}>
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-slate-50 dark:bg-slate-800/90 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700/80 text-slate-600 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider">
             <tr>
               <th className="py-2.5 px-3 min-w-[190px]">Age / Milestone Phase</th>
-              <th className="py-2.5 px-3 text-right">RRSP / RRIF</th>
+              <th className="py-2.5 px-3 text-right min-w-[110px]">RRSP</th>
+              <th className="py-2.5 px-3 text-right min-w-[135px]">RRIF & CRA Min</th>
               <th className="py-2.5 px-3 text-right">TFSA</th>
               <th className="py-2.5 px-3 text-right">FHSA</th>
               <th className="py-2.5 px-3 text-right">Non-Reg</th>
@@ -926,8 +1018,12 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               <th className="py-2.5 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10">Inv. Returns</th>
               <th className="py-2.5 px-3 text-right">CPP</th>
               <th className="py-2.5 px-3 text-right">OAS (Net)</th>
-              <th className="py-2.5 px-3 text-right">Withdrawals</th>
-              <th className="py-2.5 px-3 text-right">Tax Paid</th>
+              <th className="py-2.5 px-3 text-right min-w-[170px]">Withdrawals & Sources</th>
+              <th className="py-2.5 px-3 text-right min-w-[125px]">
+                {taxRateMode === 'effective' && 'Tax Paid (Eff. %)'}
+                {taxRateMode === 'marginal' && 'Tax Paid (Marg. %)'}
+                {taxRateMode === 'both' && 'Tax Paid (Eff. / Marg.)'}
+              </th>
               <th className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">Spendable Cash</th>
               <th className="py-2.5 px-3 text-right text-slate-400 dark:text-slate-500">Living Target</th>
               <th className="py-2.5 px-3 min-w-[260px]">Milestone Schedule Notes</th>
@@ -936,7 +1032,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={15} className="py-8 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
+                <td colSpan={16} className="py-8 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
                   No simulation years match the current search or filter criteria.
                 </td>
               </tr>
@@ -944,7 +1040,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
 
             {paddingTop > 0 && (
               <tr>
-                <td style={{ height: `${paddingTop}px` }} colSpan={15} />
+                <td style={{ height: `${paddingTop}px` }} colSpan={16} />
               </tr>
             )}
 
@@ -1080,13 +1176,70 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                     </div>
                   </td>
 
-                  {/* RRSP/RRIF */}
+                  {/* RRSP Balance (Age < 72) */}
                   <td 
-                    onClick={() => handleCellClick('RRSP / RRIF', row.rrspBalance, row.age)}
-                    title={`Click to ask AI how RRSP/RRIF balance (${formatCur(row.rrspBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:underline transition-colors select-none"
+                    onClick={() => {
+                      if (row.age < 72) {
+                        handleCellClick('RRSP', row.rrspBalance, row.age);
+                      }
+                    }}
+                    title={row.age < 72 ? `Click to ask AI how RRSP balance (${formatCur(row.rrspBalance)}) was calculated at Age ${row.age}` : 'RRSP converted to RRIF by age 71 per CRA guidelines'}
+                    className={`py-2.5 px-3 text-right select-none ${
+                      row.age < 72 
+                        ? 'text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:underline transition-colors' 
+                        : 'text-slate-400 dark:text-slate-500 text-[10.5px]'
+                    }`}
                   >
-                    {formatCur(row.rrspBalance)}
+                    {row.age < 72 ? (
+                      <div>{formatCur(row.rrspBalance)}</div>
+                    ) : (
+                      <span className="italic">Converted</span>
+                    )}
+                  </td>
+
+                  {/* RRIF Balance & CRA Minimum Guidelines (Age 72+) */}
+                  <td 
+                    onClick={() => {
+                      if (row.age >= 72) {
+                        handleCellClick('RRIF', row.rrifBalance, row.age);
+                      }
+                    }}
+                    title={
+                      row.age >= 72
+                        ? `RRIF Balance: ${formatCur(row.rrifBalance)} | Statutory CRA Min: ${formatCur(row.rrifMinimumWithdrawal)} | Withdrawn: ${formatCur(row.rrifWithdrawal)}`
+                        : 'RRIF account begins at statutory age 71 conversion from RRSP'
+                    }
+                    className={`py-2.5 px-3 text-right select-none ${
+                      row.age >= 72 
+                        ? 'text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors' 
+                        : 'text-slate-400 dark:text-slate-500'
+                    }`}
+                  >
+                    {row.age >= 72 ? (
+                      <div>
+                        <div className="font-semibold">{formatCur(row.rrifBalance)}</div>
+                        <div className="flex items-center justify-end gap-1 mt-0.5">
+                          {row.isRrifMinMet ? (
+                            <span 
+                              title={`Statutory CRA withdrawal guideline satisfied (prescribed minimum: ${formatCur(row.rrifMinimumWithdrawal)})`}
+                              className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30"
+                            >
+                              <span>CRA Min Met</span>
+                              <span>✓</span>
+                            </span>
+                          ) : row.rrifMinimumWithdrawal > 0 ? (
+                            <span 
+                              title={`Below prescribed CRA statutory guideline (${formatCur(row.rrifMinimumWithdrawal)})`}
+                              className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30"
+                            >
+                              <span>Min: {formatCur(row.rrifMinimumWithdrawal)}</span>
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (
+                      <span>-</span>
+                    )}
                   </td>
 
                   {/* TFSA */}
@@ -1169,22 +1322,91 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                     {formatCur(row.oasNetIncome)}
                   </td>
 
-                  {/* Withdrawals */}
+                  {/* Withdrawals & Breakdown of Sources */}
                   <td 
                     onClick={() => handleCellClick('Withdrawals', row.totalWithdrawals, row.age)}
                     title={`Click to ask AI how withdrawals (${formatCur(row.totalWithdrawals)}) were calculated at Age ${row.age}`}
                     className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
                   >
-                    {formatCur(row.totalWithdrawals)}
+                    {row.totalWithdrawals > 0 ? (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="font-bold text-slate-900 dark:text-white">{formatCur(row.totalWithdrawals)}</span>
+                        <div className="flex flex-wrap items-center justify-end gap-1 max-w-[210px]">
+                          {row.nonRegWithdrawal > 0 && (
+                            <span 
+                              title={`Non-Registered Account Withdrawal: ${formatCur(row.nonRegWithdrawal)}`}
+                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30"
+                            >
+                              Non-Reg {formatCur(row.nonRegWithdrawal)}
+                            </span>
+                          )}
+                          {row.rrspWithdrawal > 0 && (
+                            <span 
+                              title={`RRSP Withdrawal: ${formatCur(row.rrspWithdrawal)}`}
+                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30"
+                            >
+                              RRSP {formatCur(row.rrspWithdrawal)}
+                            </span>
+                          )}
+                          {row.rrifWithdrawal > 0 && (
+                            <span 
+                              title={`RRIF Withdrawal: ${formatCur(row.rrifWithdrawal)} ${row.isRrifMinMet ? '(CRA Guideline Satisfied)' : ''}`}
+                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30"
+                            >
+                              RRIF {formatCur(row.rrifWithdrawal)}
+                            </span>
+                          )}
+                          {row.tfsaWithdrawal > 0 && (
+                            <span 
+                              title={`Tax-Free TFSA Withdrawal: ${formatCur(row.tfsaWithdrawal)}`}
+                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30"
+                            >
+                              TFSA {formatCur(row.tfsaWithdrawal)}
+                            </span>
+                          )}
+                          {row.fhsaWithdrawalOrTransfer > 0 && (
+                            <span 
+                              title={`FHSA Withdrawal/Transfer: ${formatCur(row.fhsaWithdrawalOrTransfer)}`}
+                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30"
+                            >
+                              FHSA {formatCur(row.fhsaWithdrawalOrTransfer)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <span>-</span>
+                    )}
                   </td>
 
-                  {/* Taxes Paid */}
+                  {/* Taxes Paid & Rate (Effective vs Marginal) */}
                   <td 
                     onClick={() => handleCellClick('Tax Paid', row.totalTaxPaid, row.age)}
-                    title={`Click to ask AI how Canadian tax paid (${formatCur(row.totalTaxPaid)}) was calculated at Age ${row.age}`}
+                    title={`Total Tax: ${formatCur(row.totalTaxPaid)} | Effective Rate: ${(row.effectiveTaxRate * 100).toFixed(1)}% | Marginal Bracket: ${(row.marginalTaxRate * 100).toFixed(1)}%`}
                     className="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400 font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
                   >
-                    {formatCur(row.totalTaxPaid)}
+                    <div>{formatCur(row.totalTaxPaid)}</div>
+                    {row.totalTaxPaid > 0 && (
+                      <div className="text-[9.5px] mt-0.5 font-mono">
+                        {taxRateMode === 'effective' && (
+                          <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                            {(row.effectiveTaxRate * 100).toFixed(1)}% eff
+                          </span>
+                        )}
+                        {taxRateMode === 'marginal' && (
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                            {(row.marginalTaxRate * 100).toFixed(1)}% marg
+                          </span>
+                        )}
+                        {taxRateMode === 'both' && (
+                          <span className="text-slate-500 dark:text-slate-400">
+                            <span className="text-rose-600 dark:text-rose-400 font-semibold">{(row.effectiveTaxRate * 100).toFixed(1)}%</span>
+                            {' / '}
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold">{(row.marginalTaxRate * 100).toFixed(1)}%</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </td>
 
                   {/* Spendable Cashflow */}
@@ -1246,7 +1468,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             })}
             {paddingBottom > 0 && (
               <tr>
-                <td style={{ height: `${paddingBottom}px` }} colSpan={15} />
+                <td style={{ height: `${paddingBottom}px` }} colSpan={16} />
               </tr>
             )}
           </tbody>

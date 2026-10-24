@@ -368,6 +368,17 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             >
               Escheat to Crown Warning
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const q = 'How are funeral costs paid by the estate in Canada and how does the $2,500 CPP Death Benefit work?';
+                setAiQuestion(q);
+                handleAskEstateAi(q);
+              }}
+              className="text-xs px-2.5 py-1 rounded-lg bg-indigo-900/50 hover:bg-indigo-800/60 text-indigo-200 border border-indigo-700/50"
+            >
+              Funeral Costs & CPP Death Benefit
+            </button>
           </div>
 
           <div className="flex gap-2">
@@ -930,6 +941,129 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
 
         </div>
 
+        {/* Row C.2: Funeral & Final Arrangement Expenses (Priority Estate Debt) */}
+        <div className="bg-slate-50/90 dark:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col gap-3.5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-sm">🕊️</span>
+              <span>Funeral, Memorial & Final Arrangement Expenses (First-Charge Estate Debt)</span>
+            </span>
+            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              Legally settled from estate assets prior to any beneficiary distributions
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+            {/* Funeral Service Presets */}
+            <div className="lg:col-span-8 flex flex-col gap-2">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Select Service Preset or Enter Custom Amount:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { label: 'Direct Cremation', amount: 5000, desc: 'Simple cremation or green burial' },
+                  { label: 'Standard Service', amount: 10000, desc: 'Memorial, service & reception' },
+                  { label: 'Full Traditional', amount: 15000, desc: 'Visitation, casket & cemetery plot' },
+                  { label: 'Pre-Arranged / $0', amount: 0, desc: 'Pre-paid plan or life policy' }
+                ].map((tier, tIdx) => {
+                  const isSelected = estateInputs.estimatedFuneralCost === tier.amount;
+                  return (
+                    <button
+                      key={tIdx}
+                      type="button"
+                      onClick={() => setEstateInputs(prev => ({ ...prev, estimatedFuneralCost: tier.amount }))}
+                      className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between ${
+                        isSelected
+                          ? 'bg-white dark:bg-slate-900 border-indigo-500 dark:border-indigo-400 ring-2 ring-indigo-400/20 shadow-xs'
+                          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-slate-900 dark:text-slate-100">{tier.label}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">{tier.desc}</div>
+                      </div>
+                      <div className="font-mono text-xs font-extrabold text-indigo-600 dark:text-indigo-400 mt-2">
+                        {tier.amount === 0 ? '$0' : formatCur(tier.amount)}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Slider for custom amount */}
+              <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col gap-1.5 mt-0.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                    Adjust Estimated Funeral & Burial Cost:
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">Estimated:</span>
+                    <strong className="font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">
+                      {formatCur(estateInputs.estimatedFuneralCost)}
+                    </strong>
+                  </div>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={30000}
+                  step={1000}
+                  value={estateInputs.estimatedFuneralCost}
+                  onChange={(e) => setEstateInputs(prev => ({ ...prev, estimatedFuneralCost: Number(e.target.value) }))}
+                  className="w-full accent-indigo-600 cursor-pointer h-2 bg-slate-200 dark:bg-slate-700 rounded-lg"
+                />
+                <div className="flex justify-between text-[9.5px] font-mono text-slate-600 dark:text-slate-300">
+                  <span>$0 (Pre-funded)</span>
+                  <span>$10k (Canadian Avg)</span>
+                  <span>$20k</span>
+                  <span>$30k+</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CPP Death Benefit Offset Toggle & Net Summary */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-3">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>CPP/QPP Death Benefit ($2,500)</span>
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={estateInputs.includeCppDeathBenefitOffset}
+                      onChange={(e) => setEstateInputs(prev => ({ ...prev, includeCppDeathBenefitOffset: e.target.checked }))}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600 dark:peer-checked:bg-emerald-500"></div>
+                  </label>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  The federal Canada Pension Plan pays a statutory one-time lump-sum benefit of up to $2,500 to the estate to offset funeral costs.
+                </p>
+              </div>
+
+              {/* Net Funeral Burden Breakdown */}
+              <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 text-xs flex flex-col gap-1">
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 text-[11px]">
+                  <span>Gross Funeral Cost:</span>
+                  <span className="font-mono font-medium">{formatCur(taxAndFees.funeralCosts)}</span>
+                </div>
+                <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-400 text-[11px]">
+                  <span>CPP Death Benefit:</span>
+                  <span className="font-mono font-medium">-{formatCur(taxAndFees.cppDeathBenefit)}</span>
+                </div>
+                <div className="border-t border-slate-200 dark:border-slate-700/80 pt-1 flex items-center justify-between font-bold text-slate-900 dark:text-slate-100">
+                  <span>Net Estate Burden:</span>
+                  <span className="font-mono text-indigo-700 dark:text-indigo-400">{formatCur(taxAndFees.netFuneralBurden)}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
         {/* Row D: Estate Liquidation & Settlement Waterfall */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
@@ -995,30 +1129,28 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
               </span>
             </div>
 
-            {/* 3. Provincial Probate & Fees */}
+            {/* 3. Provincial Probate, Funeral & Admin */}
             <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-950 dark:text-amber-300 flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-wider">
-                  3. Probate & Settlement
+                  3. Probate, Funeral & Admin
                 </span>
-                {taxAndFees.probateAvoidedByBeneficiaryDesignation > 0 && (
-                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-amber-600 dark:bg-amber-500 text-white font-bold">
-                    Bypassed
+                {taxAndFees.cppDeathBenefit > 0 && (
+                  <span className="text-[9.5px] px-1.5 py-0.2 rounded bg-emerald-600 dark:bg-emerald-500 text-white font-bold" title="CPP $2,500 Death Benefit Applied">
+                    CPP -$2.5k
                   </span>
                 )}
               </div>
               <div className="my-2">
                 <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-slate-100">
-                  {formatCur(taxAndFees.probateFee + taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation)}
+                  {formatCur(taxAndFees.probateFee + taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation + taxAndFees.netFuneralBurden)}
                 </div>
                 <div className="text-[11px] mt-0.5 text-amber-900 dark:text-amber-400">
-                  Probate: {formatCur(taxAndFees.probateFee)} • Admin: {formatCur(taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation)}
+                  Funeral: {formatCur(taxAndFees.netFuneralBurden)} • Probate: {formatCur(taxAndFees.probateFee)} • Admin: {formatCur(taxAndFees.closingAndLiquidationCosts + taxAndFees.executorCompensation)}
                 </div>
               </div>
               <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                {taxAndFees.probateAvoidedByBeneficiaryDesignation > 0 
-                  ? `Avoided ${formatCur(taxAndFees.probateAvoidedByBeneficiaryDesignation)} probate via beneficiary naming` 
-                  : `${retirementInputs.province} court tariffs`}
+                {taxAndFees.netFuneralBurden > 0 ? `Includes $${Math.round(taxAndFees.funeralCosts).toLocaleString()} funeral (${taxAndFees.cppDeathBenefit > 0 ? 'net of $2.5k CPP benefit' : 'unsubsidized'})` : 'First-charge liabilities & statutory tariffs'}
               </span>
             </div>
 
@@ -1066,6 +1198,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                 {distributions.map((item) => {
                   const isTax = item.category === 'taxes';
                   const isProbate = item.category === 'probate';
+                  const isFuneral = item.category === 'funeral';
                   const isCrown = item.category === 'crown';
                   const isCharity = item.category === 'charity';
                   const isSpouse = item.category === 'spouse';
@@ -1078,6 +1211,8 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                           ? 'bg-rose-100/70 dark:bg-rose-500/20 font-semibold text-rose-950 dark:text-rose-200' 
                           : isTax 
                           ? 'bg-rose-50/40 dark:bg-rose-500/10 text-rose-900 dark:text-rose-300' 
+                          : isFuneral
+                          ? 'bg-amber-50/40 dark:bg-amber-500/10 text-amber-950 dark:text-amber-200'
                           : isCharity 
                           ? 'bg-emerald-50/40 dark:bg-emerald-500/10 text-emerald-950 dark:text-emerald-300'
                           : isSpouse
@@ -1087,7 +1222,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     >
                       <td className="py-2.5 px-3 font-sans font-bold flex items-center gap-1.5">
                         <span>
-                          {isCrown ? '⚠️' : isTax ? '🏛️' : isProbate ? '⚖️' : isCharity ? '🎁' : isSpouse ? '💍' : '👤'}
+                          {isCrown ? '⚠️' : isTax ? '🏛️' : isProbate ? '⚖️' : isFuneral ? '🕊️' : isCharity ? '🎁' : isSpouse ? '💍' : '👤'}
                         </span>
                         <span>{item.recipient}</span>
                       </td>
@@ -1110,6 +1245,8 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                             ? 'bg-rose-200 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30'
                             : isTax
                             ? 'bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-300'
+                            : isFuneral
+                            ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30'
                             : isCharity
                             ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-300'
                             : 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-800 dark:text-indigo-300'
