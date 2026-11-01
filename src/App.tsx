@@ -10,6 +10,7 @@ import { MilestoneTable } from './components/MilestoneTable';
 import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { CanadianPlanningTips } from './components/CanadianPlanningTips';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
+import { RrspBreakEvenModule } from './components/RrspBreakEvenModule';
 import { useSimulationStore } from './store/useSimulationStore';
 import { Layers, Wallet, Sun, Moon } from 'lucide-react';
 
@@ -131,6 +132,9 @@ export default function App() {
 
         {/* Annual Simulation Ledger Table */}
         <MilestoneTable />
+
+        {/* RRSP/RRIF Break-Even Withdrawal Analysis Module & Summary Card */}
+        <RrspBreakEvenModule />
 
         {/* Canadian Estate Planning & Pending Reserves Liquidation Module (Lazy Loaded) */}
         <Suspense

@@ -3535,6 +3535,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   <span className="font-semibold text-blue-700 dark:text-blue-400">Early RRSP draws before age 71 to fill lower tax brackets.</span>
+                  <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Calculates optimal break-even age to prevent OAS clawbacks & estate taxes.</span>
                 </p>
               </div>
 

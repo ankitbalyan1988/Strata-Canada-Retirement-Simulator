@@ -28,7 +28,8 @@ import {
   Maximize2,
   Minimize2,
   Percent,
-  CreditCard
+  CreditCard,
+  Flame
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 
@@ -118,9 +119,15 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
       }
 
       if (filterMode === 'milestones') {
+        const isMeltdownStart =
+          inputs?.drawdownStrategy === 'rrsp_meltdown' &&
+          yr.age === (inputs.meltdownStartAge ?? retirementAge);
+
         return (
           yr.age === yearlyResults[0]?.age ||
           yr.age === retirementAge ||
+          isMeltdownStart ||
+          yr.isRrspMeltdownStartMilestone ||
           yr.isCrossoverMilestone ||
           yr.isCoastFireMilestone ||
           yr.isMillionaireMilestone ||
@@ -151,7 +158,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
 
       return true; // 'all'
     });
-  }, [yearlyResults, searchTerm, filterMode, retirementAge, summary]);
+  }, [yearlyResults, searchTerm, filterMode, retirementAge, summary, inputs]);
 
   // DOM Virtualizer for 80+ dynamic simulation rows
   const rowVirtualizer = useVirtualizer({
@@ -281,6 +288,17 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
         question: `How was my Debt Freedom milestone calculated at Age ${summary.debtPayoffAge} and how much cash flow is permanently freed for retirement savings?`,
         age: summary.debtPayoffAge,
         metric: 'Debt Payments'
+      });
+    }
+
+    // 10. Strategic RRSP Break-Even Meltdown
+    if (inputs?.drawdownStrategy === 'rrsp_meltdown') {
+      const meltdownAge = inputs.meltdownStartAge ?? retirementAge;
+      list.push({
+        label: `🔥 RRSP Meltdown @ Age ${meltdownAge}`,
+        question: `How does initiating an RRSP meltdown at Age ${meltdownAge} smooth my tax brackets, eliminate post-72 OAS clawbacks, and boost my estate wealth?`,
+        age: meltdownAge,
+        metric: 'RRSP'
       });
     }
 
@@ -585,7 +603,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 gap-2.5">
           
           {/* Card 1: Returns Outgrow Living Expenses (The Crossover Point) */}
           <button
@@ -789,6 +807,41 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               </div>
               <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
                 {summary?.totalInitialDebt ? `${formatCur(summary.totalInitialDebt)} cleared` : '$0 Loans'}
+              </div>
+            </button>
+          )}
+
+          {/* Card 8: Strategic RRSP Break-Even Meltdown */}
+          {inputs?.drawdownStrategy === 'rrsp_meltdown' && (
+            <button
+              type="button"
+              onClick={() => {
+                const targetAge = inputs.meltdownStartAge ?? retirementAge;
+                scrollToAge(targetAge);
+              }}
+              className="text-left p-2.5 rounded-xl border border-blue-200 dark:border-blue-500/20 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100/80 dark:hover:bg-blue-500/20 text-blue-950 dark:text-blue-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between gap-1 w-full">
+                <span className="text-[10.5px] font-bold text-blue-800 dark:text-blue-400 flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-blue-600 dark:text-blue-400 fill-blue-500" />
+                  <span>RRSP Meltdown</span>
+                </span>
+                <ArrowUpRight className="w-3 h-3 text-blue-600 dark:text-blue-400 opacity-60 group-hover:opacity-100 transition" />
+              </div>
+              <div className="my-1">
+                <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
+                  Age {inputs.meltdownStartAge ?? retirementAge}
+                </div>
+                <div className="text-[10px] text-blue-700 dark:text-blue-400 font-medium">
+                  Tax Arbitrage Active
+                </div>
+              </div>
+              <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
+                {inputs.meltdownTargetStrategy === 'oas_threshold'
+                  ? 'Ceiling: ~$93k OAS'
+                  : inputs.meltdownTargetStrategy === 'even_meltdown'
+                  ? 'Even Meltdown to 71'
+                  : 'Ceiling: ~$57k (Bkt 1)'}
               </div>
             </button>
           )}
@@ -1057,6 +1110,52 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
         </div>
       )}
 
+      {/* Strategic RRSP Meltdown Impact Banner on Milestone Ledger */}
+      {inputs?.drawdownStrategy === 'rrsp_meltdown' && (
+        <div className="mx-3 sm:mx-4 my-2.5 p-3.5 rounded-xl bg-gradient-to-r from-blue-50/90 via-indigo-50/40 to-slate-50/60 dark:from-blue-950/40 dark:via-indigo-950/20 dark:to-slate-900/40 border border-blue-200/90 dark:border-blue-800/60 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+          <div className="flex items-start gap-2.5">
+            <div className="p-2 rounded-lg bg-blue-600 text-white shadow-2xs shrink-0 mt-0.5">
+              <Flame className="w-4 h-4 fill-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                  Strategic Milestone Active: RRSP Meltdown Strategy (Age {inputs.meltdownStartAge ?? retirementAge} to 71)
+                </span>
+                <span className="px-2 py-0.2 rounded font-mono font-bold text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
+                  Ceiling: {inputs.meltdownTargetStrategy === 'oas_threshold' ? 'OAS Clawback Threshold (~$93,208)' : inputs.meltdownTargetStrategy === 'even_meltdown' ? 'Even Spread to 71' : 'Federal Bracket 1 (~$57,375)'}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1">
+                <span>
+                  🔹 <strong className="text-blue-700 dark:text-blue-300 font-semibold">Tax Impact:</strong> Early withdrawals lock in low marginal tax brackets (15%–20.05%) instead of 43.4%–53.5% post-72 RRIF brackets.
+                </span>
+                <span>
+                  🔹 <strong className="text-emerald-700 dark:text-emerald-300 font-semibold">Wealth Impact:</strong> Unspent proceeds are reinvested into TFSA & Non-Reg, defusing OAS clawback.
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end md:self-auto">
+            <button
+              type="button"
+              onClick={() => scrollToAge(inputs.meltdownStartAge ?? retirementAge)}
+              className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] transition shadow-2xs flex items-center gap-1 cursor-pointer"
+            >
+              <Flame className="w-3 h-3 fill-white" />
+              <span>Jump to Meltdown (Age {inputs.meltdownStartAge ?? retirementAge})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToAge(72)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-[11px] transition cursor-pointer"
+            >
+              <span>Inspect Age 72</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 4. Table Data Container */}
       <div
         ref={tableContainerRef}
@@ -1118,6 +1217,17 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               const isRrifMandatory = row.age === 71 || row.age === 72;
               const hasNotes = row.notes.length > 0;
               const isHighlighted = highlightedAge === row.age;
+              const isMeltdownStart = Boolean(
+                row.isRrspMeltdownStartMilestone ||
+                (inputs?.drawdownStrategy === 'rrsp_meltdown' && row.age === (inputs.meltdownStartAge ?? retirementAge))
+              );
+              const isMeltdownActive = Boolean(
+                row.isRrspMeltdownActive ||
+                (inputs?.drawdownStrategy === 'rrsp_meltdown' &&
+                  row.age >= (inputs.meltdownStartAge ?? retirementAge) &&
+                  row.age < 72 &&
+                  (row.rrspWithdrawal > 0 || row.rrifWithdrawal > 0))
+              );
 
               return (
                 <tr
@@ -1128,6 +1238,8 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   className={`hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all ${
                     isHighlighted
                       ? 'bg-emerald-100/90 dark:bg-emerald-950/80 ring-2 ring-emerald-500 z-10'
+                      : isMeltdownStart
+                      ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-4 border-blue-600 font-semibold'
                       : row.isCrossoverMilestone
                       ? 'bg-emerald-50/70 dark:bg-emerald-500/10 font-semibold text-emerald-950 dark:text-emerald-300'
                       : row.isCoastFireMilestone
@@ -1136,6 +1248,8 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       ? 'bg-rose-50/70 dark:bg-rose-500/10 font-semibold text-rose-950 dark:text-rose-300'
                       : isRrifMandatory
                       ? 'bg-amber-50/50 dark:bg-amber-500/10'
+                      : isMeltdownActive
+                      ? 'bg-blue-50/25 dark:bg-blue-950/20'
                       : row.isRetired
                       ? 'bg-slate-50/60 dark:bg-slate-800/50'
                       : virtualRow.index % 2 === 1
@@ -1168,6 +1282,26 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                       {row.isRetired && !isRetirementMilestone && (
                         <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
                           Retire
+                        </span>
+                      )}
+
+                      {/* Strategic RRSP Meltdown Milestone Badge */}
+                      {isMeltdownStart && (
+                        <span 
+                          title="Strategic RRSP Meltdown Milestone: Accelerated early draw begins here to lock in lowest lifetime tax brackets"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs animate-pulse"
+                        >
+                          <Flame className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 fill-blue-500" />
+                          <span>Meltdown Start</span>
+                        </span>
+                      )}
+                      {isMeltdownActive && !isMeltdownStart && (
+                        <span 
+                          title="RRSP Meltdown active: Accelerated draw utilizing low tax bracket"
+                          className="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-0.5"
+                        >
+                          <Flame className="w-2 h-2 text-blue-600 dark:text-blue-400" />
+                          <span>Meltdown</span>
                         </span>
                       )}
 
@@ -1341,10 +1475,20 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   {/* Non-Reg */}
                   <td 
                     onClick={() => handleCellClick('Non-Reg', row.nonRegBalance, row.age)}
-                    title={`Click to ask AI how Non-Registered balance (${formatCur(row.nonRegBalance)}) was calculated at Age ${row.age}`}
+                    title={`Click to ask AI how Non-Registered balance (${formatCur(row.nonRegBalance)}) was calculated at Age ${row.age}${row.rrspMeltdownSurplusReinvested ? ` (includes +${formatCur(row.rrspMeltdownSurplusReinvested)} from RRSP meltdown reinvestment)` : ''}`}
                     className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400 cursor-pointer hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:underline transition-colors select-none"
                   >
-                    {formatCur(row.nonRegBalance)}
+                    <div>
+                      <div>{formatCur(row.nonRegBalance)}</div>
+                      {Boolean(row.rrspMeltdownSurplusReinvested && row.rrspMeltdownSurplusReinvested > 0) && (
+                        <div 
+                          title={`+${formatCur(row.rrspMeltdownSurplusReinvested || 0)} after-tax RRSP meltdown proceeds deposited into Non-Reg to continue compounding`}
+                          className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5 flex items-center justify-end gap-0.5"
+                        >
+                          <span>+{formatCur(row.rrspMeltdownSurplusReinvested || 0)}</span>
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   {/* Real Estate Share */}
@@ -1430,10 +1574,19 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                           )}
                           {row.rrspWithdrawal > 0 && (
                             <span 
-                              title={`RRSP Withdrawal: ${formatCur(row.rrspWithdrawal)}`}
-                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30"
+                              title={
+                                isMeltdownActive
+                                  ? `Strategic RRSP Meltdown Withdrawal: ${formatCur(row.rrspWithdrawal)} (accelerated draw to utilize lower tax bracket)`
+                                  : `RRSP Withdrawal: ${formatCur(row.rrspWithdrawal)}`
+                              }
+                              className={`text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold border ${
+                                isMeltdownActive
+                                  ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-bold flex items-center gap-0.5'
+                                  : 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
+                              }`}
                             >
-                              RRSP {formatCur(row.rrspWithdrawal)}
+                              {isMeltdownActive && <Flame className="w-2.5 h-2.5 fill-white text-white shrink-0" />}
+                              <span>{isMeltdownActive ? 'Meltdown ' : 'RRSP '}{formatCur(row.rrspWithdrawal)}</span>
                             </span>
                           )}
                           {row.rrifWithdrawal > 0 && (
@@ -1495,6 +1648,23 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                         )}
                       </div>
                     )}
+                    {isMeltdownActive && (
+                      <div 
+                        title="Early RRSP draw locks in lower tax bracket today, preventing 43.4%-53.5% tax brackets at Age 72+"
+                        className="text-[8.5px] font-sans font-bold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-end gap-0.5"
+                      >
+                        <Flame className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+                        <span>Tax Arbitrage</span>
+                      </div>
+                    )}
+                    {inputs?.drawdownStrategy === 'rrsp_meltdown' && row.age >= 72 && row.oasClawback === 0 && (
+                      <div 
+                        title="OAS protected: Zero clawback due to reduced mandatory RRIF minimums"
+                        className="text-[8.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
+                      >
+                        ✓ 0% OAS Clawback
+                      </div>
+                    )}
                   </td>
 
                   {/* Debt Payments */}
@@ -1552,6 +1722,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                     {hasNotes ? (
                       <div className="flex flex-col gap-1">
                         {row.notes.map((note, nIdx) => {
+                          const isMeltdownNote = note.includes('RRSP Meltdown') || note.includes('Meltdown Surplus');
                           const isCrossover = note.includes('Crossover Milestone');
                           const isCoast = note.includes('Coast FIRE Milestone');
                           const isMillionaire = note.includes('Millionaire Milestone');
@@ -1563,7 +1734,9 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                             <div 
                               key={nIdx}
                               className={`p-1 px-1.5 rounded-md text-[10.5px] ${
-                                isCrossover
+                                isMeltdownNote
+                                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-950 dark:text-blue-200 font-semibold border border-blue-200 dark:border-blue-800'
+                                  : isCrossover
                                   ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
                                   : isCoast
                                   ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'

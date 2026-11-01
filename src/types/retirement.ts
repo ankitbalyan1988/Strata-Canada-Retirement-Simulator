@@ -233,6 +233,8 @@ export interface RetirementInputs {
 
   // Post-Retirement Strategy
   drawdownStrategy: DrawdownStrategyType;
+  meltdownTargetStrategy?: 'bracket1' | 'oas_threshold' | 'even_meltdown';
+  meltdownStartAge?: number; // Specific age at which strategic RRSP meltdown draws begin
 
   // Expat Emigration Planning
   expat?: ExpatInputs;
@@ -242,7 +244,7 @@ export interface MilestoneBadge {
   id: string;
   label: string;
   shortLabel: string;
-  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'debt_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
+  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'debt_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'meltdown' | 'general';
   icon: string;
   color: string;
   description: string;
@@ -336,6 +338,10 @@ export interface YearSimulationResult {
   isMortgageFreeMilestone?: boolean;
   isDebtFreeMilestone?: boolean;
   isPeakWealthMilestone?: boolean;
+  isRrspMeltdownStartMilestone?: boolean;
+  isRrspMeltdownActive?: boolean;
+  rrspMeltdownDrawdown?: number;
+  rrspMeltdownSurplusReinvested?: number;
   milestoneBadges?: MilestoneBadge[];
 }
 
@@ -349,6 +355,9 @@ export interface SimulationSummary {
   netWorthAtLifeExpectancy: number;
   peakNetWorth: number;
   peakNetWorthAge: number;
+  isMeltdownActive?: boolean;
+  meltdownStartAge?: number;
+  meltdownTargetStrategy?: 'bracket1' | 'oas_threshold' | 'even_meltdown';
 
   // Lifetime metrics
   lifetimeEmploymentIncome: number;

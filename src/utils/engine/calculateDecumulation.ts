@@ -41,7 +41,11 @@ export function calculateDecumulationForYear(
   balances: DecumulationBalances,
   isCouple: boolean,
   spouse: SpouseInputs | undefined,
-  inflationFactor: number
+  inflationFactor: number,
+  meltdownOptions?: {
+    startAge?: number;
+    targetStrategy?: 'bracket1' | 'oas_threshold' | 'even_meltdown';
+  }
 ): DecumulationResult {
   let pRegisteredWithdrawal = 0;
   let sRegisteredWithdrawal = 0;
@@ -123,16 +127,57 @@ export function calculateDecumulationForYear(
 
   } else if (drawdownStrategy === 'rrsp_meltdown') {
     // Accelerated early RRSP draw before age 71 to fill lower brackets
-    const ceiling = 65000 * inflationFactor;
-    if (age < 72 && balances.pRrsp > 0) {
-      const draw = Math.min(balances.pRrsp, Math.max(pRrifMin, ceiling));
-      pRegisteredWithdrawal += draw;
-      balances.pRrsp -= draw;
-    }
-    if (isCouple && spouse && spouseAge !== undefined && spouseAge < 72 && balances.sRrsp > 0) {
-      const draw = Math.min(balances.sRrsp, Math.max(sRrifMin, ceiling));
-      sRegisteredWithdrawal += draw;
-      balances.sRrsp -= draw;
+    const meltdownStartAge = meltdownOptions?.startAge ?? 0;
+    const meltdownTarget = meltdownOptions?.targetStrategy ?? 'bracket1';
+    const isMeltdownActiveThisYear = age >= meltdownStartAge && age < 72;
+
+    if (isMeltdownActiveThisYear) {
+      let targetCeiling = 65000 * inflationFactor;
+      if (meltdownTarget === 'bracket1') {
+        // Federal Bracket 1 (~$57,375 in 2026 indexed)
+        targetCeiling = 57375 * inflationFactor;
+      } else if (meltdownTarget === 'oas_threshold') {
+        // OAS Clawback Threshold (~$93,208 in 2026 indexed)
+        targetCeiling = 93208 * inflationFactor;
+      } else if (meltdownTarget === 'even_meltdown') {
+        // Even spread across remaining years to 71
+        const yearsRemaining = Math.max(1, 72 - age);
+        targetCeiling = Math.max(25000 * inflationFactor, balances.pRrsp / yearsRemaining);
+      }
+
+      if (balances.pRrsp > 0) {
+        const availableRoom = Math.max(0, targetCeiling - (guaranteedCash / (isCouple ? 2 : 1)));
+        const yearsRemaining = Math.max(1, 72 - age);
+        const minMeltdownSlice = balances.pRrsp / yearsRemaining;
+        const targetDraw = meltdownTarget === 'even_meltdown' ? targetCeiling : Math.max(availableRoom, minMeltdownSlice);
+        const draw = Math.min(balances.pRrsp, Math.max(pRrifMin, targetDraw));
+        pRegisteredWithdrawal += draw;
+        balances.pRrsp -= draw;
+      }
+      if (isCouple && spouse && spouseAge !== undefined && spouseAge < 72 && balances.sRrsp > 0) {
+        const sYearsRemaining = Math.max(1, 72 - spouseAge);
+        const availableRoom = Math.max(0, targetCeiling - (guaranteedCash / 2));
+        const sMinMeltdownSlice = balances.sRrsp / sYearsRemaining;
+        const sTargetDraw = meltdownTarget === 'even_meltdown' ? targetCeiling : Math.max(availableRoom, sMinMeltdownSlice);
+        const draw = Math.min(balances.sRrsp, Math.max(sRrifMin, sTargetDraw));
+        sRegisteredWithdrawal += draw;
+        balances.sRrsp -= draw;
+      }
+    } else if (age < 72) {
+      // Prior to meltdown start age, draw from Non-Reg first
+      if (neededFromPortfolio > 0) {
+        const totalNonReg = balances.pNonReg + balances.sNonReg;
+        if (totalNonReg > 0) {
+          const draw = Math.min(totalNonReg, neededFromPortfolio);
+          const pDraw = Math.min(balances.pNonReg, draw / 2);
+          pNonRegWithdrawal += pDraw;
+          balances.pNonReg -= pDraw;
+          const sDraw = Math.min(balances.sNonReg, draw / 2);
+          sNonRegWithdrawal += sDraw;
+          balances.sNonReg -= sDraw;
+          neededFromPortfolio -= draw;
+        }
+      }
     }
 
     let rem = Math.max(0, targetSpendingNominal - (guaranteedCash + (pRegisteredWithdrawal + sRegisteredWithdrawal) * 0.78));

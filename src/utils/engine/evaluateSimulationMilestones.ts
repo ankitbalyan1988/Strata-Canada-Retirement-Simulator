@@ -364,6 +364,40 @@ export function evaluateSimulationMilestones(
     });
   }
 
+  // 10. Strategic RRSP Break-Even Meltdown Milestone
+  if (inputs.drawdownStrategy === 'rrsp_meltdown') {
+    const meltdownStartAge = inputs.meltdownStartAge ?? inputs.retirementAge;
+    const meltdownRow = yearlyResults.find((r) => r.age === meltdownStartAge);
+    const targetStrategy = inputs.meltdownTargetStrategy ?? 'bracket1';
+    const ceilingLabel =
+      targetStrategy === 'bracket1'
+        ? 'Bracket 1 (~$57k)'
+        : targetStrategy === 'oas_threshold'
+        ? 'OAS Clawback Threshold (~$93k)'
+        : 'Even Spread to 71';
+
+    if (meltdownRow) {
+      meltdownRow.isRrspMeltdownStartMilestone = true;
+      meltdownRow.milestoneBadges = meltdownRow.milestoneBadges || [];
+      meltdownRow.milestoneBadges.unshift({
+        id: 'rrsp_meltdown_start',
+        label: `Strategic RRSP Meltdown (Target: ${ceilingLabel})`,
+        shortLabel: '🔥 RRSP Meltdown',
+        type: 'meltdown',
+        icon: 'flame',
+        color: 'blue',
+        description: `Initiate strategic early RRSP draw down at Age ${meltdownStartAge} to lock in lower marginal brackets and defuse future RRIF tax spikes`,
+        metricsSummary: `Target: ${ceilingLabel}`
+      });
+
+      const drawAmt = meltdownRow.rrspWithdrawal > 0 ? ` of $${Math.round(meltdownRow.rrspWithdrawal).toLocaleString()}` : '';
+      const taxRate = (meltdownRow.effectiveTaxRate * 100).toFixed(1);
+      meltdownRow.notes.unshift(
+        `🔥 Strategic Milestone: RRSP Meltdown initiated at Age ${meltdownStartAge}. Accelerated withdrawal${drawAmt} fills lower tax bracket (${taxRate}% eff) up to ${ceilingLabel}, defusing future 53.5% mandatory RRIF taxes and eliminating post-72 OAS clawback.`
+      );
+    }
+  }
+
   return {
     crossoverAge,
     crossoverYear,

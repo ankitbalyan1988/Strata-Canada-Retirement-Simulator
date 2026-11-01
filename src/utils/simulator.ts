@@ -306,6 +306,7 @@ export function runRetirementSimulation(
     let sNetOas = 0;
     let netSpendableCashflow = 0;
     let cashflowGap = 0;
+    let surplusReinvestedThisYear = 0;
 
     if (isRetired) {
       totalRetirementYears++;
@@ -333,7 +334,11 @@ export function runRetirementSimulation(
         balances,
         isCouple,
         spouse,
-        inflationFactor
+        inflationFactor,
+        {
+          startAge: inputs.meltdownStartAge ?? inputs.retirementAge,
+          targetStrategy: inputs.meltdownTargetStrategy ?? 'bracket1'
+        }
       );
 
       pRrspWithdrawal = decumulationResult.pRrspWithdrawal;
@@ -381,6 +386,137 @@ export function runRetirementSimulation(
       cashflowGap = taxCashflowResult.cashflowGap;
       lifetimeOasReceived += pNetOas + sNetOas;
       yearNotes.push(...taxCashflowResult.notes);
+
+      // Reinvest unspent surplus after-tax cashflow (e.g., from early RRSP meltdown or high pensions)
+      // into TFSA up to annual limit, then Non-Registered accounts
+      if (netSpendableCashflow > targetSpendingNominal) {
+        const surplus = netSpendableCashflow - targetSpendingNominal;
+        surplusReinvestedThisYear = surplus;
+        const tfsaAnnualLimit = 7000 * inflationFactor;
+        const pTfsaReinvest = Math.min(surplus * (isCouple ? 0.5 : 1.0), tfsaAnnualLimit);
+        const sTfsaReinvest = isCouple && spouse ? Math.min(surplus * 0.5, tfsaAnnualLimit) : 0;
+        balances.pTfsa += pTfsaReinvest;
+        balances.sTfsa += sTfsaReinvest;
+
+        const remSurplus = Math.max(0, surplus - (pTfsaReinvest + sTfsaReinvest));
+        if (remSurplus > 0) {
+          if (isCouple && spouse) {
+            balances.pNonReg += remSurplus / 2;
+            balances.sNonReg += remSurplus / 2;
+          } else {
+            balances.pNonReg += remSurplus;
+          }
+        }
+        if (drawdownStrategy === 'rrsp_meltdown' && surplus > 500) {
+          yearNotes.push(`Reinvested $${Math.round(surplus).toLocaleString()} after-tax RRSP meltdown surplus ($${Math.round(pTfsaReinvest + sTfsaReinvest).toLocaleString()} to TFSA, $${Math.round(remSurplus).toLocaleString()} to Non-Reg).`);
+        }
+      }
+    } else if (
+      inputs.drawdownStrategy === 'rrsp_meltdown' &&
+      age >= (inputs.meltdownStartAge ?? inputs.retirementAge) &&
+      age < 72 &&
+      (balances.pRrsp > 0 || (isCouple && spouse && balances.sRrsp > 0))
+    ) {
+      // Pre-Retirement Strategic RRSP Meltdown (active at meltdownStartAge e.g. Age 55 before planned retirement)
+      const meltdownTarget = inputs.meltdownTargetStrategy ?? 'bracket1';
+      const yearsRemaining = Math.max(1, 72 - age);
+      const sYearsRemaining = isCouple && spouse && spouseAge !== undefined ? Math.max(1, 72 - spouseAge) : yearsRemaining;
+
+      let pTargetCeiling = 57375 * inflationFactor;
+      let sTargetCeiling = 57375 * inflationFactor;
+      if (meltdownTarget === 'bracket1') {
+        pTargetCeiling = 57375 * inflationFactor;
+        sTargetCeiling = 57375 * inflationFactor;
+      } else if (meltdownTarget === 'oas_threshold') {
+        pTargetCeiling = 93208 * inflationFactor;
+        sTargetCeiling = 93208 * inflationFactor;
+      } else {
+        pTargetCeiling = Math.max(25000 * inflationFactor, balances.pRrsp / yearsRemaining);
+        sTargetCeiling = Math.max(25000 * inflationFactor, (isCouple && spouse ? balances.sRrsp : 0) / sYearsRemaining);
+      }
+
+      // Primary RRSP Meltdown Draw
+      if (balances.pRrsp > 0) {
+        const pEarned = contributionResult.pYearIncome;
+        const pRoom = meltdownTarget === 'even_meltdown' ? pTargetCeiling : Math.max(0, pTargetCeiling - pEarned);
+        const pMinSlice = balances.pRrsp / yearsRemaining;
+        const pTargetDraw = Math.max(pRoom, pMinSlice);
+        pRrspWithdrawal = Math.min(balances.pRrsp, pTargetDraw);
+        balances.pRrsp -= pRrspWithdrawal;
+      }
+
+      // Spouse RRSP Meltdown Draw
+      if (isCouple && spouse && spouseAge !== undefined && spouseAge < 72 && balances.sRrsp > 0) {
+        const sEarned = contributionResult.sYearIncome;
+        const sRoom = meltdownTarget === 'even_meltdown' ? sTargetCeiling : Math.max(0, sTargetCeiling - sEarned);
+        const sMinSlice = balances.sRrsp / sYearsRemaining;
+        const sTargetDraw = Math.max(sRoom, sMinSlice);
+        sRrspWithdrawal = Math.min(balances.sRrsp, sTargetDraw);
+        balances.sRrsp -= sRrspWithdrawal;
+      }
+
+      // Recalculate Canadian Taxes on Total Taxable (employment + RRSP withdrawal)
+      const pNewTaxable = pTaxable + pRrspWithdrawal;
+      const pNewTax = calculateCanadianTax(pNewTaxable, province, age).totalTax;
+      const additionalPTax = Math.max(0, pNewTax - pTaxPaid);
+      pTaxable = pNewTaxable;
+      pTaxPaid = pNewTax;
+
+      let additionalSTax = 0;
+      if (isCouple && spouse && spouseAge !== undefined) {
+        const sNewTaxable = sTaxable + sRrspWithdrawal;
+        const sNewTax = calculateCanadianTax(sNewTaxable, province, spouseAge).totalTax;
+        additionalSTax = Math.max(0, sNewTax - sTaxPaid);
+        sTaxable = sNewTaxable;
+        sTaxPaid = sNewTax;
+      }
+
+      // Net after-tax proceeds from RRSP withdrawal
+      const pNetProceeds = Math.max(0, pRrspWithdrawal - additionalPTax);
+      const sNetProceeds = Math.max(0, sRrspWithdrawal - additionalSTax);
+      const totalNetSurplus = pNetProceeds + sNetProceeds;
+
+      // Reinvest into TFSA (up to available room) and Non-Registered account
+      const tfsaAnnualLimit = 7000 * inflationFactor;
+      const pTfsaRoom = Math.max(0, tfsaAnnualLimit - contributionResult.pTfsaContrib);
+      const pTfsaReinvest = Math.min(pNetProceeds, pTfsaRoom);
+      balances.pTfsa += pTfsaReinvest;
+      const pNonRegReinvest = pNetProceeds - pTfsaReinvest;
+      balances.pNonReg += pNonRegReinvest;
+
+      let sTfsaReinvest = 0;
+      let sNonRegReinvest = 0;
+      if (isCouple && spouse) {
+        const sTfsaRoom = Math.max(0, tfsaAnnualLimit - contributionResult.sTfsaContrib);
+        sTfsaReinvest = Math.min(sNetProceeds, sTfsaRoom);
+        balances.sTfsa += sTfsaReinvest;
+        sNonRegReinvest = sNetProceeds - sTfsaReinvest;
+        balances.sNonReg += sNonRegReinvest;
+      }
+
+      surplusReinvestedThisYear = totalNetSurplus;
+      netSpendableCashflow = Math.max(
+        0,
+        (contributionResult.pYearIncome - pTaxPaid) +
+          (isCouple && spouse ? contributionResult.sYearIncome - sTaxPaid : 0) -
+          debtResult.totalAnnualPayment
+      );
+
+      const totalWithdrawal = pRrspWithdrawal + sRrspWithdrawal;
+      const totalTaxPaidOnDraw = additionalPTax + additionalSTax;
+      const totalNonRegAdded = pNonRegReinvest + sNonRegReinvest;
+      const totalTfsaAdded = pTfsaReinvest + sTfsaReinvest;
+
+      yearNotes.push(
+        `Strategic RRSP Meltdown (Age ${age}): Withdrew $${Math.round(totalWithdrawal).toLocaleString()} from RRSP ($${Math.round(totalTaxPaidOnDraw).toLocaleString()} tax paid). Reinvested after-tax net $${Math.round(totalNetSurplus).toLocaleString()} directly into Non-Registered ($${Math.round(totalNonRegAdded).toLocaleString()})${totalTfsaAdded > 0 ? ` and TFSA ($${Math.round(totalTfsaAdded).toLocaleString()})` : ''} to continue compounding.`
+      );
+    } else {
+      netSpendableCashflow = Math.max(
+        0,
+        (contributionResult.pYearIncome - pTaxPaid) +
+          (isCouple && spouse ? contributionResult.sYearIncome - sTaxPaid : 0) -
+          debtResult.totalAnnualPayment
+      );
     }
 
     const totalTaxPaid = pTaxPaid + sTaxPaid;
@@ -437,6 +573,12 @@ export function runRetirementSimulation(
       contributionResult.sNonRegContrib;
 
     const preRetirementNetCashflow = contributionResult.pYearIncome + contributionResult.sYearIncome - totalTaxPaid - totalYearContributions - debtResult.totalAnnualPayment;
+
+    const isMeltdownActiveThisPlan = drawdownStrategy === 'rrsp_meltdown';
+    const meltdownStartAge = inputs.meltdownStartAge ?? inputs.retirementAge;
+    const isRrspMeltdownStartMilestone = Boolean(isMeltdownActiveThisPlan && age === meltdownStartAge);
+    const isRrspMeltdownActive = Boolean(isMeltdownActiveThisPlan && age >= meltdownStartAge && age < 72 && (pRrspWithdrawal + sRrspWithdrawal > 0));
+    const rrspMeltdownDrawdown = isRrspMeltdownActive ? Math.round(pRrspWithdrawal + sRrspWithdrawal) : 0;
 
     yearlyResults.push({
       age,
@@ -504,7 +646,11 @@ export function runRetirementSimulation(
       spouseEmploymentIncome: Math.round(contributionResult.sYearIncome),
       spouseCppIncome: Math.round(pensions.sCppIncome),
       spouseOasNetIncome: Math.round(sNetOas),
-      spouseTaxPaid: Math.round(sTaxPaid)
+      spouseTaxPaid: Math.round(sTaxPaid),
+      isRrspMeltdownStartMilestone,
+      isRrspMeltdownActive,
+      rrspMeltdownDrawdown,
+      rrspMeltdownSurplusReinvested: Math.round(surplusReinvestedThisYear)
     });
   }
 
@@ -584,7 +730,10 @@ export function runRetirementSimulation(
       ? (calculateEarlyPayoffComparison(inputs.debts || [], currentAge, retirementAge, inputs.debtStrategy)?.interestSaved || 0)
       : 0,
     isCouple,
-    spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined
+    spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined,
+    isMeltdownActive: inputs.drawdownStrategy === 'rrsp_meltdown',
+    meltdownStartAge: inputs.drawdownStrategy === 'rrsp_meltdown' ? (inputs.meltdownStartAge ?? inputs.retirementAge) : undefined,
+    meltdownTargetStrategy: inputs.meltdownTargetStrategy ?? 'bracket1'
   };
 
   return { yearlyResults, summary };

@@ -1,4 +1,5 @@
 import { RetirementInputs, StressTestOptions } from '../../types/retirement';
+import { calculateCanadianTax } from '../canadianTax';
 import {
   initializeMortgageAndHousingParams,
   calculateMortgageAndHousingForYear,
@@ -249,10 +250,14 @@ export function fastSimulateEndNetWorth(
         balances,
         isCouple,
         spouse,
-        inflationFactor
+        inflationFactor,
+        {
+          startAge: inputs.meltdownStartAge ?? inputs.retirementAge,
+          targetStrategy: inputs.meltdownTargetStrategy ?? 'bracket1'
+        }
       );
 
-      calculateRetirementTaxesAndCashflow(
+      const taxCashflowResult = calculateRetirementTaxesAndCashflow(
         age,
         spouseAge,
         i,
@@ -271,6 +276,91 @@ export function fastSimulateEndNetWorth(
         spouse,
         inflationFactor
       );
+
+      const netSpendable = Math.max(0, taxCashflowResult.netSpendableCashflow - debtResult.totalAnnualPayment);
+      if (netSpendable > targetSpendingNominal) {
+        const surplus = netSpendable - targetSpendingNominal;
+        const tfsaAnnualLimit = 7000 * inflationFactor;
+        const pTfsaReinvest = Math.min(surplus * (isCouple ? 0.5 : 1.0), tfsaAnnualLimit);
+        const sTfsaReinvest = isCouple && spouse ? Math.min(surplus * 0.5, tfsaAnnualLimit) : 0;
+        balances.pTfsa += pTfsaReinvest;
+        balances.sTfsa += sTfsaReinvest;
+        const remSurplus = Math.max(0, surplus - (pTfsaReinvest + sTfsaReinvest));
+        if (remSurplus > 0) {
+          if (isCouple && spouse) {
+            balances.pNonReg += remSurplus / 2;
+            balances.sNonReg += remSurplus / 2;
+          } else {
+            balances.pNonReg += remSurplus;
+          }
+        }
+      }
+    } else if (
+      inputs.drawdownStrategy === 'rrsp_meltdown' &&
+      age >= (inputs.meltdownStartAge ?? inputs.retirementAge) &&
+      age < 72 &&
+      (balances.pRrsp > 0 || (isCouple && spouse && balances.sRrsp > 0))
+    ) {
+      const meltdownTarget = inputs.meltdownTargetStrategy ?? 'bracket1';
+      const yearsRemaining = Math.max(1, 72 - age);
+      const sYearsRemaining = isCouple && spouse && spouseAge !== undefined ? Math.max(1, 72 - spouseAge) : yearsRemaining;
+
+      let pTargetCeiling = 57375 * inflationFactor;
+      let sTargetCeiling = 57375 * inflationFactor;
+      if (meltdownTarget === 'bracket1') {
+        pTargetCeiling = 57375 * inflationFactor;
+        sTargetCeiling = 57375 * inflationFactor;
+      } else if (meltdownTarget === 'oas_threshold') {
+        pTargetCeiling = 93208 * inflationFactor;
+        sTargetCeiling = 93208 * inflationFactor;
+      } else {
+        pTargetCeiling = Math.max(25000 * inflationFactor, balances.pRrsp / yearsRemaining);
+        sTargetCeiling = Math.max(25000 * inflationFactor, (isCouple && spouse ? balances.sRrsp : 0) / sYearsRemaining);
+      }
+
+      let pRrspDraw = 0;
+      if (balances.pRrsp > 0) {
+        const pEarned = contributionResult.pYearIncome;
+        const pRoom = meltdownTarget === 'even_meltdown' ? pTargetCeiling : Math.max(0, pTargetCeiling - pEarned);
+        const pMinSlice = balances.pRrsp / yearsRemaining;
+        const pTargetDraw = Math.max(pRoom, pMinSlice);
+        pRrspDraw = Math.min(balances.pRrsp, pTargetDraw);
+        balances.pRrsp -= pRrspDraw;
+      }
+
+      let sRrspDraw = 0;
+      if (isCouple && spouse && spouseAge !== undefined && spouseAge < 72 && balances.sRrsp > 0) {
+        const sEarned = contributionResult.sYearIncome;
+        const sRoom = meltdownTarget === 'even_meltdown' ? sTargetCeiling : Math.max(0, sTargetCeiling - sEarned);
+        const sMinSlice = balances.sRrsp / sYearsRemaining;
+        const sTargetDraw = Math.max(sRoom, sMinSlice);
+        sRrspDraw = Math.min(balances.sRrsp, sTargetDraw);
+        balances.sRrsp -= sRrspDraw;
+      }
+
+      const pNewTax = calculateCanadianTax(contributionResult.pTaxable + pRrspDraw, province, age).totalTax;
+      const additionalPTax = Math.max(0, pNewTax - contributionResult.pTaxPaid);
+      let additionalSTax = 0;
+      if (isCouple && spouse && spouseAge !== undefined) {
+        const sNewTax = calculateCanadianTax(contributionResult.sTaxable + sRrspDraw, province, spouseAge).totalTax;
+        additionalSTax = Math.max(0, sNewTax - contributionResult.sTaxPaid);
+      }
+
+      const pNetProceeds = Math.max(0, pRrspDraw - additionalPTax);
+      const sNetProceeds = Math.max(0, sRrspDraw - additionalSTax);
+
+      const tfsaAnnualLimit = 7000 * inflationFactor;
+      const pTfsaRoom = Math.max(0, tfsaAnnualLimit - contributionResult.pTfsaContrib);
+      const pTfsaReinvest = Math.min(pNetProceeds, pTfsaRoom);
+      balances.pTfsa += pTfsaReinvest;
+      balances.pNonReg += (pNetProceeds - pTfsaReinvest);
+
+      if (isCouple && spouse) {
+        const sTfsaRoom = Math.max(0, tfsaAnnualLimit - contributionResult.sTfsaContrib);
+        const sTfsaReinvest = Math.min(sNetProceeds, sTfsaRoom);
+        balances.sTfsa += sTfsaReinvest;
+        balances.sNonReg += (sNetProceeds - sTfsaReinvest);
+      }
     }
 
     const currentLiquidPortfolio =
