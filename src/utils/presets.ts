@@ -81,6 +81,8 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   fhsaHomePurchaseAge: 45,
   cppStartAge: 65,
   cppEstimatedPercentOfMax: CRA_ECONOMIC_DEFAULTS.averageCppBenefitPercent, // Actual CRA average benefit paid
+  cppCalculationMethod: 'percentage',
+  cppServiceCanadaEstimateAt65: 917, // ~$917/mo (64% of 2026 maximum)
   oasStartAge: 65,
   oasEligibleYearsInCanada: 40,
   preRetirementReturn: 6.0, // FP Canada guideline for balanced portfolio
@@ -441,6 +443,8 @@ export const DEFAULT_SPOUSE_INPUTS: SpouseInputs = {
   nonRegAnnualContribution: 2500,
   cppStartAge: 65,
   cppEstimatedPercentOfMax: 64, // CRA average
+  cppCalculationMethod: 'percentage',
+  cppServiceCanadaEstimateAt65: 917,
   oasStartAge: 65,
   oasEligibleYearsInCanada: 40,
   pensionIncomeSplitting: true

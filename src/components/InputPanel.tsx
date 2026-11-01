@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   PiggyBank, 
   User, 
@@ -31,7 +31,8 @@ import {
   CheckCircle2,
   Globe,
   Plane,
-  CreditCard
+  CreditCard,
+  FileText
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -42,12 +43,14 @@ import {
   RealEstateInputs,
   AccountReturnRates,
   CustomNonRegAccount,
-  MonthlyExpenseEstimates
+  MonthlyExpenseEstimates,
+  CppCalculationMethod
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
 import { DEFAULT_SPOUSE_INPUTS, DEFAULT_REAL_ESTATE_INPUTS, DEFAULT_ACCOUNT_RETURNS } from '../utils/presets';
 import { EXPAT_DESTINATIONS, DEFAULT_EXPAT_INPUTS } from '../utils/expatCountries';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
+import { calculateAdjustedServiceCanadaCpp, getCppTimingFactor } from '../utils/cppCalculator';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
@@ -185,6 +188,50 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     const bonus = ((age - 65) * 7.2).toFixed(1);
     return `+${bonus}% permanent deferral boost`;
   };
+
+  const primaryCppMethod: CppCalculationMethod = inputs.cppCalculationMethod || 'percentage';
+  const primaryServiceCanadaEstimate = inputs.cppServiceCanadaEstimateAt65 ?? 917;
+
+  const primaryCppAdjResult = useMemo(() => {
+    return calculateAdjustedServiceCanadaCpp({
+      serviceCanadaMonthlyAt65: primaryServiceCanadaEstimate,
+      currentAge: inputs.currentAge,
+      retirementAge: inputs.retirementAge,
+      cppStartAge: inputs.cppStartAge,
+      currentAnnualIncome: inputs.currentAnnualIncome,
+      careerDisruption: inputs.careerDisruption
+    });
+  }, [
+    primaryServiceCanadaEstimate,
+    inputs.currentAge,
+    inputs.retirementAge,
+    inputs.cppStartAge,
+    inputs.currentAnnualIncome,
+    inputs.careerDisruption
+  ]);
+
+  const spouseCppMethod: CppCalculationMethod = inputs.spouse?.cppCalculationMethod || 'percentage';
+  const spouseServiceCanadaEstimate = inputs.spouse?.cppServiceCanadaEstimateAt65 ?? 917;
+
+  const spouseCppAdjResult = useMemo(() => {
+    if (!inputs.spouse) return null;
+    return calculateAdjustedServiceCanadaCpp({
+      serviceCanadaMonthlyAt65: spouseServiceCanadaEstimate,
+      currentAge: inputs.spouse.currentAge,
+      retirementAge: inputs.spouse.retirementAge,
+      cppStartAge: inputs.spouse.cppStartAge,
+      currentAnnualIncome: inputs.spouse.annualIncome,
+      careerDisruption: inputs.spouse.careerDisruption
+    });
+  }, [
+    inputs.spouse,
+    spouseServiceCanadaEstimate,
+    inputs.spouse?.currentAge,
+    inputs.spouse?.retirementAge,
+    inputs.spouse?.cppStartAge,
+    inputs.spouse?.annualIncome,
+    inputs.spouse?.careerDisruption
+  ]);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-colors">
@@ -2590,35 +2637,330 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </div>
 
             {/* Spouse CPP & OAS parameters */}
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/50 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <div className="flex justify-between text-xs font-semibold mb-1">
-                  <span className="text-slate-700 dark:text-slate-300">Spouse CPP Start Age:</span>
-                  <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.spouse.cppStartAge} yrs</span>
-                </div>
-                <input
-                  type="range"
-                  min={60}
-                  max={70}
-                  value={inputs.spouse.cppStartAge}
-                  onChange={(e) => updateSpouseField('cppStartAge', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
-                />
+            <div className="flex flex-col gap-4">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h5 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Landmark className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  Spouse Government Pensions (CPP & OAS)
+                </h5>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Model spouse's Canada Pension Plan and Old Age Security entitlements independently
+                </p>
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs font-semibold mb-1">
-                  <span className="text-slate-700 dark:text-slate-300">Spouse OAS Start Age:</span>
-                  <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.spouse.oasStartAge} yrs</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Spouse CPP Card */}
+                <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-sm font-bold text-blue-950 dark:text-blue-200 flex items-center gap-1.5">
+                      <Landmark className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      Spouse CPP
+                    </h5>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
+                      Age {inputs.spouse.cppStartAge} • ${spouseCppMethod === 'service_canada' && spouseCppAdjResult ? Math.round(spouseCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString() : Math.round((1433.50 * ((inputs.spouse.cppEstimatedPercentOfMax ?? 64) / 100)) * getCppTimingFactor(inputs.spouse.cppStartAge).factor).toLocaleString()}/mo
+                    </span>
+                  </div>
+
+                  {/* Spouse Method Toggle */}
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center justify-between">
+                      <span>Estimation Method:</span>
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                        {spouseCppMethod === 'service_canada' ? 'Service Canada SOC' : 'Percentage of Maximum'}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => updateSpouseField('cppCalculationMethod', 'percentage')}
+                        className={`text-xs font-semibold py-1.5 px-2 rounded-md transition-all ${
+                          spouseCppMethod === 'percentage'
+                            ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        % of Maximum
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateSpouseField('cppCalculationMethod', 'service_canada')}
+                        className={`text-xs font-semibold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1 ${
+                          spouseCppMethod === 'service_canada'
+                            ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Service Canada Statement
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Spouse CPP Start Age Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span className="text-slate-700 dark:text-slate-300">Spouse CPP Start Age (60 - 70):</span>
+                      <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.spouse.cppStartAge} yrs</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={60}
+                      max={70}
+                      step={1}
+                      value={inputs.spouse.cppStartAge}
+                      onChange={(e) => updateSpouseField('cppStartAge', Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
+                    />
+                    <div className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+                      <span>Adjustment: {getCppAdjustmentText(inputs.spouse.cppStartAge)}</span>
+                      <span className="text-slate-400 dark:text-slate-500 font-normal">
+                        {inputs.spouse.cppStartAge < 65 ? '-0.6%/mo' : inputs.spouse.cppStartAge > 65 ? '+0.7%/mo' : 'Standard'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Spouse % of Max */}
+                  {spouseCppMethod === 'percentage' && (
+                    <div className="flex flex-col gap-3 pt-2 border-t border-blue-100 dark:border-blue-500/20">
+                      <div>
+                        <div className="flex justify-between text-xs font-semibold mb-1">
+                          <span className="text-slate-700 dark:text-slate-300">Career Entitlement (% of Max):</span>
+                          <span className="text-blue-700 dark:text-blue-400 font-mono font-bold">
+                            {inputs.spouse.cppEstimatedPercentOfMax ?? 64}% of Maximum
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min={30}
+                          max={100}
+                          step={5}
+                          value={inputs.spouse.cppEstimatedPercentOfMax ?? 64}
+                          onChange={(e) => updateSpouseField('cppEstimatedPercentOfMax', Number(e.target.value))}
+                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '64% CRA Avg (~$917)', val: 64 },
+                          { label: '85% Strong Career', val: 85 },
+                          { label: '100% Max YMPE', val: 100 }
+                        ].map((preset) => (
+                          <button
+                            key={preset.val}
+                            type="button"
+                            onClick={() => updateSpouseField('cppEstimatedPercentOfMax', preset.val)}
+                            className={`text-[10px] px-2 py-0.5 rounded font-medium border transition-colors ${
+                              (inputs.spouse?.cppEstimatedPercentOfMax ?? 64) === preset.val
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-blue-100/40 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/40 flex items-center justify-between text-xs">
+                        <span className="text-slate-600 dark:text-slate-300 font-medium">Anticipated CPP:</span>
+                        <div className="text-right">
+                          <span className="font-bold text-blue-700 dark:text-blue-300">
+                            ${Math.round((1433.50 * ((inputs.spouse?.cppEstimatedPercentOfMax ?? 64) / 100)) * getCppTimingFactor(inputs.spouse?.cppStartAge || 65).factor).toLocaleString()} / mo
+                          </span>
+                          <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1.5">
+                            (${Math.round((1433.50 * ((inputs.spouse?.cppEstimatedPercentOfMax ?? 64) / 100)) * getCppTimingFactor(inputs.spouse?.cppStartAge || 65).factor * 12).toLocaleString()} / yr)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Spouse Service Canada Statement */}
+                  {spouseCppMethod === 'service_canada' && spouseCppAdjResult && (
+                    <div className="flex flex-col gap-3 pt-2 border-t border-blue-100 dark:border-blue-500/20">
+                      <div>
+                        <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                          <span className="text-slate-700 dark:text-slate-300">Spouse Statement Monthly @ Age 65:</span>
+                          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">From MSCA Statement</span>
+                        </div>
+                        <CurrencyInput
+                          value={inputs.spouse?.cppServiceCanadaEstimateAt65 ?? 917}
+                          onChange={(val) => updateSpouseField('cppServiceCanadaEstimateAt65', val)}
+                          min={0}
+                          step={50}
+                          aria-label="Spouse Service Canada Statement Monthly CPP at Age 65"
+                        />
+                      </div>
+
+                      {/* Quick Chips */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          { label: '$600/mo', val: 600 },
+                          { label: '$800/mo', val: 800 },
+                          { label: '$1,000/mo', val: 1000 },
+                          { label: '$1,200/mo', val: 1200 },
+                          { label: '$1,433/mo (Max)', val: 1433 }
+                        ].map((chip) => (
+                          <button
+                            key={chip.val}
+                            type="button"
+                            onClick={() => updateSpouseField('cppServiceCanadaEstimateAt65', chip.val)}
+                            className={`text-[10px] px-2 py-0.5 rounded font-medium border transition-colors ${
+                              (inputs.spouse?.cppServiceCanadaEstimateAt65 ?? 917) === chip.val
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Spouse Actuarial Recalibration Box */}
+                      <div className="p-3 rounded-lg bg-white/80 dark:bg-slate-800/90 border border-blue-200 dark:border-blue-700/60 flex flex-col gap-2.5 text-xs shadow-xs">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/70 pb-1.5">
+                          <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 text-[11px]">
+                            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            Spouse Recalibration Engine
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                            Dynamic Adjustment
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                          Adjusted for spouse retiring at age <strong>{inputs.spouse.retirementAge}</strong>
+                          {inputs.spouse.careerDisruption?.enabled ? ' and spouse career downturns' : ''}.
+                        </p>
+
+                        <div className="space-y-1 text-[11px]">
+                          <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                            <span className="text-slate-600 dark:text-slate-400">1. Statement Base @ 65:</span>
+                            <span className="font-medium text-slate-800 dark:text-slate-200">
+                              ${spouseCppAdjResult.serviceCanadaMonthlyAt65.toFixed(2)}/mo
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                            <span className="text-slate-600 dark:text-slate-400">
+                              2. Early Retirement Dilution (Age {inputs.spouse.retirementAge}):
+                            </span>
+                            <span className={`font-semibold ${
+                              spouseCppAdjResult.earlyRetirementImpactPercent < 0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-slate-700 dark:text-slate-300'
+                            }`}>
+                              {spouseCppAdjResult.earlyRetirementImpactPercent < 0
+                                ? `${spouseCppAdjResult.earlyRetirementImpactPercent.toFixed(1)}% (${spouseCppAdjResult.earlyRetirementYearsLost} yrs early)`
+                                : '0.0% (Working to 65+)'}
+                            </span>
+                          </div>
+
+                          {spouseCppAdjResult.careerDownturnImpactPercent < 0 && (
+                            <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                              <span className="text-slate-600 dark:text-slate-400">3. Career Downturn:</span>
+                              <span className="font-semibold text-rose-600 dark:text-rose-400">
+                                {spouseCppAdjResult.careerDownturnImpactPercent.toFixed(1)}%
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                            <span className="text-slate-600 dark:text-slate-400">Adjusted Base @ 65:</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">
+                              ${spouseCppAdjResult.adjustedMonthlyAt65.toFixed(2)}/mo (${Math.round(spouseCppAdjResult.adjustedAnnualAt65).toLocaleString()}/yr)
+                            </span>
+                          </div>
+
+                          <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                            <span className="text-slate-600 dark:text-slate-400">Timing Adjustment (@ Age {inputs.spouse.cppStartAge}):</span>
+                            <span className={`font-semibold ${
+                              spouseCppAdjResult.timingAdjustmentPercent < 0
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : spouseCppAdjResult.timingAdjustmentPercent > 0
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-slate-700 dark:text-slate-300'
+                            }`}>
+                              {spouseCppAdjResult.timingAdjustmentPercent >= 0 ? '+' : ''}{spouseCppAdjResult.timingAdjustmentPercent.toFixed(1)}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Spouse Final Banner */}
+                        <div className="mt-1 p-2 rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-200/70 dark:border-blue-800/50 flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300 tracking-wider">
+                              Anticipated Spouse CPP
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              Effective {spouseCppAdjResult.effectivePercentOfMaxAtStartAge.toFixed(1)}% of 2026 Max
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-black text-blue-700 dark:text-blue-300 font-mono">
+                              ${Math.round(spouseCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString()} <span className="text-xs font-normal">/ mo</span>
+                            </div>
+                            <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                              ${Math.round(spouseCppAdjResult.anticipatedAnnualAtStartAge).toLocaleString()} / yr (today's $)
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <input
-                  type="range"
-                  min={65}
-                  max={70}
-                  value={inputs.spouse.oasStartAge}
-                  onChange={(e) => updateSpouseField('oasStartAge', Number(e.target.value))}
-                  className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
-                />
+
+                {/* Spouse OAS Card */}
+                <div className="p-4 rounded-xl border border-sky-100 dark:border-sky-500/20 bg-sky-50/20 dark:bg-sky-500/10 flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-sm font-bold text-sky-950 dark:text-sky-200 flex items-center gap-1.5">
+                      <Landmark className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      Spouse Old Age Security (OAS)
+                    </h5>
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-500/20 text-sky-800 dark:text-sky-300">
+                      Age {inputs.spouse.oasStartAge}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span className="text-slate-700 dark:text-slate-300">Spouse OAS Start Age (65 - 70):</span>
+                      <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.spouse.oasStartAge} yrs</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={65}
+                      max={70}
+                      step={1}
+                      value={inputs.spouse.oasStartAge}
+                      onChange={(e) => updateSpouseField('oasStartAge', Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
+                    />
+                    <div className="mt-1 text-[11px] font-semibold text-sky-600 dark:text-sky-400">
+                      Adjustment: {getOasAdjustmentText(inputs.spouse.oasStartAge)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between text-xs font-semibold mb-1">
+                      <span className="text-slate-700 dark:text-slate-300">Years Lived in Canada:</span>
+                      <span className="text-sky-700 dark:text-sky-400 font-mono font-bold">
+                        {inputs.spouse.oasEligibleYearsInCanada ?? 40} / 40 yrs
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={10}
+                      max={40}
+                      step={1}
+                      value={inputs.spouse.oasEligibleYearsInCanada ?? 40}
+                      onChange={(e) => updateSpouseField('oasEligibleYearsInCanada', Number(e.target.value))}
+                      className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-sky-600"
+                    />
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -2644,11 +2986,47 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     <Landmark className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     Canada Pension Plan (CPP)
                   </h5>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
-                    Age {inputs.cppStartAge}
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
+                    Age {inputs.cppStartAge} • ${primaryCppMethod === 'service_canada' ? Math.round(primaryCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString() : Math.round((1433.50 * (inputs.cppEstimatedPercentOfMax / 100)) * getCppTimingFactor(inputs.cppStartAge).factor).toLocaleString()}/mo
                   </span>
                 </div>
 
+                {/* Calculation Mode Toggle */}
+                <div>
+                  <div className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1.5 flex items-center justify-between">
+                    <span>Estimation Method:</span>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                      {primaryCppMethod === 'service_canada' ? 'Service Canada SOC' : 'Percentage of Maximum'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => updateField('cppCalculationMethod', 'percentage')}
+                      className={`text-xs font-semibold py-1.5 px-2 rounded-md transition-all ${
+                        primaryCppMethod === 'percentage'
+                          ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      % of Maximum
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateField('cppCalculationMethod', 'service_canada')}
+                      className={`text-xs font-semibold py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1 ${
+                        primaryCppMethod === 'service_canada'
+                          ? 'bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      Service Canada Statement
+                    </button>
+                  </div>
+                </div>
+
+                {/* CPP Start Age Slider */}
                 <div>
                   <div className="flex justify-between text-xs font-semibold mb-1">
                     <span className="text-slate-700 dark:text-slate-300">CPP Start Age (60 - 70):</span>
@@ -2663,26 +3041,203 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     onChange={(e) => updateField('cppStartAge', Number(e.target.value))}
                     className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
                   />
-                  <div className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400">
-                    Adjustment: {getCppAdjustmentText(inputs.cppStartAge)}
+                  <div className="mt-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+                    <span>Adjustment: {getCppAdjustmentText(inputs.cppStartAge)}</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-normal">
+                      {inputs.cppStartAge < 65 ? '-0.6%/mo' : inputs.cppStartAge > 65 ? '+0.7%/mo' : 'Standard'}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700 dark:text-slate-300">Career Entitlement:</span>
-                    <span className="text-blue-700 dark:text-blue-400 font-mono font-bold">{inputs.cppEstimatedPercentOfMax}% of Maximum</span>
+                {/* Sub-Panel: Percentage of Max */}
+                {primaryCppMethod === 'percentage' && (
+                  <div className="flex flex-col gap-3 pt-2 border-t border-blue-100 dark:border-blue-500/20">
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span className="text-slate-700 dark:text-slate-300">Career Entitlement (% of Max):</span>
+                        <span className="text-blue-700 dark:text-blue-400 font-mono font-bold">{inputs.cppEstimatedPercentOfMax}% of Maximum</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={30}
+                        max={100}
+                        step={5}
+                        value={inputs.cppEstimatedPercentOfMax}
+                        onChange={(e) => updateField('cppEstimatedPercentOfMax', Number(e.target.value))}
+                        className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
+                      />
+                    </div>
+
+                    {/* Quick Presets */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: '64% CRA Avg (~$917)', val: 64 },
+                        { label: '85% Strong Career', val: 85 },
+                        { label: '100% Max YMPE', val: 100 }
+                      ].map((preset) => (
+                        <button
+                          key={preset.val}
+                          type="button"
+                          onClick={() => updateField('cppEstimatedPercentOfMax', preset.val)}
+                          className={`text-[10px] px-2 py-0.5 rounded font-medium border transition-colors ${
+                            inputs.cppEstimatedPercentOfMax === preset.val
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Preview Summary */}
+                    <div className="p-2.5 rounded-lg bg-blue-100/40 dark:bg-blue-900/20 border border-blue-200/50 dark:border-blue-800/40 flex items-center justify-between text-xs">
+                      <span className="text-slate-600 dark:text-slate-300 font-medium">Anticipated CPP:</span>
+                      <div className="text-right">
+                        <span className="font-bold text-blue-700 dark:text-blue-300">
+                          ${Math.round((1433.50 * (inputs.cppEstimatedPercentOfMax / 100)) * getCppTimingFactor(inputs.cppStartAge).factor).toLocaleString()} / mo
+                        </span>
+                        <span className="text-slate-400 dark:text-slate-500 text-[10px] ml-1.5">
+                          (${Math.round((1433.50 * (inputs.cppEstimatedPercentOfMax / 100)) * getCppTimingFactor(inputs.cppStartAge).factor * 12).toLocaleString()} / yr)
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <input
-                    type="range"
-                    min={30}
-                    max={100}
-                    step={5}
-                    value={inputs.cppEstimatedPercentOfMax}
-                    onChange={(e) => updateField('cppEstimatedPercentOfMax', Number(e.target.value))}
-                    className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-blue-600"
-                  />
-                </div>
+                )}
+
+                {/* Sub-Panel: Service Canada Statement */}
+                {primaryCppMethod === 'service_canada' && (
+                  <div className="flex flex-col gap-3 pt-2 border-t border-blue-100 dark:border-blue-500/20">
+                    <div>
+                      <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                        <span className="text-slate-700 dark:text-slate-300">Statement Monthly Estimate at Age 65:</span>
+                        <span className="text-[11px] text-blue-600 dark:text-blue-400 font-medium">From My Service Canada (SOC)</span>
+                      </div>
+                      <CurrencyInput
+                        value={inputs.cppServiceCanadaEstimateAt65 ?? 917}
+                        onChange={(val) => updateField('cppServiceCanadaEstimateAt65', val)}
+                        min={0}
+                        step={50}
+                        aria-label="Service Canada Statement Monthly CPP at Age 65"
+                      />
+                    </div>
+
+                    {/* Quick Statement Chips */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { label: '$600/mo', val: 600 },
+                        { label: '$800/mo', val: 800 },
+                        { label: '$1,000/mo', val: 1000 },
+                        { label: '$1,200/mo', val: 1200 },
+                        { label: '$1,433/mo (Max)', val: 1433 }
+                      ].map((chip) => (
+                        <button
+                          key={chip.val}
+                          type="button"
+                          onClick={() => updateField('cppServiceCanadaEstimateAt65', chip.val)}
+                          className={`text-[10px] px-2 py-0.5 rounded font-medium border transition-colors ${
+                            (inputs.cppServiceCanadaEstimateAt65 ?? 917) === chip.val
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {chip.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Actuarial Recalibration Breakdown Card */}
+                    <div className="p-3 rounded-lg bg-white/80 dark:bg-slate-800/90 border border-blue-200 dark:border-blue-700/60 flex flex-col gap-2.5 text-xs shadow-xs">
+                      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/70 pb-1.5">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 text-[11px]">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                          Service Canada Recalibration Engine
+                        </span>
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                          Dynamic Actuarial Adjustment
+                        </span>
+                      </div>
+
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
+                        Service Canada assumes you earn at your recent pace until 65. Our engine recalibrates for retiring at age <strong>{inputs.retirementAge}</strong>
+                        {inputs.careerDisruption?.enabled ? ' and modeled career downturns' : ''}.
+                      </p>
+
+                      <div className="space-y-1 text-[11px]">
+                        <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                          <span className="text-slate-600 dark:text-slate-400">1. Statement Base @ 65:</span>
+                          <span className="font-medium text-slate-800 dark:text-slate-200">
+                            ${primaryCppAdjResult.serviceCanadaMonthlyAt65.toFixed(2)}/mo
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                          <span className="text-slate-600 dark:text-slate-400">
+                            2. Early Retirement Dilution (Age {inputs.retirementAge}):
+                          </span>
+                          <span className={`font-semibold ${
+                            primaryCppAdjResult.earlyRetirementImpactPercent < 0
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}>
+                            {primaryCppAdjResult.earlyRetirementImpactPercent < 0
+                              ? `${primaryCppAdjResult.earlyRetirementImpactPercent.toFixed(1)}% (${primaryCppAdjResult.earlyRetirementYearsLost} yrs early)`
+                              : '0.0% (Working to 65+)'}
+                          </span>
+                        </div>
+
+                        {primaryCppAdjResult.careerDownturnImpactPercent < 0 && (
+                          <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                            <span className="text-slate-600 dark:text-slate-400">3. Career Downturn Impact:</span>
+                            <span className="font-semibold text-rose-600 dark:text-rose-400">
+                              {primaryCppAdjResult.careerDownturnImpactPercent.toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                          <span className="text-slate-600 dark:text-slate-400">Adjusted Age-65 Baseline:</span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200">
+                            ${primaryCppAdjResult.adjustedMonthlyAt65.toFixed(2)}/mo (${Math.round(primaryCppAdjResult.adjustedAnnualAt65).toLocaleString()}/yr)
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between py-0.5 border-b border-slate-50 dark:border-slate-800/50">
+                          <span className="text-slate-600 dark:text-slate-400">Collection Timing Factor (@ Age {inputs.cppStartAge}):</span>
+                          <span className={`font-semibold ${
+                            primaryCppAdjResult.timingAdjustmentPercent < 0
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : primaryCppAdjResult.timingAdjustmentPercent > 0
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-slate-700 dark:text-slate-300'
+                          }`}>
+                            {primaryCppAdjResult.timingAdjustmentPercent >= 0 ? '+' : ''}{primaryCppAdjResult.timingAdjustmentPercent.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Final Anticipated Benefit Banner */}
+                      <div className="mt-1 p-2 rounded-md bg-blue-50 dark:bg-blue-950/50 border border-blue-200/70 dark:border-blue-800/50 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-blue-700 dark:text-blue-300 tracking-wider">
+                            Anticipated True CPP
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            Effective {primaryCppAdjResult.effectivePercentOfMaxAtStartAge.toFixed(1)}% of 2026 Max
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-black text-blue-700 dark:text-blue-300 font-mono">
+                            ${Math.round(primaryCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString()} <span className="text-xs font-normal">/ mo</span>
+                          </div>
+                          <div className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                            ${Math.round(primaryCppAdjResult.anticipatedAnnualAtStartAge).toLocaleString()} / yr (today's $)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="p-4 rounded-xl border border-sky-100 dark:border-sky-500/20 bg-sky-50/20 dark:bg-sky-500/10 flex flex-col gap-4">

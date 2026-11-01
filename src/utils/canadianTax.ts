@@ -286,3 +286,13 @@ export function calculateCanadianTax(
     marginalRate
   };
 }
+
+export {
+  calculateAdjustedServiceCanadaCpp,
+  calculatePersonCppAnnualBenefit,
+  getCppTimingFactor
+} from './cppCalculator';
+export type {
+  ServiceCanadaCppAdjustmentOptions,
+  ServiceCanadaCppAdjustmentResult
+} from './cppCalculator';

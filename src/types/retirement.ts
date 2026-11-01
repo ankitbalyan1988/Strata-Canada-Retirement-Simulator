@@ -55,6 +55,8 @@ export interface DebtRepaymentStrategy {
   redirectFreedCashflowToSavings: boolean; // whether freed debt payments automatically flow into investment savings
 }
 
+export type CppCalculationMethod = 'percentage' | 'service_canada';
+
 export interface StressTestOptions {
   enabled: boolean;
   dropPercent: number; // e.g. 10 for 10% market crash
@@ -107,6 +109,8 @@ export interface SpouseInputs {
   // Spouse Govt Pensions
   cppStartAge: number;
   cppEstimatedPercentOfMax: number;
+  cppCalculationMethod?: CppCalculationMethod; // 'percentage' | 'service_canada'
+  cppServiceCanadaEstimateAt65?: number; // Estimated monthly CPP at age 65 from Service Canada statement ($/mo)
   oasStartAge: number;
   oasEligibleYearsInCanada: number;
 
@@ -216,6 +220,8 @@ export interface RetirementInputs {
   // Government Benefits (Primary)
   cppStartAge: number; // 60 to 70
   cppEstimatedPercentOfMax: number; // 0 to 100% of maximum entitlement
+  cppCalculationMethod?: CppCalculationMethod; // 'percentage' | 'service_canada'
+  cppServiceCanadaEstimateAt65?: number; // Estimated monthly CPP at age 65 from Service Canada statement ($/mo)
   oasStartAge: number; // 65 to 70
   oasEligibleYearsInCanada: number; // 40 years for full OAS
 

@@ -218,6 +218,8 @@ function sanitizePersona(raw: any, prompt: string) {
     fhsaHomePurchaseAge: num(raw.fhsaHomePurchaseAge, currentAge + 4, currentAge, 71),
     cppStartAge: num(raw.cppStartAge, 65, 60, 70),
     cppEstimatedPercentOfMax: num(raw.cppEstimatedPercentOfMax, 75, 0, 100),
+    cppCalculationMethod: raw.cppCalculationMethod === 'service_canada' ? 'service_canada' : 'percentage',
+    cppServiceCanadaEstimateAt65: num(raw.cppServiceCanadaEstimateAt65, 917, 0, 3000),
     oasStartAge: num(raw.oasStartAge, 65, 65, 70),
     oasEligibleYearsInCanada: num(raw.oasEligibleYearsInCanada, 40, 0, 40),
     preRetirementReturn: num(raw.preRetirementReturn, 6.2, 0, 15),
@@ -291,6 +293,8 @@ function sanitizePersona(raw: any, prompt: string) {
       nonRegAnnualContribution: num(rawSpouse.nonRegAnnualContribution, fallbackSpouse.nonRegAnnualContribution || 2500, 0),
       cppStartAge: num(rawSpouse.cppStartAge, 65, 60, 70),
       cppEstimatedPercentOfMax: num(rawSpouse.cppEstimatedPercentOfMax, 64, 0, 100),
+      cppCalculationMethod: rawSpouse.cppCalculationMethod === 'service_canada' ? 'service_canada' : 'percentage',
+      cppServiceCanadaEstimateAt65: num(rawSpouse.cppServiceCanadaEstimateAt65, 917, 0, 3000),
       oasStartAge: num(rawSpouse.oasStartAge, 65, 65, 70),
       oasEligibleYearsInCanada: num(rawSpouse.oasEligibleYearsInCanada, 40, 0, 40),
       pensionIncomeSplitting: rawSpouse.pensionIncomeSplitting !== false
@@ -528,20 +532,37 @@ function generateRuleBasedLedgerExplanation(
     const isEarly = cppStartAge < 65;
     const isLate = cppStartAge > 65;
     const adjPct = isEarly ? -((65 - cppStartAge) * 7.2).toFixed(1) : isLate ? +((cppStartAge - 65) * 8.4).toFixed(1) : '0';
+    const isServiceCanada = planContext?.cppCalculationMethod === 'service_canada';
+    const socBase = planContext?.cppServiceCanadaEstimateAt65 || 800;
+
+    const formula = isServiceCanada
+      ? `Annual CPP = Service Canada SOC Estimate ($${socBase}/mo @ 65) × [1 + Early Retirement & Career Shock Dilution] × [1 + Actuarial Adjustment (${adjPct}%)] × Cumulative CPI Inflation Factor.`
+      : `Annual CPP = Maximum Base Pension (~$17,202 in 2026) × Contribution History Factor (${planContext?.cppEstimatedPercentOfMax || 75}%) × [1 + Actuarial Adjustment (${adjPct}%)] × Cumulative CPI Inflation Factor.`;
+
+    const mathBreakdown = isServiceCanada
+      ? [
+          `1. Service Canada Statement of Contributions baseline: $${socBase}/mo ($${socBase * 12}/yr at age 65).`,
+          `2. Early retirement & career shock adjustment: Service Canada assumes constant contributions to 65. Retiring early (age ${planContext?.retirementAge || 65}) dilutes the 39-year divisor after the 17% drop-out buffer.`,
+          `3. Collection timing adjustment: Starting at Age ${cppStartAge} applies a ${adjPct}% permanent ${isEarly ? 'reduction (-0.6%/mo)' : isLate ? 'enhancement (+0.7%/mo)' : 'baseline'}.`,
+          `4. Indexed with cumulative CPI inflation up to Age ${age} yields: ${fmt(cppIncome)}/yr.`
+        ]
+      : [
+          `1. Standard age 65 full statutory maximum: ~$17,202/yr ($1,433.50/mo in 2026).`,
+          `2. Lifetime career contribution factor: ${planContext?.cppEstimatedPercentOfMax || 75}%.`,
+          `3. Timing adjustment: Starting at Age ${cppStartAge} results in a ${adjPct}% permanent ${isEarly ? 'reduction (-0.6%/mo)' : isLate ? 'enhancement (+0.7%/mo)' : 'baseline'}.`,
+          `4. Indexed with cumulative CPI inflation up to Age ${age} yields: ${fmt(cppIncome)}/yr.`
+        ];
 
     return {
       summary: `At Age ${age}, Canada Pension Plan (CPP) generates ${fmt(cppIncome)}/year in inflation-indexed retirement income.`,
-      formula: `Annual CPP = Maximum Base Pension (~$16,920 in 2026) × Contribution History Factor (${planContext?.cppEstimatedPercentOfMax || 75}%) × [1 + Actuarial Adjustment (${adjPct}%)] × Cumulative CPI Inflation Factor.`,
-      mathBreakdown: [
-        `1. Standard age 65 full entitlement: ~$16,920/yr.`,
-        `2. Lifetime career contribution factor: ${planContext?.cppEstimatedPercentOfMax || 75}%.`,
-        `3. Timing adjustment: Starting at Age ${cppStartAge} results in a ${adjPct}% permanent ${isEarly ? 'reduction (-0.6%/mo)' : isLate ? 'enhancement (+0.7%/mo)' : 'baseline'}.`,
-        `4. Indexed with inflation up to Age ${age} yields: ${fmt(cppIncome)}/yr.`
-      ],
-      contextualGuidance: `CPP provides guaranteed, government-backed, lifetime longevity insurance that adjusts annually with Statistics Canada CPI inflation. Delaying CPP past age 65 provides a risk-free 8.4%/year real return enhancement.`,
+      formula,
+      mathBreakdown,
+      contextualGuidance: isServiceCanada
+        ? `Service Canada's online statement assumes you continue earning your current salary every year until 65. If you retire early or experience a career downturn, our model recalibrates your benefit downwards to reflect missing contribution years.`
+        : `CPP provides guaranteed, government-backed, lifetime longevity insurance that adjusts annually with Statistics Canada CPI inflation. Delaying CPP past age 65 provides a risk-free 8.4%/year real return enhancement.`,
       suggestedFollowUps: [
         `What happens to my portfolio longevity if I delay CPP to Age 70?`,
-        `Is CPP income taxable in Canada?`,
+        `How does early retirement dilute my Service Canada CPP estimate?`,
         `Can CPP be shared or split with a spouse under CRA rules?`
       ]
     };

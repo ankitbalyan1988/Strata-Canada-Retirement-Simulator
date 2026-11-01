@@ -1,5 +1,6 @@
 import { CanadianProvince, RetirementInputs, SpouseInputs } from '../../types/retirement';
 import { calculateCanadianTax, calculateCppAnnualBenefit, calculateOasGrossBenefit, calculateOasClawback } from '../canadianTax';
+import { calculatePersonCppAnnualBenefit } from '../cppCalculator';
 
 export interface GovernmentPensionsResult {
   pCppIncome: number;
@@ -34,7 +35,9 @@ export interface RetirementTaxesAndCashflowResult {
 }
 
 /**
- * Evaluates CPP and gross OAS benefits for primary and spouse based on start ages and inflation.
+ * Evaluates CPP and gross OAS benefits for primary and spouse based on start ages,
+ * estimation method (Percentage vs Service Canada SOC), early retirement / career shock adjustments,
+ * and inflation.
  */
 export function calculateGovernmentPensionsForYear(
   age: number,
@@ -50,7 +53,20 @@ export function calculateGovernmentPensionsForYear(
   let sGrossOas = 0;
 
   if (age >= inputs.cppStartAge) {
-    pCppIncome = calculateCppAnnualBenefit(inputs.cppStartAge, inputs.cppEstimatedPercentOfMax, inflationFactor);
+    pCppIncome = calculatePersonCppAnnualBenefit(
+      age,
+      {
+        currentAge: inputs.currentAge,
+        retirementAge: inputs.retirementAge,
+        annualIncome: inputs.currentAnnualIncome,
+        cppStartAge: inputs.cppStartAge,
+        cppEstimatedPercentOfMax: inputs.cppEstimatedPercentOfMax,
+        cppCalculationMethod: inputs.cppCalculationMethod,
+        cppServiceCanadaEstimateAt65: inputs.cppServiceCanadaEstimateAt65,
+        careerDisruption: inputs.careerDisruption
+      },
+      inflationFactor
+    ).annualBenefit;
   }
   if (age >= inputs.oasStartAge) {
     pGrossOas = calculateOasGrossBenefit(age, inputs.oasStartAge, inputs.oasEligibleYearsInCanada, inflationFactor);
@@ -58,7 +74,20 @@ export function calculateGovernmentPensionsForYear(
 
   if (isCouple && spouse && spouseAge !== undefined) {
     if (spouseAge >= spouse.cppStartAge) {
-      sCppIncome = calculateCppAnnualBenefit(spouse.cppStartAge, spouse.cppEstimatedPercentOfMax, inflationFactor);
+      sCppIncome = calculatePersonCppAnnualBenefit(
+        spouseAge,
+        {
+          currentAge: spouse.currentAge,
+          retirementAge: spouse.retirementAge,
+          annualIncome: spouse.annualIncome,
+          cppStartAge: spouse.cppStartAge,
+          cppEstimatedPercentOfMax: spouse.cppEstimatedPercentOfMax,
+          cppCalculationMethod: spouse.cppCalculationMethod,
+          cppServiceCanadaEstimateAt65: spouse.cppServiceCanadaEstimateAt65,
+          careerDisruption: spouse.careerDisruption
+        },
+        inflationFactor
+      ).annualBenefit;
     }
     if (spouseAge >= spouse.oasStartAge) {
       sGrossOas = calculateOasGrossBenefit(spouseAge, spouse.oasStartAge, spouse.oasEligibleYearsInCanada, inflationFactor);
