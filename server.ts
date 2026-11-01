@@ -628,7 +628,7 @@ function generateRuleBasedLedgerExplanation(
     const spendable = rowData?.afterTaxIncome ?? 0;
     return {
       summary: `At Age ${age}, your plan executes ${fmt(withdrawals)} in portfolio withdrawals to fund ${fmt(spendable)} in net spendable living cash.`,
-      formula: `Net Spendable Cash = (Employment Income + CPP + OAS Net + Portfolio Withdrawals) - Total Income Tax Paid.`,
+      formula: `Net Spendable Cash = (Employment Income + CPP + OAS Net + Portfolio Withdrawals) - Total Income Tax Paid - Debt Payments.`,
       mathBreakdown: [
         `1. Required Living Budget: ~${fmt(spendable)} in inflation-adjusted dollars.`,
         `2. Covered by Government Pensions (CPP + Net OAS): ${fmt((rowData?.cppIncome || 0) + (rowData?.oasNetIncome || 0))}.`,
@@ -640,6 +640,30 @@ function generateRuleBasedLedgerExplanation(
         `How does Proportional vs Tax-Efficient drawdown compare?`,
         `Can my portfolio sustain an extra $500/month of spending?`,
         `How is inflation impacting my living expenses at this age?`
+      ]
+    };
+  }
+
+  // Debt Payments & Amortization
+  if (q.includes('debt') || q.includes('loan') || selectedMetric === 'Debt Payments') {
+    const debtPayment = rowData?.debtPayment ?? 0;
+    const debtPrincipal = rowData?.debtPrincipalPaid ?? 0;
+    const debtInterest = rowData?.debtInterestPaid ?? 0;
+    const remainingDebt = rowData?.remainingDebt ?? 0;
+    return {
+      summary: `At Age ${age}, your annual debt service outflow is ${fmt(debtPayment)}, leaving a remaining debt balance of ${fmt(remainingDebt)}.`,
+      formula: `Debt Payment = Principal Repayment (${fmt(debtPrincipal)}) + Interest Paid (${fmt(debtInterest)}). Net Spendable Cash is reduced dollar-for-dollar by this service.`,
+      mathBreakdown: [
+        `1. Total Annual Debt Service: ${fmt(debtPayment)}/yr (${fmt(Math.round(debtPayment / 12))}/mo).`,
+        `2. Principal Amortization: ${fmt(debtPrincipal)} (builds equity by reducing liabilities).`,
+        `3. Interest Drag: ${fmt(debtInterest)} in financing carrying costs paid to lenders.`,
+        `4. Remaining Portfolio Liability: ${fmt(remainingDebt)} (subtracted directly from Total Net Worth).`
+      ],
+      contextualGuidance: `Paying down debt accelerates your retirement date in two distinct ways: first, it eliminates ongoing monthly financing drag, immediately expanding your spendable cash; second, redirecting those freed payments into compounding TFSA or RRSP investments creates an exponential boost to your final retirement nest egg.`,
+      suggestedFollowUps: [
+        `How much sooner can I retire if I pay off debt early?`,
+        `Should I prioritize paying off debt or investing in TFSA/RRSP?`,
+        `How does the Canadian Debt Avalanche compare to the Snowball method?`
       ]
     };
   }

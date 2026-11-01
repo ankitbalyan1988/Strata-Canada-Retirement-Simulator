@@ -1129,6 +1129,16 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 </span>
                 <span>${(hoveredData.realEstateShare || 0).toLocaleString()}</span>
               </div>
+
+              {hoveredData.remainingDebt > 0 && (
+                <div className="flex items-center justify-between gap-2 col-span-2 border-t border-slate-800/80 pt-1 text-rose-400 font-semibold">
+                  <span className="flex items-center gap-1 font-sans">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    Remaining Debt Liability:
+                  </span>
+                  <span>-${hoveredData.remainingDebt.toLocaleString()}</span>
+                </div>
+              )}
             </div>
 
             {/* Real Estate Sale Event Callout */}
@@ -1143,6 +1153,12 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
 
             {/* Income & Tax info for this year */}
             <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10.5px] text-slate-300 flex flex-col gap-0.5">
+              {hoveredData.debtPayment > 0 && (
+                <div className="flex justify-between text-rose-300 font-medium">
+                  <span className="text-slate-400">Debt Repayment Service:</span>
+                  <span>-${hoveredData.debtPayment.toLocaleString()}/yr</span>
+                </div>
+              )}
               {hoveredData.isRetired ? (
                 <>
                   <div className="flex justify-between">

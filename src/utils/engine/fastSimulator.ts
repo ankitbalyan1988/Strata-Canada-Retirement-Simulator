@@ -15,6 +15,7 @@ import {
   calculateGovernmentPensionsForYear,
   calculateRetirementTaxesAndCashflow
 } from './calculatePensionsAndTaxes';
+import { initializeDebtStates, calculateDebtsForYear, DebtYearState } from '../debtCalculator';
 
 export interface FastSimulationResult {
   isFullyFunded: boolean;
@@ -121,6 +122,8 @@ export function fastSimulateEndNetWorth(
   let netWorthAtRetirement = 0;
   let finalNetWorth = 0;
 
+  const debtStates: DebtYearState[] = initializeDebtStates(inputs.debts || [], currentAge, inputs.debtStrategy);
+
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;
     const spouseAge = isCouple && spouse ? spouse.currentAge + i : undefined;
@@ -194,6 +197,9 @@ export function fastSimulateEndNetWorth(
       stressTest
     );
 
+    // Advance Debts
+    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
+
     // Determine Annual Living Expenses
     let currentLivingExpensesNominal: number;
     if (isRetired) {
@@ -201,6 +207,9 @@ export function fastSimulateEndNetWorth(
       if (housingResult.remainingMortgage > 0) {
         const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
         currentLivingExpensesNominal += annualMortgage * inflationFactor;
+      }
+      if (debtResult.totalAnnualPayment > 0) {
+        currentLivingExpensesNominal += debtResult.totalAnnualPayment;
       }
     } else {
       if (housingParams.isFuturePurchase) {
@@ -267,7 +276,7 @@ export function fastSimulateEndNetWorth(
     const currentLiquidPortfolio =
       balances.pRrsp + balances.pTfsa + balances.pFhsa + balances.pNonReg +
       balances.sRrsp + balances.sTfsa + balances.sFhsa + balances.sNonReg;
-    const currentTotalNetWorth = currentLiquidPortfolio + housingResult.userRealEstateShare;
+    const currentTotalNetWorth = currentLiquidPortfolio + housingResult.userRealEstateShare - debtResult.totalRemainingBalance;
 
     if (age === retirementAge - 1 || (currentAge === retirementAge && i === 0)) {
       netWorthAtRetirement = Math.round(currentTotalNetWorth);

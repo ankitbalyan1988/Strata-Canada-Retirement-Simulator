@@ -1199,6 +1199,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   const isTax = item.category === 'taxes';
                   const isProbate = item.category === 'probate';
                   const isFuneral = item.category === 'funeral';
+                  const isDebt = item.category === 'debt';
                   const isCrown = item.category === 'crown';
                   const isCharity = item.category === 'charity';
                   const isSpouse = item.category === 'spouse';
@@ -1211,6 +1212,8 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                           ? 'bg-rose-100/70 dark:bg-rose-500/20 font-semibold text-rose-950 dark:text-rose-200' 
                           : isTax 
                           ? 'bg-rose-50/40 dark:bg-rose-500/10 text-rose-900 dark:text-rose-300' 
+                          : isDebt
+                          ? 'bg-amber-50/40 dark:bg-amber-500/10 text-amber-950 dark:text-amber-200'
                           : isFuneral
                           ? 'bg-amber-50/40 dark:bg-amber-500/10 text-amber-950 dark:text-amber-200'
                           : isCharity 
@@ -1222,7 +1225,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     >
                       <td className="py-2.5 px-3 font-sans font-bold flex items-center gap-1.5">
                         <span>
-                          {isCrown ? '⚠️' : isTax ? '🏛️' : isProbate ? '⚖️' : isFuneral ? '🕊️' : isCharity ? '🎁' : isSpouse ? '💍' : '👤'}
+                          {isCrown ? '⚠️' : isTax ? '🏛️' : isProbate ? '⚖️' : isDebt ? '💳' : isFuneral ? '🕊️' : isCharity ? '🎁' : isSpouse ? '💍' : '👤'}
                         </span>
                         <span>{item.recipient}</span>
                       </td>

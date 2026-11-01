@@ -26,6 +26,12 @@ import {
   evaluateSimulationMilestones,
   MilestoneSimulationOptions
 } from './engine/evaluateSimulationMilestones';
+import {
+  initializeDebtStates,
+  calculateDebtsForYear,
+  DebtYearState,
+  calculateEarlyPayoffComparison
+} from './debtCalculator';
 import { fastSimulateEndNetWorth, FastSimulationResult } from './engine/fastSimulator';
 
 export { fastSimulateEndNetWorth };
@@ -146,6 +152,12 @@ export function runRetirementSimulation(
   let sumAnnualRetirementSpend = 0;
   let sumEffectiveTaxInRetirement = 0;
 
+  // Initialize Consumer & Fixed-Term Debt State Machine
+  const debtStates: DebtYearState[] = initializeDebtStates(inputs.debts || [], currentAge, inputs.debtStrategy);
+  const totalInitialDebt = (inputs.debts || []).reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+  let debtAtRetirement = 0;
+  let lifetimeDebtInterest = 0;
+
   // 4. Primary Multi-Year Simulation Loop
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;
@@ -228,6 +240,15 @@ export function runRetirementSimulation(
     yearNotes.push(...investmentResult.notes);
     lifetimeInvestmentGrowth += investmentResult.totalGrowth;
 
+    // Advance Consumer & Fixed-Term Debts for this year
+    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
+    lifetimeDebtInterest += debtResult.totalInterestPaid;
+    if (debtResult.paidOffDebtsThisYear.length > 0) {
+      debtResult.paidOffDebtsThisYear.forEach((name) => {
+        yearNotes.push(`💳 Debt Paid Off: ${name} fully amortized & paid off!`);
+      });
+    }
+
     // Determine Annual Living Expenses
     let currentLivingExpensesNominal: number;
     if (isRetired) {
@@ -235,6 +256,10 @@ export function runRetirementSimulation(
       if (housingResult.remainingMortgage > 0) {
         const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
         currentLivingExpensesNominal += annualMortgage * inflationFactor;
+      }
+      // If lingering consumer/fixed debts exist in retirement, payments augment required living expenses
+      if (debtResult.totalAnnualPayment > 0) {
+        currentLivingExpensesNominal += debtResult.totalAnnualPayment;
       }
     } else {
       if (housingParams.isFuturePurchase) {
@@ -352,7 +377,7 @@ export function runRetirementSimulation(
       sNetOas = taxCashflowResult.sNetOas;
       pTaxPaid = taxCashflowResult.pTaxPaid;
       sTaxPaid = taxCashflowResult.sTaxPaid;
-      netSpendableCashflow = taxCashflowResult.netSpendableCashflow;
+      netSpendableCashflow = Math.max(0, taxCashflowResult.netSpendableCashflow - debtResult.totalAnnualPayment);
       cashflowGap = taxCashflowResult.cashflowGap;
       lifetimeOasReceived += pNetOas + sNetOas;
       yearNotes.push(...taxCashflowResult.notes);
@@ -366,7 +391,7 @@ export function runRetirementSimulation(
 
     const currentLiquidPortfolio = balances.pRrsp + balances.pTfsa + balances.pFhsa + balances.pNonReg +
       balances.sRrsp + balances.sTfsa + balances.sFhsa + balances.sNonReg;
-    const currentTotalNetWorth = currentLiquidPortfolio + housingResult.userRealEstateShare;
+    const currentTotalNetWorth = currentLiquidPortfolio + housingResult.userRealEstateShare - debtResult.totalRemainingBalance;
 
     if (currentTotalNetWorth > peakNetWorth) {
       peakNetWorth = currentTotalNetWorth;
@@ -377,6 +402,7 @@ export function runRetirementSimulation(
       netWorthAtRetirement = currentTotalNetWorth;
       liquidNetWorthAtRetirement = currentLiquidPortfolio;
       homeEquityAtRetirement = housingResult.userRealEstateShare;
+      debtAtRetirement = debtResult.totalRemainingBalance;
     }
 
     if (isRetired && currentTotalNetWorth <= 0 && depletionAge === null && age > retirementAge) {
@@ -410,7 +436,7 @@ export function runRetirementSimulation(
       contributionResult.pNonRegContrib +
       contributionResult.sNonRegContrib;
 
-    const preRetirementNetCashflow = contributionResult.pYearIncome + contributionResult.sYearIncome - totalTaxPaid - totalYearContributions;
+    const preRetirementNetCashflow = contributionResult.pYearIncome + contributionResult.sYearIncome - totalTaxPaid - totalYearContributions - debtResult.totalAnnualPayment;
 
     yearlyResults.push({
       age,
@@ -436,6 +462,10 @@ export function runRetirementSimulation(
       isHomePurchasedThisYear: housingResult.isHomePurchasedThisYear,
       downPaymentPaidThisYear: Math.round(housingResult.downPaymentPaidThisYear),
       housingStatus: housingResult.housingStatus,
+      remainingDebt: debtResult.totalRemainingBalance,
+      debtPayment: debtResult.totalAnnualPayment,
+      debtPrincipalPaid: debtResult.totalPrincipalPaid,
+      debtInterestPaid: debtResult.totalInterestPaid,
       rrspContribution: Math.round(contributionResult.pRrspContrib + contributionResult.sRrspContrib),
       tfsaContribution: Math.round(contributionResult.pTfsaContrib + contributionResult.sTfsaContrib),
       fhsaContribution: Math.round(contributionResult.pFhsaContrib + contributionResult.sFhsaContrib),
@@ -545,6 +575,14 @@ export function runRetirementSimulation(
     millionaireYear: milestoneResults.millionaireYear,
     mortgagePayoffAge: milestoneResults.mortgagePayoffAge,
     mortgagePayoffYear: milestoneResults.mortgagePayoffYear,
+    debtPayoffAge: milestoneResults.debtPayoffAge,
+    debtPayoffYear: milestoneResults.debtPayoffYear,
+    totalInitialDebt: Math.round(totalInitialDebt),
+    debtAtRetirement: Math.round(debtAtRetirement),
+    totalDebtInterestPaid: Math.round(lifetimeDebtInterest),
+    debtInterestSaved: inputs.debtStrategy?.acceleratePayoff
+      ? (calculateEarlyPayoffComparison(inputs.debts || [], currentAge, retirementAge, inputs.debtStrategy)?.interestSaved || 0)
+      : 0,
     isCouple,
     spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined
   };

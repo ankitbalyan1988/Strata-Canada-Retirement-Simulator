@@ -37,6 +37,8 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
   onReset
 }) => {
   const inputs = useSimulationStore((state) => state.inputs);
+  const summary = useSimulationStore((state) => state.summary);
+  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
   const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [matrixDimension, setMatrixDimension] = useState<'inflation' | 'appreciation'>('inflation');
@@ -52,8 +54,8 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
   // Memoize sensitivity matrix computation
   const sensitivityMatrix = useMemo(() => {
     if (!isMatrixOpen) return null;
-    return generateSensitivityMatrix(inputs, matrixDimension);
-  }, [inputs, matrixDimension, isMatrixOpen]);
+    return generateSensitivityMatrix(inputs, matrixDimension, summary, yearlyResults);
+  }, [inputs, matrixDimension, isMatrixOpen, summary, yearlyResults]);
 
   const formatCur = (val: number) => {
     if (Math.abs(val) >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;

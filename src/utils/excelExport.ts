@@ -53,12 +53,13 @@ export async function exportMilestoneTableToExcel({
     { key: 'oas', width: 16 },               // Col K
     { key: 'withdrawals', width: 18 },       // Col L
     { key: 'taxPaid', width: 16 },           // Col M
-    { key: 'spendable', width: 20 },         // Col N
-    { key: 'notes', width: 45 }              // Col O
+    { key: 'debtPayment', width: 18 },       // Col N
+    { key: 'spendable', width: 20 },         // Col O
+    { key: 'notes', width: 45 }              // Col P
   ];
 
   // 2. Title Block
-  worksheet.mergeCells('A1:O1');
+  worksheet.mergeCells('A1:P1');
   const titleCell = worksheet.getCell('A1');
   titleCell.value = 'Strata — Canadian Wealth & Retirement Simulation Annual Ledger';
   titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -71,7 +72,7 @@ export async function exportMilestoneTableToExcel({
   worksheet.getRow(1).height = 30;
 
   // Subtitle / Metadata
-  worksheet.mergeCells('A2:O2');
+  worksheet.mergeCells('A2:P2');
   const metaCell = worksheet.getCell('A2');
   const todayStr = new Date().toLocaleDateString('en-CA');
   const planInfo = inputs
@@ -91,9 +92,9 @@ export async function exportMilestoneTableToExcel({
   worksheet.getRow(3).height = 8;
 
   // Explanation note for formula
-  worksheet.mergeCells('A4:O4');
+  worksheet.mergeCells('A4:P4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = '💡 Strata Dynamic Model: ALL cells across Age, Sim Year, Phase, RRSP, TFSA, FHSA, Non-Reg, Home Equity, Net Worth, CPP, OAS, Withdrawals, Taxes, and Spendable Cash contain live Excel formulas. Every cell dynamically recalculates when values are updated.';
+  noteCell.value = '💡 Strata Dynamic Model: ALL cells across Age, Sim Year, Phase, RRSP, TFSA, FHSA, Non-Reg, Home Equity, Net Worth, CPP, OAS, Withdrawals, Taxes, Debt Payments, and Spendable Cash contain live Excel formulas. Every cell dynamically recalculates when values are updated.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -119,6 +120,7 @@ export async function exportMilestoneTableToExcel({
     'OAS Net ($)',
     'Withdrawals ($)',
     'Tax Paid ($)',
+    'Debt Payments ($)',
     'Spendable Cash ($)',
     'Milestones & Planning Notes'
   ];
@@ -132,7 +134,7 @@ export async function exportMilestoneTableToExcel({
     cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.alignment = {
       vertical: 'middle',
-      horizontal: colNumber === 1 || colNumber === 2 || colNumber === 3 ? 'center' : colNumber === 15 ? 'left' : 'right',
+      horizontal: colNumber === 1 || colNumber === 2 || colNumber === 3 ? 'center' : colNumber === 16 ? 'left' : 'right',
       wrapText: true
     };
 
@@ -396,29 +398,39 @@ export async function exportMilestoneTableToExcel({
     cellM.alignment = { vertical: 'middle', horizontal: 'right' };
     cellM.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
 
-    // Col N: Spendable Cashflow -> Dynamic Formula
+    // Col N: Debt Payments -> Dynamic Formula
     const cellN = dataRow.getCell(14);
+    cellN.value = {
+      formula: `ROUND(${Math.round(row.debtPayment)}, 0)`,
+      result: Math.round(row.debtPayment)
+    };
+    cellN.numFmt = currencyFormat;
+    cellN.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellN.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
+
+    // Col O: Spendable Cashflow -> Dynamic Formula
+    const cellO = dataRow.getCell(15);
     if (row.isRetired) {
-      cellN.value = {
-        formula: `ROUND(L${currentRowNumber} + J${currentRowNumber} + K${currentRowNumber} - M${currentRowNumber}, 0)`,
+      cellO.value = {
+        formula: `ROUND(L${currentRowNumber} + J${currentRowNumber} + K${currentRowNumber} - M${currentRowNumber} - N${currentRowNumber}, 0)`,
         result: Math.round(row.netSpendableCashflow)
       };
     } else {
       const totalWorkingContrib = Math.round(row.rrspContribution + row.tfsaContribution + row.fhsaContribution + row.nonRegContribution);
-      cellN.value = {
-        formula: `ROUND(${Math.round(row.employmentIncome)} - M${currentRowNumber} - ${totalWorkingContrib}, 0)`,
+      cellO.value = {
+        formula: `ROUND(${Math.round(row.employmentIncome)} - M${currentRowNumber} - ${totalWorkingContrib} - N${currentRowNumber}, 0)`,
         result: Math.round(row.netSpendableCashflow)
       };
     }
-    cellN.numFmt = currencyFormat;
-    cellN.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellN.font = { name: 'Calibri', size: 10, bold: true };
+    cellO.numFmt = currencyFormat;
+    cellO.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellO.font = { name: 'Calibri', size: 10, bold: true };
 
-    // Col O: Notes
-    const cellO = dataRow.getCell(15);
-    cellO.value = row.notes.length > 0 ? row.notes.join(' • ') : '-';
-    cellO.alignment = { vertical: 'middle', horizontal: 'left' };
-    cellO.font = {
+    // Col P: Notes
+    const cellP = dataRow.getCell(16);
+    cellP.value = row.notes.length > 0 ? row.notes.join(' • ') : '-';
+    cellP.alignment = { vertical: 'middle', horizontal: 'left' };
+    cellP.font = {
       name: 'Calibri',
       size: 9.5,
       italic: row.notes.length > 0,
@@ -426,7 +438,7 @@ export async function exportMilestoneTableToExcel({
     };
 
     // Apply borders and backgrounds
-    for (let c = 1; c <= 15; c++) {
+    for (let c = 1; c <= 16; c++) {
       const cell = dataRow.getCell(c);
       cell.fill = {
         type: 'pattern',
@@ -480,7 +492,7 @@ export async function exportMilestoneTableToExcel({
     };
     totalRow.getCell(9).numFmt = currencyFormat;
 
-    // Col J-N: Cumulative sums across all displayed rows
+    // Col J-O: Cumulative sums across all displayed rows
     totalRow.getCell(10).value = { formula: `SUM(J${firstDataRow}:J${lastDataRow})` };
     totalRow.getCell(10).numFmt = currencyFormat;
 
@@ -496,10 +508,13 @@ export async function exportMilestoneTableToExcel({
     totalRow.getCell(14).value = { formula: `SUM(N${firstDataRow}:N${lastDataRow})` };
     totalRow.getCell(14).numFmt = currencyFormat;
 
-    totalRow.getCell(15).value = 'Cumulative sum / ending values';
-    totalRow.getCell(15).font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF64748B' } };
+    totalRow.getCell(15).value = { formula: `SUM(O${firstDataRow}:O${lastDataRow})` };
+    totalRow.getCell(15).numFmt = currencyFormat;
 
-    for (let c = 1; c <= 15; c++) {
+    totalRow.getCell(16).value = 'Cumulative sum / ending values';
+    totalRow.getCell(16).font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF64748B' } };
+
+    for (let c = 1; c <= 16; c++) {
       const cell = totalRow.getCell(c);
       cell.fill = {
         type: 'pattern',

@@ -27,7 +27,8 @@ import {
   ArrowUpRight,
   Maximize2,
   Minimize2,
-  Percent
+  Percent,
+  CreditCard
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 
@@ -124,11 +125,13 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           yr.isCoastFireMilestone ||
           yr.isMillionaireMilestone ||
           yr.isMortgageFreeMilestone ||
+          yr.isDebtFreeMilestone ||
           yr.isPeakWealthMilestone ||
           yr.age === summary?.crossoverAge ||
           yr.age === summary?.coastFireAge ||
           yr.age === summary?.millionaireAge ||
           yr.age === summary?.mortgagePayoffAge ||
+          yr.age === summary?.debtPayoffAge ||
           yr.age === summary?.peakNetWorthAge ||
           yr.age === 60 ||
           yr.age === 65 ||
@@ -268,6 +271,16 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
         question: `How does paying off my home loan at Age ${summary.mortgagePayoffAge} redirect cash flow toward retirement wealth?`,
         age: summary.mortgagePayoffAge,
         metric: 'Home Equity'
+      });
+    }
+
+    // 9. Consumer Debt Freedom
+    if (summary?.debtPayoffAge) {
+      list.push({
+        label: `💳 Debt Freedom @ Age ${summary.debtPayoffAge}`,
+        question: `How was my Debt Freedom milestone calculated at Age ${summary.debtPayoffAge} and how much cash flow is permanently freed for retirement savings?`,
+        age: summary.debtPayoffAge,
+        metric: 'Debt Payments'
       });
     }
 
@@ -748,6 +761,38 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             </div>
           </button>
 
+          {/* Card 7: Consumer Debt Freedom */}
+          {Boolean(summary?.debtPayoffAge || (inputs?.debts && inputs.debts.length > 0)) && (
+            <button
+              type="button"
+              onClick={() => summary?.debtPayoffAge && scrollToAge(summary.debtPayoffAge)}
+              className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between ${
+                summary?.debtPayoffAge
+                  ? 'bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 border-rose-200 dark:border-rose-500/20 text-rose-950 dark:text-rose-300 shadow-2xs hover:shadow-xs'
+                  : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 text-slate-500 dark:text-slate-400 opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-1 w-full">
+                <span className="text-[10.5px] font-bold text-rose-800 dark:text-rose-400 flex items-center gap-1">
+                  <CreditCard className="w-3 h-3 text-rose-600 dark:text-rose-400" />
+                  <span>Debt Free</span>
+                </span>
+                <ArrowUpRight className="w-3 h-3 text-rose-600 dark:text-rose-400 opacity-60 group-hover:opacity-100 transition" />
+              </div>
+              <div className="my-1">
+                <div className="text-sm font-extrabold text-slate-900 dark:text-slate-50">
+                  {summary?.debtPayoffAge ? `Age ${summary.debtPayoffAge}` : 'No Debts'}
+                </div>
+                <div className="text-[10px] text-rose-700 dark:text-rose-400 font-medium">
+                  {summary?.debtPayoffAge ? 'Loans Extinguished' : 'Debt Free Today'}
+                </div>
+              </div>
+              <div className="text-[9.5px] text-slate-600 dark:text-slate-400 font-mono truncate">
+                {summary?.totalInitialDebt ? `${formatCur(summary.totalInitialDebt)} cleared` : '$0 Loans'}
+              </div>
+            </button>
+          )}
+
         </div>
       </div>
 
@@ -853,6 +898,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               <option value="FHSA">FHSA</option>
               <option value="Home Equity">Home Equity</option>
               <option value="Withdrawals">Withdrawals</option>
+              <option value="Debt Payments">Debt Payments</option>
               <option value="Spendable Cash">Spendable Cash</option>
             </select>
 
@@ -1044,6 +1090,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                 {taxRateMode === 'marginal' && 'Tax Paid (Marg. %)'}
                 {taxRateMode === 'both' && 'Tax Paid (Eff. / Marg.)'}
               </th>
+              <th className="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400 min-w-[110px]">Debt Payments</th>
               <th className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">Spendable Cash</th>
               <th className="py-2.5 px-3 text-right text-slate-400 dark:text-slate-500">Living Target</th>
               <th className="py-2.5 px-3 min-w-[260px]">Milestone Schedule Notes</th>
@@ -1052,7 +1099,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono text-[11px]">
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={16} className="py-8 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
+                <td colSpan={17} className="py-8 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
                   No simulation years match the current search or filter criteria.
                 </td>
               </tr>
@@ -1060,7 +1107,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
 
             {paddingTop > 0 && (
               <tr>
-                <td style={{ height: `${paddingTop}px` }} colSpan={16} />
+                <td style={{ height: `${paddingTop}px` }} colSpan={17} />
               </tr>
             )}
 
@@ -1164,6 +1211,17 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                           className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"
                         >
                           <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Mortgage Free</span>
+                        </span>
+                      )}
+
+                      {/* Milestone Badge 4B: Consumer Debt Free */}
+                      {row.isDebtFreeMilestone && (
+                        <span 
+                          title="Consumer Debt Free: All personal, vehicle, and student loans amortized to $0 balance"
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-900 dark:text-teal-300 border border-teal-200 dark:border-teal-500/20 flex items-center gap-1 shadow-2xs"
+                        >
+                          <CreditCard className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
                           <span>Debt Free</span>
                         </span>
                       )}
@@ -1305,10 +1363,20 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   {/* Total Net Worth */}
                   <td 
                     onClick={() => handleCellClick('Total Net Worth', row.totalNetWorth, row.age)}
-                    title={`Click to ask AI how Total Net Worth (${formatCur(row.totalNetWorth)}) was calculated at Age ${row.age}`}
+                    title={`Click to ask AI how Total Net Worth (${formatCur(row.totalNetWorth)}) was calculated at Age ${row.age}${row.remainingDebt > 0 ? ` (reflects -${formatCur(row.remainingDebt)} consumer debt)` : ''}`}
                     className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-100/40 dark:bg-slate-800/40 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-300 hover:underline transition-colors select-none"
                   >
-                    {formatCur(row.totalNetWorth)}
+                    <div>
+                      <div>{formatCur(row.totalNetWorth)}</div>
+                      {row.remainingDebt > 0 && (
+                        <div 
+                          title={`Remaining consumer debt: -${formatCur(row.remainingDebt)}`}
+                          className="text-[9px] font-sans font-normal text-rose-500 dark:text-rose-400 leading-tight mt-0.5"
+                        >
+                          -{formatCur(row.remainingDebt)} debt
+                        </div>
+                      )}
+                    </div>
                   </td>
 
                   {/* Investment Returns / Compounding Growth */}
@@ -1429,6 +1497,42 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                     )}
                   </td>
 
+                  {/* Debt Payments */}
+                  <td 
+                    onClick={() => handleCellClick('Debt Payments', row.debtPayment, row.age)}
+                    title={
+                      row.debtPayment > 0
+                        ? `Click to inspect: Debt Outflow ${formatCur(row.debtPayment)} (Principal: ${formatCur(row.debtPrincipalPaid || 0)}, Interest: ${formatCur(row.debtInterestPaid || 0)}) | Remaining Balance: ${formatCur(row.remainingDebt || 0)}`
+                        : (row.remainingDebt || 0) > 0
+                        ? `Remaining Debt Balance: ${formatCur(row.remainingDebt)}`
+                        : 'Debt-Free: No active consumer debt service'
+                    }
+                    className="py-2.5 px-3 text-right font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
+                  >
+                    {row.debtPayment > 0 ? (
+                      <div className="flex flex-col items-end">
+                        <span className="text-rose-600 dark:text-rose-400 font-semibold font-mono">
+                          -{formatCur(row.debtPayment)}
+                        </span>
+                        {(row.remainingDebt || 0) > 0 && (
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-normal">
+                            bal {formatCur(row.remainingDebt)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 dark:text-slate-600 font-mono font-normal">
+                        {row.isDebtFreeMilestone ? (
+                          <span className="text-[9.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20">
+                            Paid Off
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </span>
+                    )}
+                  </td>
+
                   {/* Spendable Cashflow */}
                   <td 
                     onClick={() => handleCellClick('Spendable Cash', row.netSpendableCashflow, row.age)}
@@ -1488,7 +1592,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
             })}
             {paddingBottom > 0 && (
               <tr>
-                <td style={{ height: `${paddingBottom}px` }} colSpan={16} />
+                <td style={{ height: `${paddingBottom}px` }} colSpan={17} />
               </tr>
             )}
           </tbody>

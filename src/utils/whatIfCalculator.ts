@@ -174,14 +174,69 @@ export function calculateWhatIfSimulation(
   const baseCoastRow = baselineYearlyResults.find((r) => r.age === baseCoastAge);
 
   // 8. Retirement Cashflow Impact
-  const baseRetireRow =
-    baselineYearlyResults.find((r) => r.age === retirementAge) || baselineYearlyResults[0];
-  const whatIfRetireRow =
-    whatIfYearlyResults.find((r) => r.age === retirementAge) || whatIfYearlyResults[0];
+  const fallbackRow: YearSimulationResult = {
+    age: retirementAge,
+    year: Math.max(1, retirementAge - currentAge + 1),
+    isRetired: true,
+    employmentIncome: 0,
+    cppIncome: 0,
+    oasGrossIncome: 0,
+    oasClawback: 0,
+    oasNetIncome: 0,
+    rrspBalance: 0,
+    rrifBalance: 0,
+    tfsaBalance: 0,
+    fhsaBalance: 0,
+    nonRegBalance: 0,
+    totalNetWorth: 0,
+    homeValue: 0,
+    remainingMortgage: 0,
+    homeEquity: 0,
+    realEstateShare: 0,
+    homeSoldThisYear: false,
+    homeSaleProceeds: 0,
+    remainingDebt: 0,
+    debtPayment: 0,
+    debtPrincipalPaid: 0,
+    debtInterestPaid: 0,
+    rrspContribution: 0,
+    tfsaContribution: 0,
+    fhsaContribution: 0,
+    nonRegContribution: 0,
+    rrspWithdrawal: 0,
+    rrifWithdrawal: 0,
+    tfsaWithdrawal: 0,
+    nonRegWithdrawal: 0,
+    fhsaWithdrawalOrTransfer: 0,
+    totalWithdrawals: 0,
+    totalInvestmentGrowth: 0,
+    targetSpendingNominal: 0,
+    totalGrossIncome: 0,
+    taxableIncome: 0,
+    totalTaxPaid: 0,
+    effectiveTaxRate: 0,
+    marginalTaxRate: 0,
+    netSpendableCashflow: 0,
+    cashflowGap: 0,
+    isRrifMandatory: false,
+    rrifMinimumWithdrawal: 0,
+    fhsaRolledOver: false,
+    notes: [],
+    isCouple: false
+  };
 
-  const baseNominalAnnual = baseRetireRow.netSpendableCashflow;
+  const baseRetireRow =
+    (baselineYearlyResults && baselineYearlyResults.length > 0)
+      ? (baselineYearlyResults.find((r) => r.age === retirementAge) || baselineYearlyResults[0])
+      : fallbackRow;
+  const whatIfRetireRow =
+    (whatIfYearlyResults && whatIfYearlyResults.length > 0)
+      ? (whatIfYearlyResults.find((r) => r.age === retirementAge) || whatIfYearlyResults[0])
+      : fallbackRow;
+
+  const baseNominalAnnual = baseRetireRow?.netSpendableCashflow ?? 0;
   const baseNominalMonthly = baseNominalAnnual / 12;
-  const whatIfNominalAnnual = whatIfRetireRow.netSpendableCashflow;
+  const whatIfNominalAnnual = whatIfRetireRow?.netSpendableCashflow ?? 0;
   const whatIfNominalMonthly = whatIfNominalAnnual / 12;
   const deltaNominalMonthly = whatIfNominalMonthly - baseNominalMonthly;
   const percentDeltaMonthly =
@@ -196,8 +251,8 @@ export function calculateWhatIfSimulation(
   const whatIfRealMonthly = whatIfNominalMonthly / whatIfInflationFactor;
 
   // 9. Retirement Net Worth Impact
-  const baseNW = baseRetireRow.totalNetWorth;
-  const whatIfNW = whatIfRetireRow.totalNetWorth;
+  const baseNW = baseRetireRow?.totalNetWorth ?? 0;
+  const whatIfNW = whatIfRetireRow?.totalNetWorth ?? 0;
   const nwDelta = whatIfNW - baseNW;
   const nwPercentDelta = baseNW > 0 ? (nwDelta / baseNW) * 100 : 0;
 
@@ -232,8 +287,8 @@ export function calculateWhatIfSimulation(
       percentDeltaMonthly: percentDeltaMonthly,
       whatIfRealMonthly: whatIfRealMonthly,
       baselineRealMonthly: baselineRealMonthly,
-      isFullyFunded: whatIfRetireRow.cashflowGap <= 0 && whatIfSummary.isFullyFunded,
-      cashflowGap: whatIfRetireRow.cashflowGap
+      isFullyFunded: (whatIfRetireRow?.cashflowGap ?? 0) <= 0 && Boolean(whatIfSummary?.isFullyFunded),
+      cashflowGap: whatIfRetireRow?.cashflowGap ?? 0
     },
     retirementNetWorth: {
       baseline: baseNW,
@@ -257,10 +312,21 @@ export function calculateWhatIfSimulation(
  */
 export function generateSensitivityMatrix(
   baseInputs: RetirementInputs,
-  dimension: 'inflation' | 'appreciation'
+  dimension: 'inflation' | 'appreciation',
+  baselineSummary?: SimulationSummary,
+  baselineYearlyResults?: YearSimulationResult[]
 ): SensitivityMatrix {
   const returnDeltas = [-2.0, -1.0, 0.0, 1.0, 2.0];
   const otherDeltas = [-2.0, -1.0, 0.0, 1.0, 2.0];
+
+  let actualBaseSummary = baselineSummary;
+  let actualBaseYearly = baselineYearlyResults;
+
+  if (!actualBaseSummary || !actualBaseYearly || actualBaseYearly.length === 0) {
+    const baseSim = runRetirementSimulation(baseInputs);
+    actualBaseSummary = baseSim.summary;
+    actualBaseYearly = baseSim.yearlyResults;
+  }
 
   const grid: SensitivityMatrixCell[][] = [];
 
@@ -274,9 +340,7 @@ export function generateSensitivityMatrix(
         inflationDelta: dimension === 'inflation' ? oDelta : 0
       };
 
-      // Lightweight simulation execution
-      const baseSummary = { crossoverAge: null, coastFireAge: null } as unknown as SimulationSummary;
-      const res = calculateWhatIfSimulation(baseInputs, settings, baseSummary, []);
+      const res = calculateWhatIfSimulation(baseInputs, settings, actualBaseSummary, actualBaseYearly);
 
       row.push({
         returnDelta: rDelta,

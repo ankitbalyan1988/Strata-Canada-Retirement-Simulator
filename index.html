@@ -14,6 +14,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <script>
       (function() {
+        // Suppress benign ResizeObserver notification loop error in browsers & monitoring tools
+        var resizeErrHandler = function(e) {
+          if (e && e.message && (
+            e.message.indexOf('ResizeObserver loop') !== -1 ||
+            e.message.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1 ||
+            e.message.indexOf('ResizeObserver loop limit exceeded') !== -1
+          )) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return true;
+          }
+        };
+        window.addEventListener('error', resizeErrHandler);
+
+        // Safe requestAnimationFrame wrapper for ResizeObserver to prevent intra-frame notification loops
+        if (typeof window !== 'undefined' && window.ResizeObserver) {
+          var NativeResizeObserver = window.ResizeObserver;
+          window.ResizeObserver = function ResizeObserver(callback) {
+            return new NativeResizeObserver(function(entries, observer) {
+              window.requestAnimationFrame(function() {
+                callback(entries, observer);
+              });
+            });
+          };
+          window.ResizeObserver.prototype = NativeResizeObserver.prototype;
+        }
+
         try {
           const theme = localStorage.getItem('strata-theme');
           if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {

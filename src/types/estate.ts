@@ -70,7 +70,7 @@ export interface EstateTaxAndFeesBreakdown {
 export interface EstateDistributionItem {
   id: string;
   recipient: string;
-  category: 'spouse' | 'children' | 'friends' | 'charity' | 'endowment' | 'taxes' | 'probate' | 'funeral' | 'crown';
+  category: 'spouse' | 'children' | 'friends' | 'charity' | 'endowment' | 'taxes' | 'probate' | 'funeral' | 'debt' | 'crown';
   amount: number;
   percentOfGross: number;
   percentOfNet: number;

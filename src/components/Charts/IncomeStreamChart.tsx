@@ -395,6 +395,18 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
                 <span>Estimated Tax Paid:</span>
                 <span>${hoveredItem.totalTaxPaid.toLocaleString()}</span>
               </div>
+              {hoveredItem.debtPayment > 0 && (
+                <div className="flex justify-between text-amber-400 font-medium">
+                  <span>Debt Service Outflow:</span>
+                  <span>-${hoveredItem.debtPayment.toLocaleString()}/yr</span>
+                </div>
+              )}
+              {hoveredItem.remainingDebt > 0 && (
+                <div className="flex justify-between text-slate-400 text-[10.5px]">
+                  <span>Remaining Debt Balance:</span>
+                  <span>${hoveredItem.remainingDebt.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex justify-between text-slate-200 font-bold">
                 <span>Net Spendable Cash:</span>
                 <span>${hoveredItem.netSpendableCashflow.toLocaleString()}</span>

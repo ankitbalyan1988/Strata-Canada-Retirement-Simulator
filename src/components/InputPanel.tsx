@@ -30,7 +30,8 @@ import {
   Calendar,
   CheckCircle2,
   Globe,
-  Plane
+  Plane,
+  CreditCard
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -50,6 +51,7 @@ import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
+import { DebtsManager } from './DebtsManager';
 import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface InputPanelProps {
@@ -64,7 +66,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   const inputs = props.inputs ?? storeInputs;
   const onChange = props.onChange ?? storeSetInputs;
   const isMarried = inputs.maritalStatus === 'married';
-  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'debts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
   const [isExpanded, setIsExpanded] = useState(true);
   const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
 
@@ -319,6 +321,25 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             >
               <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Primary Accounts</span>
+            </button>
+
+            {/* Debts & Loans Tab */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('debts')}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                activeTab === 'debts'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <CreditCard className="w-4 h-4 text-rose-500" />
+              <span>Debts & Loans</span>
+              {inputs.debts && inputs.debts.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-500/30">
+                  {inputs.debts.length}
+                </span>
+              )}
             </button>
 
             {/* Real Estate & Home Ownership Tab */}
@@ -1169,6 +1190,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             </div>
           </div>
+        )}
+
+        {/* TAB: FIXED-TERM DEBTS & LOANS */}
+        {activeTab === 'debts' && (
+          <DebtsManager
+            debts={inputs.debts || []}
+            currentAge={inputs.currentAge}
+            retirementAge={inputs.retirementAge}
+            debtStrategy={inputs.debtStrategy}
+            onUpdateDebts={(newDebts) => updateField('debts', newDebts)}
+            onUpdateStrategy={(newStrategy) => updateField('debtStrategy', newStrategy)}
+            onChange={(newDebts) => updateField('debts', newDebts)}
+          />
         )}
 
         {/* TAB: REAL ESTATE & HOME OWNERSHIP */}

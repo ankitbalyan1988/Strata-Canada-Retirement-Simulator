@@ -208,13 +208,16 @@ export function calculateEstatePlan(
   const cppDeathBenefit = inputs.includeCppDeathBenefitOffset ? 2500 : 0;
   const netFuneralBurden = Math.max(0, funeralCosts - cppDeathBenefit);
 
+  // 4B. Outstanding Debts & Liabilities (Senior Claim against Estate)
+  const remainingDebtAtDeath = Math.max(0, row.remainingDebt || 0);
+
   // 5. Real Estate Liquidation Costs & Executor Fees
   const closingAndLiquidationCosts = (inputs.liquidateRealEstateOnDeath && homeEquity > 0)
     ? Math.round(homeEquity * (inputs.realtorAndClosingPercent / 100))
     : 0;
 
   const executorCompensation = Math.round(
-    Math.max(0, totalGrossEstate - closingAndLiquidationCosts - netFuneralBurden) * (inputs.executorCompensationPercent / 100)
+    Math.max(0, totalGrossEstate - closingAndLiquidationCosts - netFuneralBurden - remainingDebtAtDeath) * (inputs.executorCompensationPercent / 100)
   );
 
   // 6. Charitable Donations & Canadian Tax Shielding
@@ -223,7 +226,7 @@ export function calculateEstatePlan(
   if (inputs.hasNextOfKin) {
     if (inputs.kinCategory === 'family_charity_split' && inputs.charityShareWithKinPercent > 0) {
       charitableDonationAmount = Math.round(
-        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden) * 
+        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden - remainingDebtAtDeath) * 
         (inputs.charityShareWithKinPercent / 100)
       );
     }
@@ -231,7 +234,7 @@ export function calculateEstatePlan(
     // No Next of Kin
     if (inputs.hasValidWill) {
       charitableDonationAmount = Math.round(
-        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden) * 
+        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden - remainingDebtAtDeath) * 
         (inputs.charityAllocationPercent / 100)
       );
     }
@@ -250,7 +253,8 @@ export function calculateEstatePlan(
     probateFee + 
     closingAndLiquidationCosts + 
     executorCompensation +
-    netFuneralBurden;
+    netFuneralBurden +
+    remainingDebtAtDeath;
 
   const netEstateRemaining = Math.max(0, totalGrossEstate - totalEstateDeductions);
 
@@ -341,6 +345,20 @@ export function calculateEstatePlan(
       percentOfNet: 0,
       taxStatus: 'Estate Administration',
       notes: `Executor tariff (${inputs.executorCompensationPercent}%)${closingAndLiquidationCosts > 0 ? ` + real estate liquidation closing (${inputs.realtorAndClosingPercent}%)` : ''}.`
+    });
+  }
+
+  // D2. Outstanding Consumer Debts & Loan Liabilities
+  if (remainingDebtAtDeath > 0) {
+    distributions.push({
+      id: 'debt_settlement',
+      recipient: 'Creditors & Lenders (Outstanding Debts)',
+      category: 'debt',
+      amount: remainingDebtAtDeath,
+      percentOfGross: totalGrossEstate > 0 ? (remainingDebtAtDeath / totalGrossEstate) * 100 : 0,
+      percentOfNet: 0,
+      taxStatus: 'Estate Liability Settlement',
+      notes: 'Settlement of remaining non-mortgage loans and lines of credit as required by Canadian estate law.'
     });
   }
 

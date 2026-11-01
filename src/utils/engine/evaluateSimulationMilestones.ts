@@ -24,6 +24,8 @@ export interface MilestoneEvaluationResult {
   millionaireYear: number | null;
   mortgagePayoffAge: number | null;
   mortgagePayoffYear: number | null;
+  debtPayoffAge: number | null;
+  debtPayoffYear: number | null;
 }
 
 export interface MilestoneHousingContext {
@@ -76,6 +78,9 @@ export function evaluateSimulationMilestones(
   let mortgagePayoffAge: number | null = null;
   let mortgagePayoffYear: number | null = null;
 
+  let debtPayoffAge: number | null = null;
+  let debtPayoffYear: number | null = null;
+
   if (simulationOptions?.isCoastCheck) {
     return {
       crossoverAge,
@@ -88,7 +93,9 @@ export function evaluateSimulationMilestones(
       millionaireAge,
       millionaireYear,
       mortgagePayoffAge,
-      mortgagePayoffYear
+      mortgagePayoffYear,
+      debtPayoffAge,
+      debtPayoffYear
     };
   }
 
@@ -242,6 +249,36 @@ export function evaluateSimulationMilestones(
     }
   }
 
+  // 5B. Consumer Debt Freedom Milestone (Personal, Student, Vehicle loans paid off)
+  const hasInitialConsumerDebts = Boolean(
+    inputs.debts && inputs.debts.length > 0 && inputs.debts.some((d) => (Number(d.initialBalance) || 0) > 0)
+  );
+  if (hasInitialConsumerDebts) {
+    const initialDebtTotal = inputs.debts!.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+    for (let rIdx = 0; rIdx < yearlyResults.length; rIdx++) {
+      const row = yearlyResults[rIdx];
+      const prevDebt = rIdx === 0 ? initialDebtTotal : yearlyResults[rIdx - 1].remainingDebt;
+      if (prevDebt > 0 && row.remainingDebt === 0) {
+        debtPayoffAge = row.age;
+        debtPayoffYear = row.year;
+        row.isDebtFreeMilestone = true;
+        row.milestoneBadges = row.milestoneBadges || [];
+        row.milestoneBadges.push({
+          id: 'debt_free',
+          label: 'Consumer Debt Freedom',
+          shortLabel: '💳 Debt Free',
+          type: 'debt_free',
+          icon: 'credit-card',
+          color: 'teal',
+          description: 'All non-mortgage loans (student loans, vehicle, personal loans) completely paid in full',
+          metricsSummary: 'Consumer Debt: $0'
+        });
+        row.notes.unshift('💳 Consumer Debt Freedom: All fixed personal, vehicle & student loans eliminated! Cashflow freed for investments.');
+        break;
+      }
+    }
+  }
+
   // 6. Target Retirement Day Milestone
   const retRow = yearlyResults.find((r) => r.age === retirementAge);
   if (retRow) {
@@ -338,6 +375,8 @@ export function evaluateSimulationMilestones(
     millionaireAge,
     millionaireYear,
     mortgagePayoffAge,
-    mortgagePayoffYear
+    mortgagePayoffYear,
+    debtPayoffAge,
+    debtPayoffYear
   };
 }

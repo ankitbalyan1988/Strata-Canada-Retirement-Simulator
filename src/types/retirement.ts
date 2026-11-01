@@ -23,6 +23,38 @@ export type DrawdownStrategyType =
 
 export type MaritalStatus = 'single' | 'married' | 'divorced';
 
+export type DebtCategory =
+  | 'student_loan'
+  | 'vehicle_loan'
+  | 'personal_loan'
+  | 'line_of_credit'
+  | 'credit_card'
+  | 'other';
+
+export interface DebtItem {
+  id: string;
+  name: string;
+  category: DebtCategory;
+  initialBalance: number;
+  interestRate: number; // annual % rate (0 for Canada Student Loans, or market APR)
+  remainingTermMonths: number; // loan amortization in months
+  monthlyPayment?: number; // optional custom payment; if 0/undefined, auto-amortized
+  extraMonthlyPayment?: number; // early repayment: additional monthly principal prepayment ($/mo)
+  earlyPayoffAge?: number; // early repayment: target age to pay off remaining loan in full
+  lumpSumPrepaymentAmount?: number; // early repayment: optional one-time early lump-sum payment
+  lumpSumPrepaymentAge?: number; // early repayment: age when one-time lump-sum payment occurs
+  startAge?: number; // starting age for loan service (defaults to currentAge)
+  notes?: string;
+}
+
+export interface DebtRepaymentStrategy {
+  acceleratePayoff: boolean;
+  extraMonthlyPayment: number; // additional monthly prepayment across debt portfolio ($/mo)
+  strategyType: 'avalanche' | 'snowball' | 'pro_rata'; // avalanche (highest APR first) vs snowball (lowest balance first)
+  targetPayoffAge?: number; // target age to eliminate remaining balance
+  redirectFreedCashflowToSavings: boolean; // whether freed debt payments automatically flow into investment savings
+}
+
 export interface StressTestOptions {
   enabled: boolean;
   dropPercent: number; // e.g. 10 for 10% market crash
@@ -172,6 +204,10 @@ export interface RetirementInputs {
   // Custom Non-Registered Sub-Accounts (Savings, Investment, GIC)
   nonRegCustomAccounts?: CustomNonRegAccount[];
 
+  // Consumer & Fixed-Term Debts (Student Loans, Auto Loans, Personal Loans, LOC)
+  debts?: DebtItem[];
+  debtStrategy?: DebtRepaymentStrategy;
+
   // FHSA Settings (Primary)
   fhsaOpenYear?: number; // Year FHSA account was opened (e.g. 2023-2026). Determines 15-year CRA participation limit
   fhsaIntent: 'home_purchase' | 'rollover_to_rrsp';
@@ -200,7 +236,7 @@ export interface MilestoneBadge {
   id: string;
   label: string;
   shortLabel: string;
-  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
+  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'debt_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'general';
   icon: string;
   color: string;
   description: string;
@@ -237,6 +273,12 @@ export interface YearSimulationResult {
   isHomePurchasedThisYear?: boolean;
   downPaymentPaidThisYear?: number;
   housingStatus?: 'renting' | 'mortgage' | 'mortgage_free';
+
+  // Fixed-Term Debts & Liabilities
+  remainingDebt: number;
+  debtPayment: number;
+  debtPrincipalPaid: number;
+  debtInterestPaid: number;
 
   // Contributions in working years
   rrspContribution: number;
@@ -286,6 +328,7 @@ export interface YearSimulationResult {
   isCoastFireMilestone?: boolean;
   isMillionaireMilestone?: boolean;
   isMortgageFreeMilestone?: boolean;
+  isDebtFreeMilestone?: boolean;
   isPeakWealthMilestone?: boolean;
   milestoneBadges?: MilestoneBadge[];
 }
@@ -331,6 +374,14 @@ export interface SimulationSummary {
 
   mortgagePayoffAge: number | null; // Age mortgage loan reaches $0
   mortgagePayoffYear: number | null;
+
+  // Consumer & Fixed-Term Debt Milestones
+  debtPayoffAge?: number | null; // Age all consumer debts reach $0
+  debtPayoffYear?: number | null;
+  totalInitialDebt?: number;
+  debtAtRetirement?: number;
+  totalDebtInterestPaid?: number;
+  debtInterestSaved?: number;
 
   // Real Estate & Backup Asset metrics
   ownsHome: boolean;
