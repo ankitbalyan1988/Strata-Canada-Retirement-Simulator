@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Calendar, 
   Hourglass, 
@@ -41,7 +41,10 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
   const summary = props.summary ?? storeSummary;
   const onChangeRetirementAge = props.onChangeRetirementAge ?? applyRetirementAge;
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.retirementAgeSimulator));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const isExpanded = !isCollapsed;
+
   const yearsToRetire = Math.max(0, retirementAge - currentAge);
   const yearsInRetirement = Math.max(0, lifeExpectancy - retirementAge);
 
@@ -103,7 +106,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
 
             <button
               type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={() => toggleSectionCollapse('retirementAgeSimulator')}
               className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800/80 dark:hover:bg-slate-750 transition border border-slate-200/80 dark:border-slate-700/80 font-medium cursor-pointer"
               title={isExpanded ? 'Collapse Target Retirement Age Simulator' : 'Expand Target Retirement Age Simulator'}
               aria-expanded={isExpanded}

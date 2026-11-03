@@ -366,7 +366,7 @@ function generateDefaultNarratives(
       inputs.realEstate?.ownsHome
         ? `* **Real Estate Equity Defense (${inputs.realEstate.ownershipSharePercent}% Household Ownership)**: Your primary residence (${formatCur(inputs.realEstate.currentMarketValue)}) serves as an unencumbered capital hedge completely exempt from capital gains under Section 40(2)(b) (Principal Residence Exemption). While illiquid for everyday cash flow, it provides substantial ultimate downside security against catastrophic portfolio depletion.`
         : `* **Rental Cash Flow Exposure**: Maintaining residential tenancy exposes baseline living expenses to ongoing shelter inflation. Maintaining a dedicated liquid non-registered and TFSA liquidity reserve is essential to prevent premature portfolio exhaustion.`,
-      `* **Actionable Risk Mitigations**: To insulate your plan against adverse What-If scenarios: (1) Maintain 18–24 months of essential retirement living expenses in cash or short-term GICs within your TFSA to prevent forced equity liquidations in bear markets; (2) Implement dynamic spending guardrails by reducing discretionary spending by 10% during negative return years; and (3) Consider delaying CPP to Age 70 to lock in an additional +28.8% to +42% permanent, inflation-indexed lifetime income floor.`
+      `* **Actionable Risk Mitigations**: To insulate your plan against adverse What-If scenarios: (1) Maintain 18-24 months of essential retirement living expenses in cash or short-term GICs within your TFSA to prevent forced equity liquidations in bear markets; (2) Implement dynamic spending guardrails by reducing discretionary spending by 10% during negative return years; and (3) Consider delaying CPP to Age 70 to lock in an additional +28.8% to +42% permanent, inflation-indexed lifetime income floor.`
     ].join('\n')
   };
 }
@@ -1046,7 +1046,7 @@ export function generateRetirementPdfReport(
         age < inputs.retirementAge ? 'Pre-Retirement' : (age === inputs.retirementAge ? 'Retirement Day' : 'Retirement'),
         formatCur(yr?.realEstateShare || 0),
         formatCur(yr?.totalNetWorth || 0),
-        yr?.homeSoldThisYear ? '🏡 Downsizing Sale Executed' : (ownsHome ? 'Primary Residence Retained' : 'Tenancy')
+        yr?.homeSoldThisYear ? 'Downsizing Sale Executed' : (ownsHome ? 'Primary Residence Retained' : 'Tenancy')
       ];
     });
 
@@ -1273,7 +1273,7 @@ export function generateRetirementPdfReport(
       body: [
         [
           'Destination Country',
-          `${dest.flag} ${dest.name} (${dest.currencyCode})`,
+          `${dest.name} (${dest.currencyCode})`,
           `Cost of Living Index: ${(dest.costOfLivingIndex * 100).toFixed(0)}% of Canada`,
           `PPP Multiplier: ${(dest.purchasingPowerMultiplier).toFixed(2)}x Canadian purchasing power`
         ],
@@ -1586,7 +1586,7 @@ export function generateRetirementPdfReport(
     drawPageHeader(
       doc,
       `Expat Milestone Ledger: ${dest.name} (${dest.currencyCode})`,
-      `Final Schedule • ${dest.flag} Emigration Plan`,
+      `Final Schedule • ${dest.name.toUpperCase()} EMIGRATION PLAN`,
       pageWidth,
       clientName
     );
@@ -1594,23 +1594,47 @@ export function generateRetirementPdfReport(
     let curY = 48;
 
     // 1. Top Expat Summary & KPI Card
+    const cardX = 35;
+    const cardW = pageWidth - 70;
+    const cardH = 56;
     doc.setFillColor(BRAND.slate50[0], BRAND.slate50[1], BRAND.slate50[2]);
     doc.setDrawColor(BRAND.slate200[0], BRAND.slate200[1], BRAND.slate200[2]);
     doc.setLineWidth(0.75);
-    doc.roundedRect(35, curY, pageWidth - 70, 50, 4, 4, 'FD');
+    doc.roundedRect(cardX, curY, cardW, cardH, 4, 4, 'FD');
 
     // Accent Pill
     doc.setFillColor(14, 165, 233); // Cyan 500
-    doc.roundedRect(35, curY, 3.5, 50, 1.5, 1.5, 'F');
+    doc.roundedRect(cardX, curY, 3.5, cardH, 1.5, 1.5, 'F');
 
-    // KPI Header Text
+    // Right KPI Badge: Average PPP Equivalent Spendable
+    const badgeW = 150;
+    const badgeH = 40;
+    const badgeX = cardX + cardW - badgeW - 8;
+    const badgeY = curY + (cardH - badgeH) / 2;
+    doc.setFillColor(240, 253, 250); // soft teal
+    doc.setDrawColor(204, 251, 241);
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3, 3, 'FD');
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(13, 148, 136); // Teal 600
+    doc.text('AVERAGE RETIREMENT PURCHASING POWER', badgeX + badgeW / 2, badgeY + 11, { align: 'center' });
+
+    doc.setFontSize(9.5);
+    doc.text(`${formatCur(expatPlan.averagePPPEquivalentCAD)} / yr`, badgeX + badgeW / 2, badgeY + 23, { align: 'center' });
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`+${expatPlan.purchasingPowerBoostPercent.toFixed(0)}% Canadian equivalent boost`, badgeX + badgeW / 2, badgeY + 33, { align: 'center' });
+
+    // KPI Header Text (Constrained to left side so it never collides with badge)
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
     doc.text(
-      `${dest.flag} Destination: ${dest.name} • Emigration Target: Age ${expatPlan.departureAge} (${expatPlan.departureYear})`,
+      `Destination: ${dest.name} (${dest.currencyCode}) • Emigration Target: Age ${expatPlan.departureAge} (${expatPlan.departureYear})`,
       46,
-      curY + 14
+      curY + 13
     );
 
     doc.setFontSize(7);
@@ -1619,40 +1643,29 @@ export function generateRetirementPdfReport(
     doc.text(
       `Exchange Rate: 1 CAD = ${dest.exchangeRateToCAD} ${dest.currencyCode} • Cost of Living: ${(dest.costOfLivingIndex * 100).toFixed(0)}% of Canada • PPP Multiplier: ${dest.purchasingPowerMultiplier.toFixed(2)}x`,
       46,
-      curY + 25
+      curY + 24
     );
 
     doc.setFontSize(7);
     doc.setTextColor(BRAND.slate700[0], BRAND.slate700[1], BRAND.slate700[2]);
-    const oasText = expatPlan.qualifiesForLifetimeWorldwideOAS
-      ? '✓ Qualified for Lifetime Worldwide OAS (20+ yrs)'
-      : '⚠️ Warning: OAS Halts 6 Mo Post-Departure (<20 yrs)';
     doc.text(
-      `Treaty Withholding: CPP ${dest.treatyRates.cppWithholding}% | OAS ${dest.treatyRates.oasWithholding}% | RRIF ${dest.treatyRates.rrspPeriodicWithholding}% • Departure Tax: ${formatCur(expatPlan.departureTaxEstimateCAD)} • ${oasText}`,
+      `Treaty Withholding: CPP ${dest.treatyRates.cppWithholding}% | OAS ${dest.treatyRates.oasWithholding}% | RRIF ${dest.treatyRates.rrspPeriodicWithholding}% • Departure Tax: ${formatCur(expatPlan.departureTaxEstimateCAD)}`,
       46,
-      curY + 36
+      curY + 35
     );
 
-    // Right KPI Badge: Average PPP Equivalent Spendable
-    const badgeW = 145;
-    const badgeX = pageWidth - 35 - badgeW - 8;
-    doc.setFillColor(240, 253, 250); // soft teal
-    doc.setDrawColor(204, 251, 241);
-    doc.roundedRect(badgeX, curY + 7, badgeW, 36, 3, 3, 'FD');
-
-    doc.setFontSize(6.5);
+    const oasText = expatPlan.qualifiesForLifetimeWorldwideOAS
+      ? '[Qualified] Lifetime Worldwide OAS Confirmed (20+ Adult Canadian Years)'
+      : '[Warning] OAS Halts 6 Mo Post-Departure (<20 Adult Canadian Years)';
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(13, 148, 136); // Teal 600
-    doc.text('AVERAGE RETIREMENT PURCHASING POWER', badgeX + badgeW / 2, curY + 17, { align: 'center' });
+    if (expatPlan.qualifiesForLifetimeWorldwideOAS) {
+      doc.setTextColor(13, 148, 136); // Teal 600
+    } else {
+      doc.setTextColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
+    }
+    doc.text(oasText, 46, curY + 46);
 
-    doc.setFontSize(9.5);
-    doc.text(`${formatCur(expatPlan.averagePPPEquivalentCAD)} / yr`, badgeX + badgeW / 2, curY + 29, { align: 'center' });
-
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`+${expatPlan.purchasingPowerBoostPercent.toFixed(0)}% Canadian equivalent boost`, badgeX + badgeW / 2, curY + 38, { align: 'center' });
-
-    curY += 56;
+    curY += cardH + 6;
 
     // 2. Build Milestone Rows for Expat Schedule
     const milestoneAgesSet = new Set<number>();
@@ -1676,11 +1689,11 @@ export function generateRetirementPdfReport(
       const isEmigrationYear = age === expatPlan.departureAge;
       const isAbroad = age >= expatPlan.departureAge;
 
-      let residencyLabel = '🇨🇦 Canada';
+      let residencyLabel = 'Canada (Res)';
       if (isEmigrationYear) {
-        residencyLabel = `✈️ Exit Year`;
+        residencyLabel = 'Exit Year (Relocated)';
       } else if (isAbroad) {
-        residencyLabel = `${dest.flag} Non-Res`;
+        residencyLabel = `${dest.name} (Non-Res)`;
       }
 
       const grossCAD = expatYr?.grossIncomeCAD ?? (canYr?.totalGrossIncome ?? 0);

@@ -24,11 +24,14 @@ export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (pr
 
   const onApplyPersona = props.onApplyPersona ?? storeApplyAIPersona;
   const activeProvince = props.activeProvince ?? storeProvince;
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.aiPersona));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const isExpanded = !isCollapsed;
+
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [synthesizedPersona, setSynthesizedPersona] = useState<RetirementInputs | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
 
   const samplePrompts = [
     'A 32-year-old nurse in Calgary earning $85,000 with $45,000 in TFSA, wanting to retire at 57.',
@@ -110,8 +113,10 @@ export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (pr
 
         <button
           type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
+          onClick={() => toggleSectionCollapse('aiPersona')}
           className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 transition border border-slate-200/80 dark:border-slate-700/80 cursor-pointer"
+          title={isExpanded ? 'Collapse AI Persona Descriptor' : 'Expand AI Persona Descriptor'}
+          aria-expanded={isExpanded}
         >
           <span>{isExpanded ? 'Collapse' : 'Expand'}</span>
           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}

@@ -238,7 +238,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isCompareModalOpen: false,
   isAIPersonaModalOpen: false,
   collapsedSections: {
+    aiPersona: false,
     planning: false,
+    retirementAgeSimulator: false,
     stressTest: false,
     pulse: false,
     charts: false,

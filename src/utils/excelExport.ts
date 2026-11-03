@@ -110,7 +110,7 @@ export async function exportMilestoneTableToExcel({
   // Explanation note for audit-grade ledger and formulas
   worksheet.mergeCells('A4:P4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = '💡 Strata Audit-Grade Ledger: Account balances reflect exact simulation values (including home purchase down payments, equity transfers, and tax optimizations). Total Net Worth =SUM(D:H) and cumulative summaries feature dynamic Excel formulas.';
+  noteCell.value = '[NOTE] Strata Audit-Grade Ledger: Account balances reflect exact simulation values (including home purchase down payments, equity transfers, and tax optimizations). Total Net Worth =SUM(D:H) and cumulative summaries feature dynamic Excel formulas.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -559,7 +559,7 @@ export async function exportEstateLedgerToExcel({
   // Explanation note for audit-grade ledger and formulas (Row 4)
   worksheet.mergeCells('A4:R4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = '💡 Strata Canadian Estate Audit-Grade Ledger: Modeled under CRA Section 70(5) deemed disposition rules, Provincial Probate (Estate Administration Tax), and testamentary succession guidelines. Total Gross Estate =SUM(D:H), Total Deductions =SUM(J:M), Net Estate =I-N, and Preservation Rate =O/I feature dynamic Excel formulas.';
+  noteCell.value = '[NOTE] Strata Canadian Estate Audit-Grade Ledger: Modeled under CRA Section 70(5) deemed disposition rules, Provincial Probate (Estate Administration Tax), and testamentary succession guidelines. Total Gross Estate =SUM(D:H), Total Deductions =SUM(J:M), Net Estate =I-N, and Preservation Rate =O/I feature dynamic Excel formulas.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -787,7 +787,7 @@ export async function exportEstateLedgerToExcel({
 
     // Col R: Succession & Legal Tax Notes
     const cellR = dataRow.getCell(18);
-    cellR.value = isPassingTarget ? `★ ACTIVE PASSING AGE: ${row.notes}` : row.notes;
+    cellR.value = isPassingTarget ? `[ACTIVE PASSING AGE] ${row.notes}` : row.notes;
     cellR.alignment = { vertical: 'middle', horizontal: 'left' };
     cellR.font = { name: 'Calibri', size: 9, italic: true, color: { argb: isPassingTarget ? 'FF047857' : 'FF475569' } };
 
@@ -1023,7 +1023,7 @@ export async function exportExpatLedgerToExcel({
     ? `CRA Exit Tax: C$${Math.round(departureTaxEstimateCAD).toLocaleString()}`
     : 'CRA Exit Tax: $0 (Exempt/No Taxable Gains)';
   
-  metaCell.value = `${clientTag}Destination: ${destinationCountry.flag} ${destinationCountry.name} (${destinationCountry.currencyCode}) | Emigration: Age ${departureAge} (${departureYear}) | Target Retirement: Age ${retirementAge} | Exchange: 1 CAD = ${exchangeRate} ${destinationCountry.currencyCode} | ${oasTag} | ${exitTaxTag} | View: ${filterLabels[filterMode] || filterMode} | Generated: ${todayStr}`;
+  metaCell.value = `${clientTag}Destination: ${destinationCountry.name} (${destinationCountry.currencyCode}) | Emigration: Age ${departureAge} (${departureYear}) | Target Retirement: Age ${retirementAge} | Exchange: 1 CAD = ${exchangeRate} ${destinationCountry.currencyCode} | ${oasTag} | ${exitTaxTag} | View: ${filterLabels[filterMode] || filterMode} | Generated: ${todayStr}`;
   metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
   metaCell.fill = {
     type: 'pattern',
@@ -1039,7 +1039,7 @@ export async function exportExpatLedgerToExcel({
   // Explanation note for audit-grade ledger and multi-currency rules (Row 4)
   worksheet.mergeCells('A4:U4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = `💡 Strata Cross-Border Multi-Currency Architecture: Canadian portfolios (RRSP, TFSA, FHSA, Non-Reg) remain in CAD (C$) with CRA Part XIII non-resident withholding. Spendable cash & living targets convert to ${destinationCountry.name} ${destinationCountry.currencyCode} (${destinationCountry.currencySymbol}) adjusted for Purchasing Power Parity (PPP factor: ${(1/colIndex).toFixed(2)}x). Total Net Worth =SUM(D:H) features dynamic formulas.`;
+  noteCell.value = `[NOTE] Strata Cross-Border Multi-Currency Architecture: Canadian portfolios (RRSP, TFSA, FHSA, Non-Reg) remain in CAD (C$) with CRA Part XIII non-resident withholding. Spendable cash & living targets convert to ${destinationCountry.name} ${destinationCountry.currencyCode} (${destinationCountry.currencySymbol}) adjusted for Purchasing Power Parity (PPP factor: ${(1/colIndex).toFixed(2)}x). Total Net Worth =SUM(D:H) features dynamic formulas.`;
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -1152,8 +1152,8 @@ export async function exportExpatLedgerToExcel({
     // Col C: Tax Residency & Phase
     const cellC = dataRow.getCell(3);
     const residencyLabel = row.isNonResident
-      ? `✈️ Non-Res (${destinationCountry.name})`
-      : '🇨🇦 Canadian Resident';
+      ? `Non-Resident (${destinationCountry.name})`
+      : 'Canadian Resident';
     cellC.value = residencyLabel;
     cellC.alignment = { vertical: 'middle', horizontal: 'center' };
     cellC.font = {
@@ -1288,7 +1288,7 @@ export async function exportExpatLedgerToExcel({
     // Col U: Notes
     const cellU = dataRow.getCell(21);
     const combinedNotes = row.notes.length > 0 ? row.notes.join(' | ') : 'Standard trajectory';
-    cellU.value = isDepartureYear ? `★ EMIGRATION DAY: ${combinedNotes}` : combinedNotes;
+    cellU.value = isDepartureYear ? `[EMIGRATION DAY] ${combinedNotes}` : combinedNotes;
     cellU.alignment = { vertical: 'middle', horizontal: 'left' };
     cellU.font = {
       name: 'Calibri',
