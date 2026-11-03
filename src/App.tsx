@@ -5,14 +5,16 @@ import { RetirementScorecard } from './components/RetirementScorecard';
 import { SavingsPulse } from './components/SavingsPulse';
 import { NetWorthChart } from './components/Charts/NetWorthChart';
 import { IncomeStreamChart } from './components/Charts/IncomeStreamChart';
+import { MarginalTaxBracketChart } from './components/Charts/MarginalTaxBracketChart';
 import { InputPanel } from './components/InputPanel';
 import { MilestoneTable } from './components/MilestoneTable';
 import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { CanadianPlanningTips } from './components/CanadianPlanningTips';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
 import { RrspBreakEvenModule } from './components/RrspBreakEvenModule';
+import { StressTestHealthCard } from './components/StressTestHealthCard';
 import { useSimulationStore } from './store/useSimulationStore';
-import { Layers, Wallet, Sun, Moon, ChevronsDown, ChevronsUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { Layers, Wallet, Percent, Sun, Moon, ChevronsDown, ChevronsUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Dynamic lazy-loaded modules and modals to optimize critical rendering path
 const EstatePlanningModule = React.lazy(() =>
@@ -27,6 +29,8 @@ const AIPersonaModal = React.lazy(() =>
 
 export default function App() {
   const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const province = useSimulationStore((state) => state.inputs.province);
+  const isCouple = useSimulationStore((state) => state.inputs.maritalStatus === 'married');
   const yearlyResults = useSimulationStore((state) => state.yearlyResults);
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
   const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
@@ -111,6 +115,9 @@ export default function App() {
         {/* Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
         <SavingsPulse />
 
+        {/* Actionable Stress Test & Plan Resilience Scorecard */}
+        <StressTestHealthCard />
+
         {/* Visual Charts Container with Tabs */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -145,6 +152,22 @@ export default function App() {
               >
                 <Wallet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Post-Retirement Cash Flows</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (isChartsCollapsed) toggleSectionCollapse('charts');
+                  setActiveChartTab('taxbracket');
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
+                  activeChartTab === 'taxbracket'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Percent className="w-3.5 h-3.5 text-amber-500" />
+                <span>Marginal Tax Brackets</span>
               </button>
             </div>
 
@@ -189,7 +212,7 @@ export default function App() {
                   Retirement Net Worth: <strong className="text-emerald-600 dark:text-emerald-400">${Math.round(yearlyResults.find(r => r.age === retirementAge)?.totalNetWorth || 0).toLocaleString()}</strong>
                 </span>
                 <span className="px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
-                  Mode: <strong className="text-slate-900 dark:text-white">{activeChartTab === 'networth' ? 'Net Worth Trajectory' : 'Post-Retirement Cash Flows'}</strong>
+                  Mode: <strong className="text-slate-900 dark:text-white">{activeChartTab === 'networth' ? 'Net Worth Trajectory' : activeChartTab === 'cashflow' ? 'Post-Retirement Cash Flows' : 'Marginal Tax Brackets'}</strong>
                 </span>
               </div>
               <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 ml-auto">
@@ -208,10 +231,17 @@ export default function App() {
                 stressTiming={stressTiming}
                 onChangeStressTiming={setStressTiming}
               />
-            ) : (
+            ) : activeChartTab === 'cashflow' ? (
               <IncomeStreamChart
                 yearlyResults={yearlyResults}
                 retirementAge={retirementAge}
+              />
+            ) : (
+              <MarginalTaxBracketChart
+                yearlyResults={yearlyResults}
+                retirementAge={retirementAge}
+                province={province}
+                isCouple={isCouple}
               />
             )
           )}

@@ -57,6 +57,7 @@ export const DEFAULT_ACCOUNT_RETURNS: AccountReturnRates = {
  * - Average Canadian Home Ownership Rate: ~66.5% (StatCan Census)
  */
 export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
+  userName: 'Jordan Miller',
   maritalStatus: 'single',
   currentAge: 42,
   retirementAge: 64,
@@ -106,6 +107,7 @@ export const PRESETS: ScenarioPreset[] = [
     tagline: 'Balanced Growth & RRSP Optimization (ON)',
     description: '36-year-old software architect in Ontario targeting retirement at 62 with healthy RRSP & TFSA balances.',
     inputs: {
+      userName: 'Sarah Chen',
       maritalStatus: 'single',
       currentAge: 36,
       retirementAge: 62,
@@ -166,6 +168,7 @@ export const PRESETS: ScenarioPreset[] = [
     tagline: 'Dual CPP/OAS & Pension Income Splitting (ON)',
     description: 'Married couple (ages 38 & 36) in Ontario planning joint retirement with dual registered accounts and pension income splitting.',
     inputs: {
+      userName: 'David Morgan',
       maritalStatus: 'married',
       currentAge: 38,
       retirementAge: 63,
@@ -248,6 +251,7 @@ export const PRESETS: ScenarioPreset[] = [
     tagline: 'High Savings & Early Retirement at 52 (BC)',
     description: '31-year-old in British Columbia aiming for Financial Independence / Retire Early at 52 using tax-efficient drawdowns.',
     inputs: {
+      userName: 'Marcus Wong',
       maritalStatus: 'single',
       currentAge: 31,
       retirementAge: 52,
@@ -308,6 +312,7 @@ export const PRESETS: ScenarioPreset[] = [
     tagline: 'Wealth Preservation & Clawback Defense (AB)',
     description: '49-year-old executive in Calgary planning solo retirement at 65 with substantial non-registered capital.',
     inputs: {
+      userName: 'Brent MacLeod',
       maritalStatus: 'single',
       currentAge: 49,
       retirementAge: 65,
@@ -368,6 +373,7 @@ export const PRESETS: ScenarioPreset[] = [
     tagline: 'Quebec Tax Optimization & Bracket Smoothing (QC)',
     description: '42-year-old consultant in Montreal optimizing RRSP deductions against Quebec progressive brackets and retiring at 64.',
     inputs: {
+      userName: 'Élise Tremblay',
       maritalStatus: 'single',
       currentAge: 42,
       retirementAge: 64,

@@ -173,6 +173,7 @@ export interface AccountReturnRates {
 
 export interface RetirementInputs {
   // Personal & Marital Status
+  userName?: string; // Primary planner full name (e.g. Jordan Miller)
   maritalStatus: MaritalStatus;
   currentAge: number;
   retirementAge: number;
@@ -425,4 +426,43 @@ export interface ScenarioPreset {
   tagline: string;
   description: string;
   inputs: RetirementInputs;
+}
+
+export interface StressScenarioOutcome {
+  id: string;
+  name: string;
+  description: string;
+  severity: 'moderate' | 'severe' | 'extreme';
+  isSolvent: boolean;
+  depletionAge: number | null;
+  terminalNetWorth: number;
+  terminalNetWorthDelta: number; // vs base plan
+  lowestLiquidFloor: number;
+  recoveryYears: number;
+  yearsFunded: number;
+  totalYearsInRetirement: number;
+}
+
+export interface StressTestHealthResult {
+  probabilityOfSuccess: number; // 0 - 100 (%)
+  healthRating: 'resilient' | 'moderate' | 'vulnerable';
+  healthLabel: string;
+  worstCaseScenario: StressScenarioOutcome;
+  baseTerminalNetWorth: number;
+  worstCaseTerminalNetWorth: number;
+  worstCaseDepletionAge: number | null;
+  worstCaseDropAmount: number;
+  worstCaseDropPercent: number;
+  solvencyMarginYears: number; // buffer years or deficit years
+  safeWithdrawalRateFloorPercent: number; // safe withdrawal % under worst-case
+  actualWithdrawalRatePercent: number; // current planned withdrawal %
+  actionableRecommendations: {
+    id: string;
+    category: 'pension' | 'spending' | 'savings' | 'debt' | 'housing';
+    impact: 'high' | 'medium' | 'moderate';
+    title: string;
+    description: string;
+    metricBenefit: string;
+  }[];
+  scenarios: StressScenarioOutcome[];
 }

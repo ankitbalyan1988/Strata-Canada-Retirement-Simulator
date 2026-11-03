@@ -5,7 +5,8 @@ import {
   EstateReservesAtDeath, 
   EstateTaxAndFeesBreakdown, 
   EstateDistributionItem, 
-  EstateKeyStrategy 
+  EstateKeyStrategy,
+  EstateMilestoneRow 
 } from '../types/estate';
 import { calculateCanadianTax, PROVINCIAL_BRACKETS } from './canadianTax';
 
@@ -571,4 +572,199 @@ export function calculateEstatePlan(
     distributions,
     keyStrategies
   };
+}
+
+/**
+ * Generates an annual/milestone ledger simulating estate terminal liquidation at each age.
+ */
+export function generateEstateMilestoneLedger(
+  inputs: EstatePlanningInputs,
+  retirementInputs: RetirementInputs,
+  yearlyResults: YearSimulationResult[]
+): EstateMilestoneRow[] {
+  if (!yearlyResults || yearlyResults.length === 0) return [];
+  const province = retirementInputs.province || 'ON';
+  const topRate = TOP_MARGINAL_TAX_RATES[province] || 0.53;
+  const retirementAge = retirementInputs.retirementAge || 65;
+  const isSpousalRollover = inputs.hasNextOfKin && 
+    inputs.kinCategory === 'spouse' && 
+    inputs.spousalRolloverEnabled && 
+    retirementInputs.maritalStatus === 'married';
+
+  const funeralCosts = Math.max(0, inputs.estimatedFuneralCost ?? 10000);
+  const cppDeathBenefit = inputs.includeCppDeathBenefitOffset ? 2500 : 0;
+  const netFuneralBurden = Math.max(0, funeralCosts - cppDeathBenefit);
+
+  return yearlyResults.map((row, idx) => {
+    const age = row.age;
+    const year = row.year;
+    const isRetired = row.isRetired;
+    const rrspBalance = Math.max(0, (row.rrspBalance || 0) + (row.rrifBalance || 0));
+    const tfsaBalance = Math.max(0, row.tfsaBalance || 0);
+    const fhsaBalance = Math.max(0, row.fhsaBalance || 0);
+    const nonRegBalance = Math.max(0, row.nonRegBalance || 0);
+    const homeEquity = Math.max(0, row.realEstateShare || 0);
+    const remainingDebt = Math.max(0, row.remainingDebt || 0);
+
+    const totalGrossEstate = rrspBalance + tfsaBalance + fhsaBalance + nonRegBalance + homeEquity;
+
+    // CRA Terminal Tax
+    let rrspTerminalTax = 0;
+    if (!isSpousalRollover && rrspBalance > 0) {
+      const taxCalc = calculateCanadianTax(rrspBalance, province, age, 0);
+      rrspTerminalTax = Math.round(taxCalc.totalTax);
+    }
+
+    const estimatedUnrealizedGains = nonRegBalance * 0.45;
+    const taxableCapGain = estimatedUnrealizedGains > 250000 
+      ? (250000 * 0.50) + ((estimatedUnrealizedGains - 250000) * 0.667)
+      : estimatedUnrealizedGains * 0.50;
+    const nonRegCapitalGainsTax = Math.round(taxableCapGain * topRate);
+    const totalTerminalIncomeTax = rrspTerminalTax + nonRegCapitalGainsTax;
+
+    // Probate
+    let grossProbateAssets = 0;
+    if (inputs.directBeneficiariesDesignated) {
+      grossProbateAssets = nonRegBalance + (inputs.liquidateRealEstateOnDeath ? homeEquity : (homeEquity > 0 ? homeEquity : 0));
+    } else {
+      grossProbateAssets = totalGrossEstate;
+    }
+    const probateFee = calculateProvincialProbate(grossProbateAssets, province);
+
+    // Real Estate Closing & Executor
+    const closingAndLiquidationCosts = (inputs.liquidateRealEstateOnDeath && homeEquity > 0)
+      ? Math.round(homeEquity * (inputs.realtorAndClosingPercent / 100))
+      : 0;
+
+    const executorCompensation = Math.round(
+      Math.max(0, totalGrossEstate - closingAndLiquidationCosts - netFuneralBurden - remainingDebt) * 
+      (inputs.executorCompensationPercent / 100)
+    );
+
+    // Charitable donation tax shield
+    let charitableDonationAmount = 0;
+    if (inputs.hasNextOfKin) {
+      if (inputs.kinCategory === 'family_charity_split' && inputs.charityShareWithKinPercent > 0) {
+        charitableDonationAmount = Math.round(
+          Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden - remainingDebt) * 
+          (inputs.charityShareWithKinPercent / 100)
+        );
+      }
+    } else if (inputs.hasValidWill) {
+      charitableDonationAmount = Math.round(
+        Math.max(0, totalGrossEstate - closingAndLiquidationCosts - executorCompensation - netFuneralBurden - remainingDebt) * 
+        (inputs.charityAllocationPercent / 100)
+      );
+    }
+
+    const charitableTaxCredit = Math.min(
+      totalTerminalIncomeTax,
+      Math.round(charitableDonationAmount * (topRate * 0.95))
+    );
+    const netIncomeTaxAfterCredits = Math.max(0, totalTerminalIncomeTax - charitableTaxCredit);
+
+    const funeralAndAdminCosts = netFuneralBurden + closingAndLiquidationCosts + executorCompensation;
+    const totalDeductions = netIncomeTaxAfterCredits + probateFee + funeralAndAdminCosts + remainingDebt;
+    const netEstateRemaining = Math.max(0, totalGrossEstate - totalDeductions);
+    const preservationRate = totalGrossEstate > 0 ? (netEstateRemaining / totalGrossEstate) * 100 : 100;
+
+    // Primary Recipient Description
+    let primaryRecipient = 'Family Beneficiaries';
+    if (inputs.hasNextOfKin) {
+      if (inputs.kinCategory === 'spouse') {
+        primaryRecipient = 'Surviving Spouse';
+      } else if (inputs.kinCategory === 'family_charity_split') {
+        primaryRecipient = `Family & Charity (${inputs.charityShareWithKinPercent}%)`;
+      } else {
+        primaryRecipient = 'Children & Heirs';
+      }
+    } else {
+      if (!inputs.hasValidWill) {
+        primaryRecipient = 'Escheat Risk (Provincial Crown)';
+      } else if (inputs.noKinStrategy === 'charitable_legacy') {
+        primaryRecipient = `Charitable Legacy (${inputs.charityAllocationPercent}%)`;
+      } else if (inputs.noKinStrategy === 'named_friends_heirs') {
+        primaryRecipient = `Named Friends (${inputs.namedFriendsAllocationPercent}%)`;
+      } else if (inputs.noKinStrategy === 'endowment_daf') {
+        primaryRecipient = `Perpetual Endowment (${inputs.endowmentAllocationPercent}%)`;
+      } else {
+        primaryRecipient = 'Named Legacy Heirs';
+      }
+    }
+
+    // Tax Status
+    let taxStatus = 'T1 Deemed Disposition';
+    if (isSpousalRollover) {
+      taxStatus = 'Spousal Rollover (CRA s.70(6))';
+    } else if (charitableTaxCredit > 0 && netIncomeTaxAfterCredits === 0) {
+      taxStatus = '100% Donation Shielded';
+    } else if (charitableTaxCredit > 0) {
+      taxStatus = 'Partially Donation Shielded';
+    }
+
+    // Notes
+    let notes = '';
+    if (age === retirementAge) {
+      notes = 'Target Retirement Age milestone';
+    } else if (age === 71) {
+      notes = 'Mandatory CRA RRIF conversion year';
+    } else if (age === inputs.passingAge) {
+      notes = 'Active simulated passing age';
+    } else if (row.homeSoldThisYear) {
+      notes = 'Home equity liquidated to financial reserves';
+    } else if (isSpousalRollover) {
+      notes = 'Full tax-free transfer of RRSP/TFSA to spouse';
+    } else if (inputs.directBeneficiariesDesignated) {
+      notes = 'Registered accounts bypass provincial probate';
+    } else {
+      notes = 'Standard Canadian deemed disposition at death';
+    }
+
+    const isPassingAge = age === inputs.passingAge;
+    const isRetirementAge = age === retirementAge;
+    const isMilestoneAge = 
+      idx === 0 || 
+      idx === yearlyResults.length - 1 || 
+      age === retirementAge || 
+      age === inputs.passingAge || 
+      age === 60 || 
+      age === 65 || 
+      age === 70 || 
+      age === 71 || 
+      age === 75 || 
+      age === 80 || 
+      age === 85 || 
+      age === 90 || 
+      age === 95 || 
+      Boolean(row.homeSoldThisYear) || 
+      Boolean(row.isCrossoverMilestone) || 
+      Boolean(row.isCoastFireMilestone) || 
+      Boolean(row.isMillionaireMilestone);
+
+    return {
+      age,
+      year,
+      isRetired,
+      phase: isRetired ? 'Retirement' : 'Working',
+      rrspBalance,
+      tfsaBalance,
+      fhsaBalance,
+      nonRegBalance,
+      homeEquity,
+      totalGrossEstate,
+      remainingDebt,
+      terminalIncomeTax: netIncomeTaxAfterCredits,
+      probateFee,
+      funeralAndAdminCosts,
+      totalDeductions,
+      netEstateRemaining,
+      preservationRate,
+      primaryRecipient,
+      taxStatus,
+      notes,
+      isPassingAge,
+      isRetirementAge,
+      isMilestoneAge
+    };
+  });
 }

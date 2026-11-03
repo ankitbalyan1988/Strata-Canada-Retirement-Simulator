@@ -42,7 +42,7 @@ export interface SimulationState {
 
   // UI & Modals
   theme: 'light' | 'dark';
-  activeChartTab: 'networth' | 'cashflow';
+  activeChartTab: 'networth' | 'cashflow' | 'taxbracket';
   isExportingPdf: boolean;
   isCompareModalOpen: boolean;
   isAIPersonaModalOpen: boolean;
@@ -74,7 +74,7 @@ export interface SimulationState {
   setIsWhatIfActive: (active: boolean | ((prev: boolean) => boolean)) => void;
   setWhatIfSettings: (settings: Partial<WhatIfSettings> | ((prev: WhatIfSettings) => WhatIfSettings)) => void;
   resetWhatIfSettings: () => void;
-  setActiveChartTab: (tab: 'networth' | 'cashflow') => void;
+  setActiveChartTab: (tab: 'networth' | 'cashflow' | 'taxbracket') => void;
   setIsCompareModalOpen: (open: boolean) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
   toggleSectionCollapse: (sectionId: string) => void;
@@ -239,6 +239,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isAIPersonaModalOpen: false,
   collapsedSections: {
     planning: false,
+    stressTest: false,
     pulse: false,
     charts: false,
     ledger: false,

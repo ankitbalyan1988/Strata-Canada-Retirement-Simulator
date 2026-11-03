@@ -94,3 +94,31 @@ export interface EstatePlanResult {
   distributions: EstateDistributionItem[];
   keyStrategies: EstateKeyStrategy[];
 }
+
+export interface EstateMilestoneRow {
+  age: number;
+  year: number;
+  isRetired: boolean;
+  phase: 'Working' | 'Retirement';
+  rrspBalance: number;
+  tfsaBalance: number;
+  fhsaBalance: number;
+  nonRegBalance: number;
+  homeEquity: number;
+  totalGrossEstate: number;
+  remainingDebt: number;
+  terminalIncomeTax: number;
+  probateFee: number;
+  funeralAndAdminCosts: number;
+  totalDeductions: number;
+  netEstateRemaining: number;
+  preservationRate: number;
+  primaryRecipient: string;
+  taxStatus: string;
+  notes: string;
+  isPassingAge: boolean;
+  isRetirementAge: boolean;
+  isMilestoneAge: boolean;
+}
+
+export type EstateFilterMode = 'milestones' | 'retirement' | 'all';

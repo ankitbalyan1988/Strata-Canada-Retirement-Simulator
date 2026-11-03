@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Sliders,
   Zap,
@@ -14,7 +14,17 @@ import {
   Flame,
   Home,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  ShieldCheck,
+  ShieldAlert,
+  Send,
+  Loader2,
+  Bot,
+  AlertOctagon,
+  Lightbulb,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { useSimulationStore } from '../../store/useSimulationStore';
 import {
@@ -22,6 +32,7 @@ import {
   generateSensitivityMatrix,
   WHAT_IF_PRESETS
 } from '../../utils/whatIfCalculator';
+import { fetchWhatIfNarrative, WhatIfNarrativeData } from '../../utils/whatIfNarrativeClient';
 
 interface WhatIfSensitivityPanelProps {
   whatIfResult: ReturnType<typeof calculateWhatIfSimulation>;
@@ -42,6 +53,68 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
   const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [matrixDimension, setMatrixDimension] = useState<'inflation' | 'appreciation'>('inflation');
+
+  // AI Narrative Insights State
+  const [narrativeData, setNarrativeData] = useState<WhatIfNarrativeData | null>(null);
+  const [isLoadingNarrative, setIsLoadingNarrative] = useState(false);
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
+  const [isNarrativeExpanded, setIsNarrativeExpanded] = useState(true);
+  const [customQuestion, setCustomQuestion] = useState('');
+  const [customAnswer, setCustomAnswer] = useState<string | null>(null);
+  const [isAskingCustom, setIsAskingCustom] = useState(false);
+  const [analyzedSettingsKey, setAnalyzedSettingsKey] = useState<string>('');
+
+  const currentSettingsKey = `${whatIfSettings.returnDelta}_${whatIfSettings.appreciationDelta}_${whatIfSettings.inflationDelta}`;
+  const isNarrativeStale = Boolean(analyzedSettingsKey && analyzedSettingsKey !== currentSettingsKey);
+
+  const currentPreset = WHAT_IF_PRESETS.find(
+    (p) =>
+      p.settings.returnDelta === whatIfSettings.returnDelta &&
+      p.settings.appreciationDelta === whatIfSettings.appreciationDelta &&
+      p.settings.inflationDelta === whatIfSettings.inflationDelta
+  );
+
+  const scenarioName = currentPreset
+    ? currentPreset.name
+    : `Custom Scenario (${whatIfSettings.returnDelta >= 0 ? '+' : ''}${whatIfSettings.returnDelta}% Return, ${whatIfSettings.appreciationDelta >= 0 ? '+' : ''}${whatIfSettings.appreciationDelta}% Home, ${whatIfSettings.inflationDelta >= 0 ? '+' : ''}${whatIfSettings.inflationDelta}% Inflation)`;
+
+  const handleGenerateNarrative = async (customQ?: string) => {
+    if (customQ) {
+      setIsAskingCustom(true);
+    } else {
+      setIsLoadingNarrative(true);
+    }
+    setNarrativeError(null);
+
+    try {
+      const data = await fetchWhatIfNarrative({
+        scenarioName,
+        settings: whatIfSettings,
+        whatIfResult,
+        inputs,
+        summary,
+        customQuestion: customQ
+      });
+      setNarrativeData(data);
+      setAnalyzedSettingsKey(currentSettingsKey);
+      if (customQ && data.customAnswer) {
+        setCustomAnswer(data.customAnswer);
+      }
+    } catch (err: any) {
+      console.error('Error generating AI narrative:', err);
+      setNarrativeError(err.message || 'Unable to generate narrative insights.');
+    } finally {
+      setIsLoadingNarrative(false);
+      setIsAskingCustom(false);
+    }
+  };
+
+  // Automatically generate narrative on mount if not yet generated
+  useEffect(() => {
+    if (!narrativeData && !isLoadingNarrative) {
+      handleGenerateNarrative();
+    }
+  }, []);
 
   const {
     crossoverImpact,
@@ -426,6 +499,298 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
             </span>
           </div>
         </div>
+
+      </div>
+
+      {/* AI GENERATED SCENARIO NARRATIVE & ASSET RISK ASSESSMENT */}
+      <div className="bg-slate-950/90 rounded-2xl border border-purple-500/40 p-4 sm:p-5 flex flex-col gap-4 shadow-lg relative overflow-hidden transition-all duration-200">
+        
+        {/* Subtle Ambient Glow */}
+        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-600/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+
+        {/* Narrative Card Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 relative z-10">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-xs">
+              <Bot className="w-4 h-4" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-bold text-white text-sm sm:text-base flex items-center gap-1.5">
+                  <span>AI Scenario Narrative & Risk Assessment</span>
+                </h4>
+                {narrativeData && (
+                  <span className={`text-[10.5px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 uppercase tracking-wider ${
+                    narrativeData.riskRating === 'critical'
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : narrativeData.riskRating === 'high'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : narrativeData.riskRating === 'low'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-sky-500/20 text-sky-300 border-sky-500/40'
+                  }`}>
+                    {narrativeData.riskRating === 'critical' && <AlertOctagon className="w-3 h-3 text-rose-400" />}
+                    {narrativeData.riskRating === 'high' && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                    {narrativeData.riskRating === 'low' && <ShieldCheck className="w-3 h-3 text-emerald-400" />}
+                    {narrativeData.riskRating === 'moderate' && <Info className="w-3 h-3 text-sky-400" />}
+                    <span>{narrativeData.riskRating} risk</span>
+                  </span>
+                )}
+                {isNarrativeStale && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                    ⚡ Inputs Changed
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {narrativeData?.riskLabel || 'Bespoke actuarial narrative analyzing asset safety, sequence risk, and Canadian remediation strategies'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleGenerateNarrative()}
+              disabled={isLoadingNarrative}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs border cursor-pointer ${
+                isNarrativeStale
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border-purple-400 ring-2 ring-purple-400/30'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+              }`}
+              title="Generate fresh AI insights for current scenario settings"
+            >
+              {isLoadingNarrative ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-300" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{isNarrativeStale ? 'Update AI Insights' : 'Refresh Insights'}</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsNarrativeExpanded(p => !p)}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
+              title={isNarrativeExpanded ? 'Collapse Narrative Section' : 'Expand Narrative Section'}
+            >
+              {isNarrativeExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Narrative Card Body */}
+        {isNarrativeExpanded && (
+          <div className="flex flex-col gap-4 relative z-10 animate-in fade-in duration-200">
+            
+            {isLoadingNarrative && !narrativeData ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400 text-xs">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                <span>Synthesizing Canadian actuarial narrative with Gemini AI...</span>
+              </div>
+            ) : narrativeData ? (
+              <>
+                {/* 1. Executive Summary */}
+                <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900/90 border border-purple-500/30 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-purple-300">
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Executive Scenario Assessment: {narrativeData.scenarioTitle}</span>
+                    </span>
+                    {narrativeData.source && (
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        Engine: {narrativeData.source}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs sm:text-[13px] text-slate-200 leading-relaxed font-sans font-medium">
+                    {narrativeData.summary}
+                  </p>
+                </div>
+
+                {/* 2. Asset Safety Matrix & Milestone Velocity Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                  
+                  {/* Left: Asset Vulnerability & Resilience */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col gap-3 justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>Asset Resilience & Vulnerability</span>
+                        </span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                          {narrativeData.assetSafetyAnalysis?.sequenceRiskLevel || 'Sequence Risk Analysis'}
+                        </span>
+                      </div>
+
+                      {/* Safe / Resilient Assets */}
+                      <div className="flex flex-col gap-1.5 mb-2.5">
+                        <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                          <span>🛡️ Resilient & Shielded Wealth:</span>
+                        </span>
+                        <ul className="space-y-1 text-[11px] text-slate-300 pl-2">
+                          {narrativeData.assetSafetyAnalysis?.safeAssets?.map((asset, i) => (
+                            <li key={i} className="flex items-start gap-1.5 leading-snug">
+                              <span className="text-emerald-400 font-bold shrink-0">•</span>
+                              <span>{asset}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Strained / Vulnerable Assets */}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                          <span>⚠️ Strained / Exposed Assets:</span>
+                        </span>
+                        <ul className="space-y-1 text-[11px] text-slate-300 pl-2">
+                          {narrativeData.assetSafetyAnalysis?.vulnerableAssets?.map((asset, i) => (
+                            <li key={i} className="flex items-start gap-1.5 leading-snug">
+                              <span className="text-rose-400 font-bold shrink-0">•</span>
+                              <span>{asset}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Milestone Velocity & Remediation Tactics */}
+                  <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5 mb-2">
+                        <Zap className="w-4 h-4 text-purple-400" />
+                        <span>Milestone Velocity & Canadian Remediation</span>
+                      </span>
+
+                      {/* Milestone Shift Summary */}
+                      <div className="p-2.5 rounded-lg bg-purple-950/40 border border-purple-500/25 text-xs text-purple-200 mb-2.5 leading-relaxed">
+                        <strong className="text-white block text-[11px] mb-0.5">Velocity Impact:</strong>
+                        {narrativeData.milestoneImpactSummary}
+                      </div>
+
+                      {/* Remediation Tactics */}
+                      <div className="flex flex-col gap-1.5">
+                        <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                          <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Actionable Strategic Defenses:</span>
+                        </span>
+                        <ol className="space-y-1.5 text-[11px] text-slate-300 pl-2">
+                          {narrativeData.remediationTactics?.map((tactic, i) => (
+                            <li key={i} className="flex items-start gap-1.5 leading-snug">
+                              <span className="font-bold text-purple-400 shrink-0">{i + 1}.</span>
+                              <span>{tactic}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* 3. Projection Limits Note */}
+                {narrativeData.projectionLimits && (
+                  <div className="p-3 rounded-xl bg-slate-900/40 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
+                    <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="text-slate-300">Model Bounds & Projection Limits: </strong>
+                      <span>{narrativeData.projectionLimits}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Interactive Scenario Deep Dive / Ask AI */}
+                <div className="p-3.5 rounded-xl bg-slate-900/70 border border-purple-500/20 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                      <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Test Scenario Queries & AI Guidance</span>
+                    </span>
+                    <span className="text-[10.5px] text-slate-500">
+                      Explore specific angles on this scenario
+                    </span>
+                  </div>
+
+                  {/* Quick-Prompt Suggestions */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'How safe is my TFSA buffer in this scenario?',
+                      'Should I delay CPP & OAS to Age 70 to offset inflation?',
+                      'How does my primary residence equity protect this plan?',
+                      'What annual spending cut would restore 100% funding?'
+                    ].map((promptQ, qIdx) => (
+                      <button
+                        key={qIdx}
+                        type="button"
+                        onClick={() => {
+                          setCustomQuestion(promptQ);
+                          handleGenerateNarrative(promptQ);
+                        }}
+                        className="text-[10.5px] px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-purple-900/40 text-slate-300 hover:text-purple-200 border border-slate-700/80 hover:border-purple-500/40 transition text-left cursor-pointer"
+                      >
+                        {promptQ}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Question Input */}
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="text"
+                      placeholder="Ask any question about this scenario (e.g. 'What if I downsize at 72 under high inflation?')"
+                      value={customQuestion}
+                      onChange={(e) => setCustomQuestion(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !isAskingCustom && customQuestion.trim() && handleGenerateNarrative(customQuestion)}
+                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => customQuestion.trim() && handleGenerateNarrative(customQuestion)}
+                      disabled={isAskingCustom || !customQuestion.trim()}
+                      className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      {isAskingCustom ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      <span>Ask AI</span>
+                    </button>
+                  </div>
+
+                  {/* Custom Answer Display Box */}
+                  {customAnswer && (
+                    <div className="mt-1 p-3 rounded-xl bg-purple-950/40 border border-purple-500/40 text-xs text-slate-200 leading-relaxed font-sans flex items-start gap-2 animate-in fade-in duration-200">
+                      <Sparkles className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="text-purple-200 block text-[11px] mb-0.5">Actuarial Assessment:</strong>
+                        <span>{customAnswer}</span>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </>
+            ) : null}
+
+            {narrativeError && (
+              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-xs text-rose-300 flex items-center justify-between">
+                <span>{narrativeError}</span>
+                <button
+                  type="button"
+                  onClick={() => handleGenerateNarrative()}
+                  className="px-2 py-1 rounded bg-rose-900/60 hover:bg-rose-900 text-rose-200 text-[10px] font-bold cursor-pointer"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+          </div>
+        )}
 
       </div>
 

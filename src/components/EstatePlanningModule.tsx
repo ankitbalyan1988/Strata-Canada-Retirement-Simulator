@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 
 import { useSimulationStore } from '../store/useSimulationStore';
+import { EstateMilestoneLedger } from './EstateMilestoneLedger';
 
 export interface EstatePlanningModuleProps {
   retirementInputs?: RetirementInputs;
@@ -1280,7 +1281,17 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
           </div>
         </div>
 
-        {/* Row F: Strategic Estate Recommendations & Insights */}
+        {/* Row F: Interactive Multi-Year Estate Milestone Ledger (Maximizable & Excel Exportable) */}
+        <div className="pt-1">
+          <EstateMilestoneLedger
+            estateInputs={estateInputs}
+            retirementInputs={retirementInputs}
+            yearlyResults={yearlyResults}
+            onPassingAgeChange={handlePassingAgeChange}
+          />
+        </div>
+
+        {/* Row G: Strategic Estate Recommendations & Insights */}
         <div className="flex flex-col gap-2.5 pt-1">
           <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500" />

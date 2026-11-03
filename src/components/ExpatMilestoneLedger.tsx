@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { YearSimulationResult, RetirementInputs, SimulationSummary } from '../types/retirement';
 import { ExpatInputs, ExpatSimulationSummary, ExpatYearResult } from '../types/expat';
@@ -18,8 +18,13 @@ import {
   CheckCircle2, 
   AlertTriangle,
   Globe,
-  Home
+  Home,
+  Maximize2,
+  Minimize2,
+  Loader2,
+  X
 } from 'lucide-react';
+import { exportExpatLedgerToExcel } from '../utils/excelExport';
 
 export interface ExpatMilestoneLedgerProps {
   expatResult: ExpatSimulationSummary;
@@ -39,7 +44,20 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
   const [filterMode, setFilterMode] = useState<'all' | 'milestones' | 'expat' | 'retirement'>('milestones');
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close full screen on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
 
   const {
     departureAge,
@@ -327,8 +345,37 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
     }, 3500);
   };
 
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+      await exportExpatLedgerToExcel({
+        data: filteredData,
+        filterMode,
+        departureAge,
+        departureYear,
+        destinationCountry,
+        exchangeRate,
+        colIndex,
+        qualifiesForLifetimeWorldwideOAS,
+        departureTaxEstimateCAD,
+        retirementAge,
+        province: retirementInputs.province,
+        inputs: retirementInputs,
+        expatInputs
+      });
+    } catch (err) {
+      console.error('Failed to export Expat Milestone Ledger to Excel:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col gap-0 transition-colors">
+    <div className={
+      isFullscreen
+        ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 flex flex-col p-3 sm:p-5 shadow-2xl overflow-hidden transition duration-200"
+        : "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col gap-0 transition-colors"
+    }>
       
       {/* 1. Header Bar & Controls */}
       <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-900 dark:bg-slate-950 text-white">
@@ -337,9 +384,14 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
             <Plane className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-base sm:text-lg text-white">
-                Expat Annual Simulation Ledger & Milestone Schedule
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+                <span>Expat Annual Simulation Ledger & Milestone Schedule</span>
+                {isFullscreen && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    Full Screen View
+                  </span>
+                )}
               </h3>
               <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
                 {destinationCountry.flag} {destinationCountry.name}
@@ -351,7 +403,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           </div>
         </div>
 
-        {/* Filter Buttons & Search */}
+        {/* Filter Buttons, Search, Fullscreen & Export */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Filter Pills */}
           <div className="flex rounded-lg bg-slate-800 p-1 text-xs font-semibold text-slate-300 border border-slate-700">
@@ -409,9 +461,67 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
               placeholder="Search age, tax, notes..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 w-40 sm:w-48"
+              className="bg-slate-800 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400 w-36 sm:w-44"
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
+
+          {/* Fullscreen Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreen((prev) => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
+            title={isFullscreen ? 'Exit Full Screen (Esc)' : 'View in Full Screen'}
+          >
+            {isFullscreen ? (
+              <>
+                <Minimize2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Exit Fullscreen</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden sm:inline">Full Screen</span>
+              </>
+            )}
+          </button>
+
+          {/* Excel Export Button */}
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer shadow-xs disabled:opacity-50"
+            title="Export Expat Milestone Ledger with all formulas and formatting to Excel (.xlsx)"
+          >
+            {isExporting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+            )}
+            <span>{isExporting ? 'Exporting...' : 'Export Excel'}</span>
+          </button>
+
+          {/* Close button if fullscreen */}
+          {isFullscreen && (
+            <button
+              type="button"
+              onClick={() => setIsFullscreen(false)}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer border border-slate-700"
+              title="Close Full Screen View (Esc)"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -454,8 +564,10 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.crossoverAge && scrollToAge(summary.crossoverAge)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
-              summary?.crossoverAge
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              summary?.crossoverAge && highlightedAge === summary.crossoverAge
+                ? 'ring-2 ring-emerald-500 shadow-md scale-[1.02] bg-emerald-100/90 dark:bg-emerald-500/30 border-emerald-400'
+                : summary?.crossoverAge
                 ? 'bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200/90 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300 shadow-2xs hover:shadow-xs'
                 : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
@@ -484,8 +596,10 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.coastFireAge && scrollToAge(summary.coastFireAge)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
-              summary?.coastFireAge !== undefined && summary?.coastFireAge !== null
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              summary?.coastFireAge !== undefined && summary?.coastFireAge !== null && highlightedAge === summary.coastFireAge
+                ? 'ring-2 ring-cyan-500 shadow-md scale-[1.02] bg-cyan-100/90 dark:bg-cyan-500/30 border-cyan-400'
+                : summary?.coastFireAge !== undefined && summary?.coastFireAge !== null
                 ? 'bg-cyan-50/70 dark:bg-cyan-500/10 hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20 border-cyan-200/90 dark:border-cyan-500/20 text-cyan-950 dark:text-cyan-300 shadow-2xs hover:shadow-xs'
                 : 'bg-slate-100/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 opacity-70'
             }`}
@@ -514,7 +628,11 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(departureAge)}
-            className="text-left p-2.5 rounded-xl border border-cyan-300 dark:border-cyan-500/30 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/40 dark:to-blue-950/30 text-cyan-950 dark:text-cyan-200 hover:bg-cyan-100/90 dark:hover:bg-cyan-900/40 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              highlightedAge === departureAge
+                ? 'ring-2 ring-cyan-500 shadow-md scale-[1.02] bg-cyan-100 dark:bg-cyan-900/60 border-cyan-400'
+                : 'border-cyan-300 dark:border-cyan-500/30 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/40 dark:to-blue-950/30 text-cyan-950 dark:text-cyan-200 hover:bg-cyan-100/90 dark:hover:bg-cyan-900/40 shadow-2xs hover:shadow-xs'
+            }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
               <span className="text-[10.5px] font-bold text-cyan-900 dark:text-cyan-300 flex items-center gap-1">
@@ -540,8 +658,10 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(65)}
-            className={`text-left p-2.5 rounded-xl border transition group relative flex flex-col justify-between cursor-pointer ${
-              qualifiesForLifetimeWorldwideOAS
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              highlightedAge === 65
+                ? 'ring-2 ring-emerald-500 shadow-md scale-[1.02] bg-emerald-100 dark:bg-emerald-950/60 border-emerald-400'
+                : qualifiesForLifetimeWorldwideOAS
                 ? 'bg-emerald-50/70 dark:bg-emerald-500/10 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/20 border-emerald-200/90 dark:border-emerald-500/20 text-emerald-950 dark:text-emerald-300'
                 : 'bg-rose-50/70 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 border-rose-200/90 dark:border-rose-500/20 text-rose-950 dark:text-rose-300'
             }`}
@@ -570,7 +690,11 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => scrollToAge(retirementAge)}
-            className="text-left p-2.5 rounded-xl border border-rose-200/90 dark:border-rose-500/20 bg-rose-50/70 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 text-rose-950 dark:text-rose-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              highlightedAge === retirementAge
+                ? 'ring-2 ring-rose-500 shadow-md scale-[1.02] bg-rose-100 dark:bg-rose-950/60 border-rose-400'
+                : 'border-rose-200/90 dark:border-rose-500/20 bg-rose-50/70 dark:bg-rose-500/10 hover:bg-rose-100/80 dark:hover:bg-rose-500/20 text-rose-950 dark:text-rose-300 shadow-2xs hover:shadow-xs'
+            }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
               <span className="text-[10.5px] font-bold text-rose-800 dark:text-rose-300 flex items-center gap-1">
@@ -596,7 +720,11 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
           <button
             type="button"
             onClick={() => summary?.peakNetWorthAge && scrollToAge(summary.peakNetWorthAge)}
-            className="text-left p-2.5 rounded-xl border border-indigo-200/90 dark:border-indigo-500/20 bg-indigo-50/70 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 text-indigo-950 dark:text-indigo-300 transition shadow-2xs hover:shadow-xs group relative flex flex-col justify-between cursor-pointer"
+            className={`text-left p-2.5 rounded-xl border transition-all duration-200 group relative flex flex-col justify-between cursor-pointer ${
+              summary?.peakNetWorthAge && highlightedAge === summary.peakNetWorthAge
+                ? 'ring-2 ring-indigo-500 shadow-md scale-[1.02] bg-indigo-100 dark:bg-indigo-950/60 border-indigo-400'
+                : 'border-indigo-200/90 dark:border-indigo-500/20 bg-indigo-50/70 dark:bg-indigo-500/10 hover:bg-indigo-100/80 dark:hover:bg-indigo-500/20 text-indigo-950 dark:text-indigo-300 shadow-2xs hover:shadow-xs'
+            }`}
           >
             <div className="flex items-center justify-between gap-1 w-full">
               <span className="text-[10.5px] font-bold text-indigo-800 dark:text-indigo-300 flex items-center gap-1">
@@ -622,7 +750,14 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
       </div>
 
       {/* 4. The Virtualized Expat Ledger Table */}
-      <div ref={tableContainerRef} className="overflow-x-auto max-h-[540px]">
+      <div 
+        ref={tableContainerRef} 
+        className={
+          isFullscreen 
+            ? "overflow-x-auto overflow-y-auto flex-1 max-h-none min-h-[400px]" 
+            : "overflow-x-auto max-h-[540px]"
+        }
+      >
         <table className="w-full text-left text-xs border-collapse">
           <thead className="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 z-10 border-b border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider backdrop-blur-sm">
             <tr>

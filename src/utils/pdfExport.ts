@@ -5,6 +5,7 @@ import { PROVINCIAL_BRACKETS } from './canadianTax';
 import { calculateEstatePlan, DEFAULT_ESTATE_INPUTS } from './estatePlanning';
 import { calculateExpatRetirementPlan } from './expatSimulator';
 import { DEFAULT_EXPAT_INPUTS, EXPAT_DESTINATIONS } from './expatCountries';
+import { calculateWhatIfSimulation } from './whatIfCalculator';
 
 /**
  * AI narrative structure containing bespoke markdown advisory text for each section.
@@ -15,6 +16,7 @@ export interface AiPlanNarrative {
   realEstate?: string;
   decumulation?: string;
   advancedPlanning?: string;
+  riskAssessment?: string;
 }
 
 /**
@@ -198,7 +200,8 @@ function drawPageHeader(
   doc: jsPDF,
   pageTitle: string,
   sectionTag: string,
-  pageWidth: number
+  pageWidth: number,
+  clientName?: string
 ) {
   // Dark slate bar
   doc.setFillColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
@@ -224,11 +227,12 @@ function drawPageHeader(
   doc.setFont('helvetica', 'normal');
   doc.text(pageTitle, 40 + brandWidth + 12, 24);
 
-  // Section Tag on Top Right
-  doc.setFontSize(8);
+  // Section Tag & Client Name on Top Right
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(BRAND.slate400[0], BRAND.slate400[1], BRAND.slate400[2]);
-  doc.text(sectionTag.toUpperCase(), pageWidth - 40, 24, { align: 'right' });
+  const rightTag = clientName ? `${clientName.toUpperCase()} • ${sectionTag.toUpperCase()}` : sectionTag.toUpperCase();
+  doc.text(rightTag, pageWidth - 40, 24, { align: 'right' });
 }
 
 /**
@@ -351,6 +355,18 @@ function generateDefaultNarratives(
       inputs.expat?.planToEmigrate
         ? `* **Non-Resident Expat Structuring**: Planning emigration to destination abroad at Age **${inputs.expat.emigrationAge}** triggers CRA Section 128.1 departure tax assessments on non-registered capital gains while unlocking significant purchasing power parity enhancements.`
         : `* **Domestic Succession Governance**: Regular review of statutory wills, enduring powers of attorney for property, and personal care directives ensures seamless execution of your estate legacy according to provincial statutory mandates.`
+    ].join('\n'),
+
+    riskAssessment: [
+      `### Actuarial Risk Assessment, Modeling Boundaries & Asset Safety`,
+      `* **Projection Limitations & Volatility Reality**: Deterministic financial models assume steady compound annual growth (e.g. ${inputs.accountReturns?.rrspReturn ?? 6.5}% RRSP, ${inputs.accountReturns?.tfsaReturn ?? 7.0}% TFSA), but real Canadian capital markets exhibit cyclical volatility, fat-tail drawdowns, and sequence-of-returns risk. An adverse economic shock during early decumulation forces withdrawals from depressed balances, creating permanent capital loss that straight-line arithmetic cannot capture without dynamic spending rules.`,
+      `* **Statutory & Fiscal Policy Boundaries**: All projected Canadian tax brackets, CPP maximum pensionable earnings (YMPE/YAMPE), and OAS clawback recovery thresholds (~$93,208) are modeled under statutory CRA inflation indexation. While legislated to track CPI, future governments possess discretionary power to amend capital gains inclusion rates, modify progressive brackets, or recalibrate entitlement formulas.`,
+      `* **TFSA Asset Class Safety (Ultra-Resilient)**: Your Tax-Free Savings Account balance (${formatCur(inputs.tfsaBalance)}) represents your most secure financial fortress. Both investment growth and withdrawals are 100% tax-free, omitted from CRA Net World Income calculations, and completely immune to triggering OAS clawbacks or GIS reductions, serving as an ideal bear-market cushion.`,
+      `* **Registered RRSP/RRIF Vulnerability (Moderate-to-High Exposure)**: Tax-deferred balances (${formatCur(inputs.rrspBalance)}) carry vulnerability to inflation-induced bracket creep. Mandatory RRIF minimum withdrawal schedules (starting at 5.40% at Age 72 and escalating annually) enforce taxable income realizations regardless of market conditions, increasing tax drag during down markets.`,
+      inputs.realEstate?.ownsHome
+        ? `* **Real Estate Equity Defense (${inputs.realEstate.ownershipSharePercent}% Household Ownership)**: Your primary residence (${formatCur(inputs.realEstate.currentMarketValue)}) serves as an unencumbered capital hedge completely exempt from capital gains under Section 40(2)(b) (Principal Residence Exemption). While illiquid for everyday cash flow, it provides substantial ultimate downside security against catastrophic portfolio depletion.`
+        : `* **Rental Cash Flow Exposure**: Maintaining residential tenancy exposes baseline living expenses to ongoing shelter inflation. Maintaining a dedicated liquid non-registered and TFSA liquidity reserve is essential to prevent premature portfolio exhaustion.`,
+      `* **Actionable Risk Mitigations**: To insulate your plan against adverse What-If scenarios: (1) Maintain 18–24 months of essential retirement living expenses in cash or short-term GICs within your TFSA to prevent forced equity liquidations in bear markets; (2) Implement dynamic spending guardrails by reducing discretionary spending by 10% during negative return years; and (3) Consider delaying CPP to Age 70 to lock in an additional +28.8% to +42% permanent, inflation-indexed lifetime income floor.`
     ].join('\n')
   };
 }
@@ -519,9 +535,10 @@ export function generateRetirementPdfReport(
     : { aiNarrative: (narrativeOrOptions as AiPlanNarrative) };
 
   const isCouple = inputs.maritalStatus === 'married';
+  const primaryName = inputs.userName?.trim();
   const defaultClientName = isCouple && inputs.spouse
-    ? `${inputs.spouse.name ? `Household Plan (${inputs.spouse.name} & Co.)` : 'Couple Household Plan'}`
-    : 'Individual Client';
+    ? `${primaryName || 'Client'}${inputs.spouse.name ? ` & ${inputs.spouse.name}` : ''}`
+    : (primaryName || 'Primary Planner');
 
   const clientName = options.clientName || defaultClientName;
   const defaultNarratives = generateDefaultNarratives(inputs, summary, provinceName, yearlyResults);
@@ -530,7 +547,8 @@ export function generateRetirementPdfReport(
     accumulationStrategy: options.aiNarrative?.accumulationStrategy || defaultNarratives.accumulationStrategy,
     realEstate: options.aiNarrative?.realEstate || defaultNarratives.realEstate,
     decumulation: options.aiNarrative?.decumulation || defaultNarratives.decumulation,
-    advancedPlanning: options.aiNarrative?.advancedPlanning || defaultNarratives.advancedPlanning
+    advancedPlanning: options.aiNarrative?.advancedPlanning || defaultNarratives.advancedPlanning,
+    riskAssessment: options.aiNarrative?.riskAssessment || defaultNarratives.riskAssessment
   };
 
   const currentDateString = new Date().toLocaleDateString('en-CA', {
@@ -733,7 +751,7 @@ export function generateRetirementPdfReport(
   // =========================================================================
   {
     doc.addPage();
-    drawPageHeader(doc, 'Lifestyle & Accumulation Strategy', 'Section 1 • Pre-Retirement Phase', pageWidth);
+    drawPageHeader(doc, 'Lifestyle & Accumulation Strategy', 'Section 1 • Pre-Retirement Phase', pageWidth, clientName);
 
     let curY = 54;
 
@@ -902,7 +920,7 @@ export function generateRetirementPdfReport(
   // =========================================================================
   {
     doc.addPage();
-    drawPageHeader(doc, 'Real Estate & Housing Strategy', 'Section 2 • Property & Equity Plan', pageWidth);
+    drawPageHeader(doc, 'Real Estate & Housing Strategy', 'Section 2 • Property & Equity Plan', pageWidth, clientName);
 
     let curY = 54;
 
@@ -1077,7 +1095,7 @@ export function generateRetirementPdfReport(
   // =========================================================================
   {
     doc.addPage();
-    drawPageHeader(doc, 'The Glidepath: Decumulation & Pensions', 'Section 3 • Post-Retirement Cash Flows', pageWidth);
+    drawPageHeader(doc, 'The Glidepath: Decumulation & Pensions', 'Section 3 • Post-Retirement Cash Flows', pageWidth, clientName);
 
     let curY = 48;
 
@@ -1159,7 +1177,7 @@ export function generateRetirementPdfReport(
   // =========================================================================
   {
     doc.addPage();
-    drawPageHeader(doc, 'Advanced Planning: Estate & Expat', 'Section 4 • Succession & Cross-Border', pageWidth);
+    drawPageHeader(doc, 'Advanced Planning: Estate & Expat', 'Section 4 • Succession & Cross-Border', pageWidth, clientName);
 
     let curY = 54;
 
@@ -1315,7 +1333,156 @@ export function generateRetirementPdfReport(
   }
 
   // =========================================================================
-  // PAGE 6+: DETAILED LEDGER (APPENDIX)
+  // PAGE 6: USER PROFILE RISK ASSESSMENT (WHAT-IF SENSITIVITY & ASSET SAFETY)
+  // =========================================================================
+  {
+    doc.addPage();
+    drawPageHeader(doc, 'User Profile Risk Assessment', 'Section 5 • Sensitivity & Risk Analysis', pageWidth, clientName);
+
+    let curY = 54;
+
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
+    doc.text('What-If Scenario Stress Testing & Asset Vulnerability Matrix', 40, curY);
+
+    curY += 10;
+
+    const whatIfScenariosToTest = [
+      {
+        name: 'Baseline Plan',
+        sub: 'Base expected returns & 2.1% target inflation',
+        settings: { isActive: true, returnDelta: 0, appreciationDelta: 0, inflationDelta: 0 }
+      },
+      {
+        name: 'Stagflation Shock',
+        sub: '-2.0% Return, +2.0% Inflation, -1.0% Real Estate',
+        settings: { isActive: true, returnDelta: -2.0, appreciationDelta: -1.0, inflationDelta: 2.0 }
+      },
+      {
+        name: 'Sticky Inflation Drag',
+        sub: '0.0% Return, +2.0% Inflation surge, 0.0% Real Estate',
+        settings: { isActive: true, returnDelta: 0, appreciationDelta: 0, inflationDelta: 2.0 }
+      },
+      {
+        name: 'Bear Market Compression',
+        sub: '-2.0% Return, +1.0% Inflation, -2.0% Real Estate',
+        settings: { isActive: true, returnDelta: -2.0, appreciationDelta: -2.0, inflationDelta: 1.0 }
+      },
+      {
+        name: 'Bull Compounding',
+        sub: '+2.0% Return, -0.5% Inflation, +2.0% Real Estate',
+        settings: { isActive: true, returnDelta: 2.0, appreciationDelta: 2.0, inflationDelta: -0.5 }
+      },
+      {
+        name: 'Severe Downturn Shock',
+        sub: '-3.0% Return, +1.5% Inflation, -1.5% Real Estate',
+        settings: { isActive: true, returnDelta: -3.0, appreciationDelta: -1.5, inflationDelta: 1.5 }
+      }
+    ];
+
+    const whatIfRows = whatIfScenariosToTest.map((scen) => {
+      const res = calculateWhatIfSimulation(inputs, scen.settings, summary, yearlyResults);
+      const isBase = scen.settings.returnDelta === 0 && scen.settings.inflationDelta === 0 && scen.settings.appreciationDelta === 0;
+      const nw = res.retirementNetWorth.whatIf;
+      const delta = res.retirementNetWorth.delta;
+      const pctDelta = res.retirementNetWorth.percentDelta;
+      const monthlySpend = res.retirementCashflow.whatIfNominalMonthly;
+      const isFunded = res.summary.isFullyFunded;
+      const depletAge = res.summary.portfolioDepletionAge;
+
+      const deltaFormatted = isBase
+        ? '$0 (Baseline)'
+        : `${delta >= 0 ? '+' : '-'}${formatCur(Math.abs(delta))} (${pctDelta >= 0 ? '+' : ''}${pctDelta.toFixed(0)}%)`;
+
+      const solvencyText = isFunded
+        ? '100% Fully Funded'
+        : (depletAge ? `Depletes @ Age ${depletAge}` : 'Shortfall');
+
+      let safetyTag = 'Safe / Resilient';
+      if (!isFunded) {
+        if (depletAge && depletAge >= inputs.lifeExpectancy - 3) {
+          safetyTag = 'Moderate Risk';
+        } else {
+          safetyTag = 'High Shortfall Risk';
+        }
+      } else if (res.summary.netWorthAtLifeExpectancy < 150000) {
+        safetyTag = 'Tight Cushion';
+      }
+
+      return [
+        `${scen.name}\n${scen.sub}`,
+        formatCur(nw),
+        deltaFormatted,
+        `${formatCur(monthlySpend)}/mo`,
+        solvencyText,
+        safetyTag
+      ];
+    });
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 40, right: 40 },
+      head: [['What-If Scenario & Parameters', 'Retirement Nest Egg', 'Net Worth Delta', 'Spendable Cash', 'Solvency Horizon', 'Asset Safety']],
+      body: whatIfRows,
+      theme: 'grid',
+      headStyles: {
+        fillColor: BRAND.slate800,
+        fontSize: 7.25,
+        fontStyle: 'bold',
+        cellPadding: 4
+      },
+      bodyStyles: {
+        fontSize: 6.75,
+        cellPadding: 3,
+        textColor: BRAND.darkSlate
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 145 },
+        1: { halign: 'right', fontStyle: 'bold', cellWidth: 80 },
+        2: { halign: 'right', cellWidth: 95 },
+        3: { halign: 'right', cellWidth: 75 },
+        4: { halign: 'center', cellWidth: 80 },
+        5: { halign: 'center', fontStyle: 'bold', cellWidth: 57 }
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          const val = String(data.cell.raw);
+          if (val.includes('Safe')) {
+            data.cell.styles.textColor = BRAND.emerald;
+          } else if (val.includes('Tight') || val.includes('Moderate')) {
+            data.cell.styles.textColor = BRAND.amber;
+          } else if (val.includes('High') || val.includes('Risk') || val.includes('Shortfall')) {
+            data.cell.styles.textColor = BRAND.mapleRed;
+          }
+        }
+        if (data.section === 'body' && data.column.index === 2) {
+          const val = String(data.cell.raw);
+          if (val.startsWith('-')) {
+            data.cell.styles.textColor = BRAND.mapleRed;
+          } else if (val.startsWith('+')) {
+            data.cell.styles.textColor = BRAND.emerald;
+          }
+        }
+      }
+    });
+
+    curY = (doc as any).lastAutoTable.finalY + 12;
+
+    // Narrative Card
+    renderNarrativeCard(
+      doc,
+      'User Profile Risk Assessment: Projection Limits & Asset Safety Analysis',
+      narrative.riskAssessment,
+      40,
+      curY,
+      pageWidth - 80,
+      pageHeight - curY - 36
+    );
+  }
+
+  // =========================================================================
+  // PAGE 7+: DETAILED LEDGER (APPENDIX)
   // =========================================================================
   {
     doc.addPage();
@@ -1402,6 +1569,239 @@ export function generateRetirementPdfReport(
         doc.text('APPENDIX • YEAR-BY-YEAR AUDIT LEDGER', pageWidth - 35, 23, { align: 'right' });
       }
     });
+  }
+
+  // =========================================================================
+  // EXPAT MILESTONE LEDGER (FINAL PAGE IF EXPAT PLANNING ACTIVATED)
+  // =========================================================================
+  const isExpatActive = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
+  if (isExpatActive) {
+    doc.addPage();
+
+    const expatInputs = inputs.expat || DEFAULT_EXPAT_INPUTS;
+    const expatPlan = calculateExpatRetirementPlan(expatInputs, inputs, yearlyResults, summary);
+    const dest = expatPlan.destinationCountry;
+    const destCurr = dest.currencySymbol || dest.currencyCode;
+
+    drawPageHeader(
+      doc,
+      `Expat Milestone Ledger: ${dest.name} (${dest.currencyCode})`,
+      `Final Schedule • ${dest.flag} Emigration Plan`,
+      pageWidth,
+      clientName
+    );
+
+    let curY = 48;
+
+    // 1. Top Expat Summary & KPI Card
+    doc.setFillColor(BRAND.slate50[0], BRAND.slate50[1], BRAND.slate50[2]);
+    doc.setDrawColor(BRAND.slate200[0], BRAND.slate200[1], BRAND.slate200[2]);
+    doc.setLineWidth(0.75);
+    doc.roundedRect(35, curY, pageWidth - 70, 50, 4, 4, 'FD');
+
+    // Accent Pill
+    doc.setFillColor(14, 165, 233); // Cyan 500
+    doc.roundedRect(35, curY, 3.5, 50, 1.5, 1.5, 'F');
+
+    // KPI Header Text
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
+    doc.text(
+      `${dest.flag} Destination: ${dest.name} • Emigration Target: Age ${expatPlan.departureAge} (${expatPlan.departureYear})`,
+      46,
+      curY + 14
+    );
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(BRAND.slate500[0], BRAND.slate500[1], BRAND.slate500[2]);
+    doc.text(
+      `Exchange Rate: 1 CAD = ${dest.exchangeRateToCAD} ${dest.currencyCode} • Cost of Living: ${(dest.costOfLivingIndex * 100).toFixed(0)}% of Canada • PPP Multiplier: ${dest.purchasingPowerMultiplier.toFixed(2)}x`,
+      46,
+      curY + 25
+    );
+
+    doc.setFontSize(7);
+    doc.setTextColor(BRAND.slate700[0], BRAND.slate700[1], BRAND.slate700[2]);
+    const oasText = expatPlan.qualifiesForLifetimeWorldwideOAS
+      ? '✓ Qualified for Lifetime Worldwide OAS (20+ yrs)'
+      : '⚠️ Warning: OAS Halts 6 Mo Post-Departure (<20 yrs)';
+    doc.text(
+      `Treaty Withholding: CPP ${dest.treatyRates.cppWithholding}% | OAS ${dest.treatyRates.oasWithholding}% | RRIF ${dest.treatyRates.rrspPeriodicWithholding}% • Departure Tax: ${formatCur(expatPlan.departureTaxEstimateCAD)} • ${oasText}`,
+      46,
+      curY + 36
+    );
+
+    // Right KPI Badge: Average PPP Equivalent Spendable
+    const badgeW = 145;
+    const badgeX = pageWidth - 35 - badgeW - 8;
+    doc.setFillColor(240, 253, 250); // soft teal
+    doc.setDrawColor(204, 251, 241);
+    doc.roundedRect(badgeX, curY + 7, badgeW, 36, 3, 3, 'FD');
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(13, 148, 136); // Teal 600
+    doc.text('AVERAGE RETIREMENT PURCHASING POWER', badgeX + badgeW / 2, curY + 17, { align: 'center' });
+
+    doc.setFontSize(9.5);
+    doc.text(`${formatCur(expatPlan.averagePPPEquivalentCAD)} / yr`, badgeX + badgeW / 2, curY + 29, { align: 'center' });
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`+${expatPlan.purchasingPowerBoostPercent.toFixed(0)}% Canadian equivalent boost`, badgeX + badgeW / 2, curY + 38, { align: 'center' });
+
+    curY += 56;
+
+    // 2. Build Milestone Rows for Expat Schedule
+    const milestoneAgesSet = new Set<number>();
+    milestoneAgesSet.add(inputs.currentAge);
+    milestoneAgesSet.add(expatPlan.departureAge);
+    milestoneAgesSet.add(inputs.retirementAge);
+    milestoneAgesSet.add(65); // CPP/OAS Standard
+    milestoneAgesSet.add(71); // Mandatory RRIF
+    milestoneAgesSet.add(inputs.lifeExpectancy);
+
+    // Add 5-year intervals
+    for (let a = inputs.currentAge; a <= inputs.lifeExpectancy; a++) {
+      if (a % 5 === 0) milestoneAgesSet.add(a);
+    }
+
+    const milestoneAges = Array.from(milestoneAgesSet).sort((a, b) => a - b);
+
+    const expatTableRows = milestoneAges.map((age) => {
+      const expatYr = expatPlan.yearlyExpatResults.find((r) => r.age === age);
+      const canYr = yearlyResults.find((r) => r.age === age);
+      const isEmigrationYear = age === expatPlan.departureAge;
+      const isAbroad = age >= expatPlan.departureAge;
+
+      let residencyLabel = '🇨🇦 Canada';
+      if (isEmigrationYear) {
+        residencyLabel = `✈️ Exit Year`;
+      } else if (isAbroad) {
+        residencyLabel = `${dest.flag} Non-Res`;
+      }
+
+      const grossCAD = expatYr?.grossIncomeCAD ?? (canYr?.totalGrossIncome ?? 0);
+      const cppVal = expatYr?.cppReceivedCAD ?? (canYr?.cppIncome ?? 0);
+      const oasVal = expatYr?.oasReceivedCAD ?? (canYr?.oasNetIncome ?? 0);
+      const combinedPension = cppVal + oasVal;
+
+      const partXIIITax = expatYr?.craPartXIIIWithholdingCAD ?? 0;
+      const depTax = expatYr?.departureTaxCAD ?? 0;
+      const totalCRAHold = partXIIITax + depTax;
+
+      const netCAD = expatYr?.expatNetIncomeCAD ?? (canYr?.netSpendableCashflow ?? 0);
+      const netLocal = expatYr?.expatNetIncomeLocalCurrency ?? (netCAD * dest.exchangeRateToCAD);
+      const pppCAD = expatYr?.pppEquivalentPurchasingPowerCAD ?? netCAD;
+
+      let notes = '';
+      if (isEmigrationYear) {
+        notes = depTax > 0
+          ? `CRA S.128.1 Departure Tax: -${formatCur(depTax)}`
+          : 'CRA Departure Year (Tax Residency Ceased)';
+      } else if (age === inputs.retirementAge) {
+        notes = isAbroad ? 'Retirement Abroad Commences' : 'Target Retirement Age';
+      } else if (age === 65) {
+        notes = expatPlan.qualifiesForLifetimeWorldwideOAS ? 'CPP & OAS Worldwide Inflows' : 'CPP Inflows (OAS Restricted)';
+      } else if (age === 71) {
+        notes = 'Mandatory RRIF Roll with Treaty Rate';
+      } else if (age === inputs.lifeExpectancy) {
+        notes = 'Plan Life Expectancy Horizon';
+      } else if (isAbroad) {
+        notes = `${(dest.purchasingPowerMultiplier).toFixed(1)}x Purchasing Power in ${dest.name}`;
+      } else {
+        notes = 'Domestic Pre-Departure Accumulation';
+      }
+
+      return [
+        `Age ${age}`,
+        residencyLabel,
+        formatCur(grossCAD),
+        formatCur(combinedPension),
+        totalCRAHold > 0 ? `-${formatCur(totalCRAHold)}` : '$0',
+        formatCur(netCAD),
+        `${destCurr}${Math.round(netLocal).toLocaleString()}`,
+        formatCur(pppCAD),
+        notes
+      ];
+    });
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 35, right: 35 },
+      head: [[
+        'Age', 'Residency', 'Gross CAD', 'CPP+OAS', 'CRA Part XIII', 'Net CAD', `Net Local (${dest.currencyCode})`, 'PPP Real Value', 'Expat Milestones & Statutory Notes'
+      ]],
+      body: expatTableRows,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        fontSize: 7,
+        fontStyle: 'bold',
+        cellPadding: 3.5,
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 6.25,
+        cellPadding: 2.5,
+        textColor: BRAND.darkSlate
+      },
+      columnStyles: {
+        0: { fontStyle: 'bold', halign: 'center', cellWidth: 44 },
+        1: { halign: 'center', cellWidth: 58 },
+        2: { halign: 'right', cellWidth: 50 },
+        3: { halign: 'right', cellWidth: 52 },
+        4: { halign: 'right', textColor: BRAND.mapleRed, cellWidth: 54 },
+        5: { halign: 'right', fontStyle: 'bold', cellWidth: 52 },
+        6: { halign: 'right', fontStyle: 'bold', cellWidth: 64 },
+        7: { halign: 'right', textColor: [13, 148, 136], fontStyle: 'bold', cellWidth: 58 },
+        8: { cellWidth: 110 }
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.row.raw && Array.isArray(data.row.raw)) {
+          const status = String(data.row.raw[1]);
+          if (status.includes('Exit Year')) {
+            data.cell.styles.fillColor = [254, 242, 242]; // very soft rose highlight
+          }
+        }
+      }
+    });
+
+    curY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Bottom Cross-Border Advisory Callout Box
+    if (curY < pageHeight - 55) {
+      doc.setFillColor(BRAND.slate50[0], BRAND.slate50[1], BRAND.slate50[2]);
+      doc.setDrawColor(BRAND.slate200[0], BRAND.slate200[1], BRAND.slate200[2]);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(35, curY, pageWidth - 70, pageHeight - curY - 26, 3, 3, 'FD');
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
+      doc.text('Key Canadian Statutory Expat Compliance Protocols:', 45, curY + 12);
+
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(BRAND.slate600[0], BRAND.slate600[1], BRAND.slate600[2]);
+      doc.text(
+        '1. CRA Emigration Filings: Submit Form NR73 for tax residency determination, Form T1161 (List of Properties by an Emigrant), and Form T1243 (Deemed Disposition).',
+        45,
+        curY + 22
+      );
+      doc.text(
+        '2. Part XIII Withholding Certification: Provide CRA Form NR301 to all Canadian payers and banks to ensure non-resident treaty rates are correctly applied.',
+        45,
+        curY + 31
+      );
+      doc.text(
+        '3. TFSA Non-Resident Status: Contributions cease upon departure. Existing balances grow and withdraw 100% tax-free under CRA rules with zero Part XIII tax.',
+        45,
+        curY + 40
+      );
+    }
   }
 
   // =========================================================================

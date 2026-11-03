@@ -177,6 +177,122 @@ ${JSON.stringify(rowData || {}, null, 2)}
   }
 });
 
+// API: Generate AI Narrative Insights for What-If Scenarios
+app.post('/api/what-if-narrative', async (req: Request, res: Response) => {
+  try {
+    const { scenarioName, settings, metrics, planContext, customQuestion } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      const fallback = generateRuleBasedWhatIfNarrative(scenarioName, settings, metrics, planContext, customQuestion);
+      return res.json({ narrative: fallback, source: 'actuarial_heuristic' });
+    }
+
+    const ai = new GoogleGenAI({
+      apiKey,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'aistudio-build',
+        }
+      }
+    });
+
+    const systemInstruction = `You are a distinguished Canadian retirement actuary, Certified Financial Planner (CFP), and macroeconomic risk specialist.
+Your task is to generate actionable, plain-language narrative insights analyzing a user's test scenario in their Canadian retirement What-If sensitivity model.
+
+The model evaluates variations in:
+- Investment returns (nominal ±2%)
+- Real estate appreciation (±2%)
+- Inflation rate (CPI ±2%)
+
+In your response:
+1. Provide a professional Scenario Title & Risk Rating ("low" | "moderate" | "high" | "critical") with a 1-sentence risk label.
+2. Deliver an Executive Summary assessing the core macro dynamics and overall plan survivability.
+3. Assess Asset Safety & Vulnerability:
+   - Identify which Canadian assets are resilient (e.g. TFSA tax-free compounding, CPI-indexed CPP/OAS, Primary Residence PRE).
+   - Identify which assets are strained or vulnerable (e.g. RRSP/RRIF purchasing power loss, non-reg dividend tax drag, market sequence-of-returns).
+   - Characterize sequence-of-returns and capital longevity risk level.
+4. Explain Milestone Velocity Impacts: Detail how the Crossover point (passive returns outgrowing expenses) and Coast FIRE (zero-contribution viability) are accelerated or delayed.
+5. Provide 2-3 Actionable Canadian Remediation Tactics: Concrete, numbered steps (e.g., TFSA vs RRSP prioritization, delaying CPP/OAS to 70 for 8.4%/yr CPI-indexed boost, tax bracket drawdown adjustments).
+6. Explain Projection Limits & Model Boundaries: Acknowledge the limits of the simulation (e.g., assumes static macro shift over full lifespan, real-world spending flexibility, tax bracket lag).
+${customQuestion ? `7. If a customQuestion is provided ("${customQuestion}"), provide a dedicated, concise direct answer under the "customAnswer" field.` : ''}
+
+Return ONLY valid JSON matching this structure:
+{
+  "scenarioTitle": string,
+  "riskRating": "low" | "moderate" | "high" | "critical",
+  "riskLabel": string,
+  "summary": string,
+  "assetSafetyAnalysis": {
+    "safeAssets": string[],
+    "vulnerableAssets": string[],
+    "sequenceRiskLevel": string
+  },
+  "milestoneImpactSummary": string,
+  "remediationTactics": string[],
+  "projectionLimits": string,
+  "customAnswer": string
+}`;
+
+    const promptContext = `
+Scenario Tested: "${scenarioName || 'Custom Scenario'}"
+What-If Deltas:
+- Investment Return Delta: ${settings?.returnDelta >= 0 ? '+' : ''}${settings?.returnDelta ?? 0}% (Effective: ${metrics?.effectiveRates?.whatIfReturn ?? 'N/A'}%)
+- Home Appreciation Delta: ${settings?.appreciationDelta >= 0 ? '+' : ''}${settings?.appreciationDelta ?? 0}% (Effective: ${metrics?.effectiveRates?.whatIfAppreciation ?? 'N/A'}%)
+- Inflation Rate Delta: ${settings?.inflationDelta >= 0 ? '+' : ''}${settings?.inflationDelta ?? 0}% (Effective: ${metrics?.effectiveRates?.whatIfInflation ?? 'N/A'}%)
+
+Simulation Impacts:
+- Crossover Point: Base Age ${metrics?.crossoverImpact?.baselineAge ?? 'N/A'} -> Scenario Age ${metrics?.crossoverImpact?.whatIfAge ?? 'N/A'} (${metrics?.crossoverImpact?.ageDelta !== null && metrics?.crossoverImpact?.ageDelta !== undefined ? `${metrics.crossoverImpact.ageDelta > 0 ? `+${metrics.crossoverImpact.ageDelta} yrs delayed` : `${metrics.crossoverImpact.ageDelta} yrs earlier`}` : 'Unchanged'})
+- Coast FIRE: Base Age ${metrics?.coastFireImpact?.baselineAge ?? 'N/A'} -> Scenario Age ${metrics?.coastFireImpact?.whatIfAge ?? 'N/A'} (${metrics?.coastFireImpact?.ageDelta !== null && metrics?.coastFireImpact?.ageDelta !== undefined ? `${metrics.coastFireImpact.ageDelta > 0 ? `+${metrics.coastFireImpact.ageDelta} yrs delayed` : `${metrics.coastFireImpact.ageDelta} yrs earlier`}` : 'Unchanged'})
+- Monthly Cashflow at Retirement: Base $${metrics?.retirementCashflow?.baselineNominalMonthly?.toLocaleString() ?? 0}/mo -> Scenario $${metrics?.retirementCashflow?.whatIfNominalMonthly?.toLocaleString() ?? 0}/mo (${metrics?.retirementCashflow?.deltaNominalMonthly >= 0 ? '+' : ''}$${metrics?.retirementCashflow?.deltaNominalMonthly?.toLocaleString() ?? 0}/mo, real purchasing power $${metrics?.retirementCashflow?.whatIfRealMonthly?.toLocaleString() ?? 0}/mo)
+- Retirement Net Worth: Base $${metrics?.retirementNetWorth?.baseline?.toLocaleString() ?? 0} -> Scenario $${metrics?.retirementNetWorth?.whatIf?.toLocaleString() ?? 0} (${metrics?.retirementNetWorth?.percentDelta >= 0 ? '+' : ''}${metrics?.retirementNetWorth?.percentDelta?.toFixed(1) ?? '0.0'}%)
+- Plan Solvency: ${planContext?.isFullyFunded ? '100% Fully Funded through life expectancy' : `Depletes at Age ${planContext?.depletionAge ?? 'Early'}`}
+
+User Household Context:
+- Client: ${planContext?.userName || 'Client'}
+- Current Age: ${planContext?.currentAge}, Target Retirement Age: ${planContext?.retirementAge}, Life Expectancy: ${planContext?.lifeExpectancy}
+- Province: ${planContext?.province}
+- Marital Status: ${planContext?.isMarried ? 'Married' : 'Single'}
+- Home Ownership: ${planContext?.hasHome ? `Owns property ($${planContext?.homeValue?.toLocaleString() || 'N/A'})` : 'Renting'}
+- Portfolio Mix: RRSP $${planContext?.rrspBalance?.toLocaleString() || 0}, TFSA $${planContext?.tfsaBalance?.toLocaleString() || 0}, Non-Reg $${planContext?.nonRegBalance?.toLocaleString() || 0}
+${customQuestion ? `User's Specific Query on this Scenario: "${customQuestion}"` : ''}
+`;
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('AI generation timeout - fallback to actuarial heuristic')), 15000)
+    );
+
+    const geminiPromise = ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: promptContext,
+      config: {
+        systemInstruction,
+        responseMimeType: 'application/json',
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW
+        }
+      }
+    });
+
+    const response = await Promise.race([geminiPromise, timeoutPromise]);
+    const responseText = response.text;
+    if (!responseText) throw new Error('Empty response from Gemini API');
+
+    const parsed = JSON.parse(responseText);
+    return res.json({ narrative: parsed, source: 'gemini-3.8-flash' });
+  } catch (error: any) {
+    console.warn('Notice in /api/what-if-narrative (using actuarial engine fallback):', error.message);
+    const fallback = generateRuleBasedWhatIfNarrative(
+      req.body?.scenarioName,
+      req.body?.settings,
+      req.body?.metrics,
+      req.body?.planContext,
+      req.body?.customQuestion
+    );
+    return res.json({ narrative: fallback, source: 'actuarial_heuristic_fallback', warning: error.message });
+  }
+});
+
 function sanitizePersona(raw: any, prompt: string) {
   const fallback = generateRuleBasedFallbackPersona(prompt);
   if (!raw || typeof raw !== 'object') return fallback;
@@ -705,6 +821,135 @@ function generateRuleBasedLedgerExplanation(
       `How is CPP determined for this year?`,
       `Why does my Net Worth trend the way it does after retirement?`
     ]
+  };
+}
+
+// Actuarial rule-based generator for What-If scenario narrative insights
+function generateRuleBasedWhatIfNarrative(
+  scenarioName?: string,
+  settings?: any,
+  metrics?: any,
+  planContext?: any,
+  customQuestion?: string
+) {
+  const returnDelta = Number(settings?.returnDelta ?? 0);
+  const apprDelta = Number(settings?.appreciationDelta ?? 0);
+  const inflDelta = Number(settings?.inflationDelta ?? 0);
+  const isFullyFunded = Boolean(planContext?.isFullyFunded);
+  const depletionAge = planContext?.depletionAge;
+  const clientName = planContext?.userName || 'You';
+  const retireAge = planContext?.retirementAge || 65;
+
+  let riskRating: 'low' | 'moderate' | 'high' | 'critical' = 'moderate';
+  let riskLabel = 'Moderate sensitivity to macro fluctuations';
+
+  if (!isFullyFunded || (returnDelta <= -2 && inflDelta >= 1.5)) {
+    riskRating = 'critical';
+    riskLabel = 'Critical Longevity Shock: Portfolio faces early depletion without spending or savings remediation';
+  } else if (returnDelta < 0 || inflDelta > 1) {
+    riskRating = 'high';
+    riskLabel = 'High Vulnerability: Inflation or depressed returns noticeably compress your post-retirement cashflow';
+  } else if (returnDelta >= 1 && inflDelta <= 0) {
+    riskRating = 'low';
+    riskLabel = 'Resilient Growth: Accelerated compounding strengthens nest egg and milestone buffers';
+  } else if (returnDelta === 0 && apprDelta === 0 && inflDelta === 0) {
+    riskRating = isFullyFunded ? 'low' : 'moderate';
+    riskLabel = isFullyFunded ? 'Plan is 100% funded under baseline Canadian assumptions' : 'Baseline plan exhibits asset depletion';
+  }
+
+  const title = scenarioName || (
+    returnDelta === 0 && apprDelta === 0 && inflDelta === 0
+      ? 'Current Baseline Strategy'
+      : `What-If Stress Scenario (${returnDelta >= 0 ? '+' : ''}${returnDelta}% Return, ${apprDelta >= 0 ? '+' : ''}${apprDelta}% Home, ${inflDelta >= 0 ? '+' : ''}${inflDelta}% Inflation)`
+  );
+
+  let summary = '';
+  if (returnDelta <= -1.5 && inflDelta >= 1.5) {
+    summary = `${clientName}'s plan is undergoing a severe Stagflation Shock. A +${inflDelta.toFixed(1)}% inflation surge compounds living costs dollar-for-dollar, while a ${returnDelta.toFixed(1)}% drop in portfolio yields reduces passive compounding, squeezing the decumulation safety margin ${isFullyFunded ? 'substantially' : `and accelerating portfolio depletion to Age ${depletionAge}`}.`;
+  } else if (inflDelta >= 1.5) {
+    summary = `This test models Sticky Inflation Drag (+${inflDelta.toFixed(1)}% CPI). While nominal portfolio returns remain intact, purchasing power erodes, requiring higher registered withdrawals and elevating exposure to upper Canadian tax brackets.`;
+  } else if (returnDelta <= -1.5) {
+    summary = `This scenario isolates a Bear Market Compression (${returnDelta.toFixed(1)}% annual return haircut). Capital accumulation slows during the pre-retirement phase, delaying key financial independence milestones.`;
+  } else if (returnDelta >= 1.5) {
+    summary = `Under this Bull Compounding scenario (+${returnDelta.toFixed(1)}% return), compound interest dramatically outpaces lifestyle inflation. The nest egg at Age ${retireAge} expands by ${metrics?.retirementNetWorth?.percentDelta ? `${metrics.retirementNetWorth.percentDelta.toFixed(0)}%` : 'a significant margin'}, generating substantial excess legacy.`;
+  } else {
+    summary = `Under this test scenario (${returnDelta >= 0 ? '+' : ''}${returnDelta.toFixed(1)}% return, ${inflDelta >= 0 ? '+' : ''}${inflDelta.toFixed(1)}% inflation), ${clientName}'s retirement cash flow adjusts to $${Math.round(metrics?.retirementCashflow?.whatIfNominalMonthly || 0).toLocaleString()}/month (real purchasing power: $${Math.round(metrics?.retirementCashflow?.whatIfRealMonthly || 0).toLocaleString()}/month).`;
+  }
+
+  const safeAssets = [
+    'Tax-Free Savings Account (TFSA): 100% shielded from inflation bracket creep and Canadian clawbacks.',
+    'Canada Pension Plan (CPP) & Old Age Security (OAS): Statistically inflation-protected via statutory quarterly and annual CPI indexation.'
+  ];
+  if (planContext?.hasHome) {
+    safeAssets.push('Primary Residence Equity: 100% exempt from capital gains tax in Canada under the Principal Residence Exemption (PRE).');
+  }
+
+  const vulnerableAssets = [
+    'Registered Retirement Savings (RRSP/RRIF): Subject to 100% income tax inclusion on withdrawal; higher inflation increases required withdrawals, forcing higher provincial tax brackets.',
+    'Non-Registered Investments: Annual yield drag from taxable Canadian dividends and realized capital gains diminishes compound recovery.'
+  ];
+  if (!isFullyFunded) {
+    vulnerableAssets.push(`Late-Stage Longevity Buffer: Portfolio runs out of liquid capital prior to life expectancy (Age ${depletionAge || 85}).`);
+  }
+
+  const crossAge = metrics?.crossoverImpact?.whatIfAge;
+  const crossBase = metrics?.crossoverImpact?.baselineAge;
+  const coastAge = metrics?.coastFireImpact?.whatIfAge;
+  const coastBase = metrics?.coastFireImpact?.baselineAge;
+
+  let milestoneImpactSummary = '';
+  if (crossAge && crossBase && crossAge !== crossBase) {
+    milestoneImpactSummary += `Crossover Point (where passive returns exceed living costs) shifts from Age ${crossBase} to Age ${crossAge} (${crossAge > crossBase ? `delayed by ${crossAge - crossBase} years` : `accelerated by ${crossBase - crossAge} years`}). `;
+  } else if (crossAge) {
+    milestoneImpactSummary += `Crossover Point remains steady at Age ${crossAge}. `;
+  } else {
+    milestoneImpactSummary += `Crossover Point is not achieved prior to retirement under these lower return assumptions. `;
+  }
+
+  if (coastAge && coastBase && coastAge !== coastBase) {
+    milestoneImpactSummary += `Coast FIRE (zero-contribution viability) moves from Age ${coastBase} to Age ${coastAge}.`;
+  } else if (coastAge) {
+    milestoneImpactSummary += `Coast FIRE viability remains intact at Age ${coastAge}.`;
+  } else {
+    milestoneImpactSummary += `Zero-contribution viability is postponed until closer to target retirement age.`;
+  }
+
+  const remediationTactics = [
+    'Prioritize TFSA Over Non-Registered Accounts: In higher inflation or lower return climates, directing savings into TFSA eliminates annual dividend taxation and keeps withdrawals 100% invisible to OAS clawback thresholds.',
+    'Delay CPP/OAS to Age 70 as Inflation Hedge: Each year of deferral past age 65 boosts CPP by +8.4% and OAS by +7.2% permanently. Because these pensions are statutory CPI-indexed by the Government of Canada, they form the ultimate inflation hedge.',
+    'Execute Tactical Early RRSP Meltdown: Draw down taxable RRSP balances between ages 60 and 71 to absorb lower marginal brackets before mandatory RRIF minimums and pension income force you into higher tax brackets.'
+  ];
+
+  const projectionLimits = 'This sensitivity projection models the chosen macro adjustments as uniform annual shifts. In real-world market cycles, returns fluctuate with mean-reversion, central bank policy intervenes to suppress inflation, and Canadian retirees dynamically adapt their discretionary spending and asset allocations.';
+
+  let customAnswer: string | undefined = undefined;
+  if (customQuestion) {
+    const q = customQuestion.toLowerCase();
+    if (q.includes('tfsa')) {
+      customAnswer = `Your TFSA is your strongest defensive weapon in this scenario. Because TFSA withdrawals are neither taxable nor counted as net income for OAS/GIS clawback tests, drawing from your TFSA during high-inflation or down-market years protects your tax bracket.`;
+    } else if (q.includes('cpp') || q.includes('oas') || q.includes('delay') || q.includes('70')) {
+      customAnswer = `Delaying CPP to Age 70 provides a guaranteed +42% permanent enhancement, and OAS +36%. Both are indexed to Statistics Canada CPI every quarter, making deferral the safest government-backed inflation defense in this scenario.`;
+    } else if (q.includes('house') || q.includes('home') || q.includes('downsize')) {
+      customAnswer = `Under Canadian law, all gains on your primary residence are 100% tax-free under the Principal Residence Exemption. In adverse market scenarios, downsizing or tapping equity can inject immediate liquid capital into your TFSA or non-registered reserves.`;
+    } else {
+      customAnswer = `Under this tested scenario, maintaining a cash buffer of 1-2 years of living expenses prevents selling equities at depressed valuations (sequence-of-returns protection), while maximizing tax-free TFSA growth shields your core wealth.`;
+    }
+  }
+
+  return {
+    scenarioTitle: title,
+    riskRating,
+    riskLabel,
+    summary,
+    assetSafetyAnalysis: {
+      safeAssets,
+      vulnerableAssets,
+      sequenceRiskLevel: riskRating === 'critical' || riskRating === 'high' ? 'Elevated sequence-of-returns sensitivity' : 'Manageable market sequence risk'
+    },
+    milestoneImpactSummary,
+    remediationTactics,
+    projectionLimits,
+    customAnswer
   };
 }
 
