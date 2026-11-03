@@ -7,7 +7,9 @@ import {
   Wand2,
   Landmark,
   Sun,
-  Moon
+  Moon,
+  ChevronsDown,
+  ChevronsUp
 } from 'lucide-react';
 import { CanadianProvince, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
@@ -41,6 +43,13 @@ export const Header: React.FC<HeaderProps> = (props) => {
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const applyProvince = useSimulationStore((state) => state.applyProvince);
+  const collapsedSections = useSimulationStore((state) => state.collapsedSections);
+  const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
+
+  const areAllSectionsCollapsed = React.useMemo(() => {
+    const values = Object.values(collapsedSections);
+    return values.length > 0 && values.every(Boolean);
+  }, [collapsedSections]);
 
   const province = props.province ?? storeProvince;
   const activePresetId = props.activePresetId ?? storeActivePresetId;
@@ -152,6 +161,27 @@ export const Header: React.FC<HeaderProps> = (props) => {
             >
               <Landmark className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
               <span>Estate Plan</span>
+            </button>
+
+            {/* Global Collapse / Expand All Sections Button */}
+            <button
+              type="button"
+              onClick={toggleCollapseAll}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-750 text-zinc-800 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/70 transition shadow-xs cursor-pointer"
+              title={areAllSectionsCollapsed ? 'Expand all sections across dashboard' : 'Collapse all sections across dashboard'}
+              aria-label={areAllSectionsCollapsed ? 'Expand all sections' : 'Collapse all sections'}
+            >
+              {areAllSectionsCollapsed ? (
+                <>
+                  <ChevronsDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="hidden sm:inline">Expand All</span>
+                </>
+              ) : (
+                <>
+                  <ChevronsUp className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                  <span className="hidden sm:inline">Collapse All</span>
+                </>
+              )}
             </button>
 
             {/* PDF Export button */}

@@ -24,8 +24,18 @@ export const RrspBreakEvenModule: React.FC = () => {
   const inputs = useSimulationStore((state) => state.inputs);
   const updateField = useSimulationStore((state) => state.updateField);
   const setInputs = useSimulationStore((state) => state.setInputs);
+  const storeIsCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.breakEven));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = storeIsCollapsed;
+  const setIsCollapsed = (collapsed: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof collapsed === 'function') {
+      toggleSectionCollapse('breakEven');
+    } else {
+      setSectionCollapse('breakEven', collapsed);
+    }
+  };
   const [targetStrategy, setTargetStrategy] = useState<MeltdownTargetStrategy>(
     inputs.meltdownTargetStrategy || 'bracket1'
   );

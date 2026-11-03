@@ -72,7 +72,18 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
     return retirementInputs.expat || defaultExpat;
   });
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isExpatCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.expat));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+
+  const isExpanded = !isExpatCollapsed;
+  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('expat');
+    } else {
+      setSectionCollapse('expat', !expanded);
+    }
+  };
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);

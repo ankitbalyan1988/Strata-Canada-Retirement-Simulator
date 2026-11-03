@@ -236,6 +236,12 @@ export interface RetirementInputs {
   meltdownTargetStrategy?: 'bracket1' | 'oas_threshold' | 'even_meltdown';
   meltdownStartAge?: number; // Specific age at which strategic RRSP meltdown draws begin
 
+  // User Onboarding & Flow Qualifiers
+  hasOngoingOrFutureDebts?: boolean;
+  housingStatus?: 'own' | 'rent';
+  planFutureHomePurchase?: boolean;
+  planExpatExit?: boolean;
+
   // Expat Emigration Planning
   expat?: ExpatInputs;
 }

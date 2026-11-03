@@ -69,7 +69,18 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
     kinCategory: retirementInputs.maritalStatus === 'married' ? 'spouse' : 'children'
   });
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isEstateCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.estate));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+
+  const isExpanded = !isEstateCollapsed;
+  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('estate');
+    } else {
+      setSectionCollapse('estate', !expanded);
+    }
+  };
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);

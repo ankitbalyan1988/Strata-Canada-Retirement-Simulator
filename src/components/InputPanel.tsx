@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   PiggyBank, 
   User, 
@@ -32,7 +32,8 @@ import {
   Globe,
   Plane,
   CreditCard,
-  FileText
+  FileText,
+  Check
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -65,13 +66,50 @@ export interface InputPanelProps {
 export const InputPanel: React.FC<InputPanelProps> = (props) => {
   const storeInputs = useSimulationStore((state) => state.inputs);
   const storeSetInputs = useSimulationStore((state) => state.setInputs);
+  const isPlanningCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.planning));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
 
   const inputs = props.inputs ?? storeInputs;
   const onChange = props.onChange ?? storeSetInputs;
   const isMarried = inputs.maritalStatus === 'married';
   const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'debts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isExpanded = !isPlanningCollapsed;
+  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('planning');
+    } else {
+      setSectionCollapse('planning', !expanded);
+    }
+  };
   const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
+
+  // Conditional flow qualifiers
+  const hasDebts = inputs.hasOngoingOrFutureDebts ?? Boolean(inputs.debts && inputs.debts.length > 0);
+
+  const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
+    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
+      ? 'own'
+      : (inputs.realEstate?.purchaseType === 'future' ? 'rent' : (inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
+  );
+
+  const planFutureHomePurchase: boolean = inputs.planFutureHomePurchase ?? Boolean(
+    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType === 'future'
+  );
+
+  const showRealEstateSection = housingStatus === 'own' || (housingStatus === 'rent' && planFutureHomePurchase);
+
+  const planExpatExit: boolean = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
+
+  useEffect(() => {
+    if (activeTab === 'debts' && !hasDebts) {
+      setActiveTab('personal');
+    } else if (activeTab === 'realestate' && !showRealEstateSection) {
+      setActiveTab('personal');
+    } else if (activeTab === 'expat' && !planExpatExit) {
+      setActiveTab('personal');
+    }
+  }, [activeTab, hasDebts, showRealEstateSection, planExpatExit]);
 
   const updateExpatField = <K extends keyof ExpatInputs>(field: K, value: ExpatInputs[K]) => {
     const current = inputs.expat || {
@@ -370,51 +408,49 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               <span>Primary Accounts</span>
             </button>
 
-            {/* Debts & Loans Tab */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('debts')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'debts'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <CreditCard className="w-4 h-4 text-rose-500" />
-              <span>Debts & Loans</span>
-              {inputs.debts && inputs.debts.length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-500/30">
-                  {inputs.debts.length}
-                </span>
-              )}
-            </button>
+            {/* Debts & Loans Tab - Only appears if user has debts or wants to model future debts */}
+            {hasDebts && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('debts')}
+                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'debts'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <CreditCard className="w-4 h-4 text-rose-500" />
+                <span>Debts & Loans</span>
+                {inputs.debts && inputs.debts.length > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-500/30">
+                    {inputs.debts.length}
+                  </span>
+                )}
+              </button>
+            )}
 
-            {/* Real Estate & Home Ownership Tab */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('realestate')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'realestate'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Home className="w-4 h-4 text-amber-500" />
-              <span>Real Estate & Home</span>
-              {inputs.realEstate?.ownsHome ? (
-                inputs.realEstate.purchaseType === 'future' ? (
+            {/* Real Estate & Home Ownership Tab - Only appears if user owns a home or rents and plans future purchase */}
+            {showRealEstateSection && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('realestate')}
+                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'realestate'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Home className="w-4 h-4 text-amber-500" />
+                <span>{housingStatus === 'rent' ? 'Future Home Purchase' : 'Real Estate & Home'}</span>
+                {housingStatus === 'rent' ? (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 font-bold">
-                    Buy @ {inputs.realEstate.futurePurchaseAge || inputs.currentAge + 3}
+                    Buy @ {inputs.realEstate?.futurePurchaseAge || inputs.currentAge + 3}
                   </span>
                 ) : (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                )
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-slate-700/50">
-                  Rent
-                </span>
-              )}
-            </button>
+                )}
+              </button>
+            )}
 
             {/* Spouse Tab - ONLY visible when married */}
             {isMarried && (
@@ -472,28 +508,25 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               <span>Drawdown Strategy</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('expat')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'expat'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              <span>Expat & Relocation</span>
-              {inputs.expat?.planToEmigrate ? (
+            {/* Expat & Relocation Tab - Only appears if user indicated plan to exit Canada */}
+            {planExpatExit && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('expat')}
+                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
+                  activeTab === 'expat'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                <span>Expat & Relocation</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20 font-bold flex items-center gap-1">
                   <span>{EXPAT_DESTINATIONS.find(d => d.id === inputs.expat?.destinationCountryId)?.flag || '✈️'}</span>
-                  <span>{inputs.expat.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
+                  <span>{inputs.expat?.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
                 </span>
-              ) : (
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-slate-700/50">
-                  Optional
-                </span>
-              )}
-            </button>
+              </button>
+            )}
           </div>
 
       {/* Tab Contents */}
@@ -748,70 +781,349 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
             </div>
 
-            {/* Expat Emigration Planning Question Card */}
-            <div className="p-4 rounded-xl border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/50 dark:bg-cyan-500/10 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-cyan-600 text-white">
-                    <Globe className="w-4 h-4" />
-                  </span>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
-                      Do you plan to exit Canada and settle in a different country at a later date?
-                    </h5>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Model CRA non-resident withholding taxes, treaty protections, departure tax, and local purchasing power (PPP).
-                    </p>
-                  </div>
-                </div>
-
-                <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(inputs.expat?.planToEmigrate)}
-                    onChange={(e) => updateExpatField('planToEmigrate', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
-                </label>
+            {/* Household Scope & Life Circumstances Qualifying Questions */}
+            <div className="flex flex-col gap-4 pt-2">
+              <div className="border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Planning Scope & Life Circumstances</span>
+                </h5>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Answer these qualifying questions so Strata configures the relevant debt, real estate, and relocation modules for your situation.
+                </p>
               </div>
 
-              {inputs.expat?.planToEmigrate && (
-                <div className="pt-3 border-t border-cyan-200/80 dark:border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Destination:</span>
-                      <select
-                        value={inputs.expat.destinationCountryId || 'mexico'}
-                        onChange={(e) => updateExpatField('destinationCountryId', e.target.value)}
-                        className="text-xs font-bold bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
-                      >
-                        {EXPAT_DESTINATIONS.map(d => (
-                          <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
-                            {d.flag} {d.name} ({d.purchasingPowerMultiplier.toFixed(1)}x PPP • {d.currencyCode})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Planned Exit Age:</span>
-                      <strong className="text-xs font-mono font-bold text-cyan-900 dark:text-cyan-200 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                        Age {inputs.expat.emigrationAge || inputs.retirementAge}
-                      </strong>
+              {/* CARD 1: DEBTS & LOANS QUESTION */}
+              <div className="p-4 rounded-xl border border-rose-200/80 dark:border-rose-500/30 bg-rose-50/30 dark:bg-rose-500/10 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="p-1.5 rounded-lg bg-rose-600 text-white shrink-0 mt-0.5">
+                      <CreditCard className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                        Do you have any ongoing debts or do you want to model any future debts other than a home?
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Includes student loans, auto loans, personal loans, lines of credit (LOC), or credit cards.
+                      </p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('expat')}
-                    className="text-xs font-bold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-                  >
-                    <span>Configure Full Expat Parameters</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  {/* Yes / No Segmented Choice */}
+                  <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-rose-200 dark:border-rose-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => updateField('hasOngoingOrFutureDebts', true)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        hasDebts
+                          ? 'bg-rose-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {hasDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>Yes</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateField('hasOngoingOrFutureDebts', false)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        !hasDebts
+                          ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {!hasDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>No</span>
+                    </button>
+                  </div>
                 </div>
-              )}
+
+                {hasDebts && (
+                  <div className="pt-2.5 border-t border-rose-200/70 dark:border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-200 text-xs">
+                    <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300">
+                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                      <span className="font-semibold">
+                        Debts & Loans module is enabled in your planning tabs.
+                        {inputs.debts && inputs.debts.length > 0 && ` (${inputs.debts.length} active debt${inputs.debts.length > 1 ? 's' : ''} loaded)`}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('debts')}
+                      className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Configure Debts & Loans</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 2: REAL ESTATE & HOUSING QUESTION */}
+              <div className="p-4 rounded-xl border border-amber-200/80 dark:border-amber-500/30 bg-amber-50/30 dark:bg-amber-500/10 flex flex-col gap-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="p-1.5 rounded-lg bg-amber-600 text-white shrink-0 mt-0.5">
+                      <Home className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                        Do you currently own or rent a home?
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tell us whether you have an existing primary residence or are currently renting.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Own vs Rent Segmented Buttons */}
+                  <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-amber-200 dark:border-amber-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateField('housingStatus', 'own');
+                        updateField('planFutureHomePurchase', false);
+                        updateRealEstate({
+                          ownsHome: true,
+                          purchaseType: 'current'
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        housingStatus === 'own'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {housingStatus === 'own' && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>Own</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateField('housingStatus', 'rent');
+                        if (planFutureHomePurchase) {
+                          updateRealEstate({
+                            ownsHome: true,
+                            purchaseType: 'future',
+                            futurePurchaseAge: inputs.realEstate?.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                          });
+                        } else {
+                          updateRealEstate({
+                            ownsHome: false
+                          });
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        housingStatus === 'rent'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {housingStatus === 'rent' && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>Rent</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* If user selected "Own": Current homeownership status banner */}
+                {housingStatus === 'own' && (
+                  <div className="pt-2.5 border-t border-amber-200/70 dark:border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-200 text-xs">
+                    <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span className="font-semibold">
+                        Owns home today: Real Estate section is active with your current property, mortgage balance & accumulated equity.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('realestate')}
+                      className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Configure Current Home & Mortgage</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* If user selected "Rent": Follow-up question appears */}
+                {housingStatus === 'rent' && (
+                  <div className="pt-3 border-t border-blue-200 dark:border-blue-500/30 flex flex-col gap-3 bg-blue-50/50 dark:bg-blue-950/20 p-3 rounded-xl border border-blue-200/60 dark:border-blue-500/20 animate-in fade-in duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-start gap-2">
+                        <span className="p-1 rounded-md bg-blue-600 text-white shrink-0 mt-0.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </span>
+                        <div>
+                          <h6 className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                            Do you plan to purchase a home in the future?
+                          </h6>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            Simulate future home buying with FHSA / RRSP Home Buyers' Plan (HBP) down payment funding.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Yes / No for Future Purchase */}
+                      <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-blue-200 dark:border-blue-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateField('planFutureHomePurchase', true);
+                            updateRealEstate({
+                              ownsHome: true,
+                              purchaseType: 'future',
+                              futurePurchaseAge: inputs.realEstate?.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            planFutureHomePurchase
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {planFutureHomePurchase && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          <span>Yes</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateField('planFutureHomePurchase', false);
+                            updateRealEstate({
+                              ownsHome: false
+                            });
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            !planFutureHomePurchase
+                              ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {!planFutureHomePurchase && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          <span>No</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Feedback based on choice */}
+                    {planFutureHomePurchase ? (
+                      <div className="pt-2 border-t border-blue-200/60 dark:border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                          <span className="font-semibold">
+                            Future Home Purchase Simulator enabled: Real Estate section shows only the future home purchase simulator.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('realestate')}
+                          className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                        >
+                          <span>Open Future Home Purchase Simulator</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/40 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span>
+                          Renting throughout retirement: Real Estate & Home section is hidden. Monthly rent is modeled under Living Expenses.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 3: EXPAT EMIGRATION PLANNING QUESTION */}
+              <div className="p-4 rounded-xl border border-cyan-200 dark:border-cyan-500/30 bg-cyan-50/50 dark:bg-cyan-500/10 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="p-1.5 rounded-lg bg-cyan-600 text-white shrink-0 mt-0.5">
+                      <Globe className="w-4 h-4" />
+                    </span>
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                        Do you plan to exit Canada and settle in a different country?
+                      </h5>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Model CRA non-resident Part XIII withholding taxes, deemed disposition departure tax (S. 128.1), and local purchasing power (PPP).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Yes / No Segmented Choice */}
+                  <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-cyan-200 dark:border-cyan-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateField('planExpatExit', true);
+                        updateExpatField('planToEmigrate', true);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        planExpatExit
+                          ? 'bg-cyan-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {planExpatExit && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>Yes</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateField('planExpatExit', false);
+                        updateExpatField('planToEmigrate', false);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                        !planExpatExit
+                          ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {!planExpatExit && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      <span>No</span>
+                    </button>
+                  </div>
+                </div>
+
+                {planExpatExit && (
+                  <div className="pt-3 border-t border-cyan-200/80 dark:border-cyan-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Destination:</span>
+                        <select
+                          value={inputs.expat?.destinationCountryId || 'mexico'}
+                          onChange={(e) => updateExpatField('destinationCountryId', e.target.value)}
+                          className="text-xs font-bold bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-slate-800 dark:text-slate-100 shadow-2xs focus:ring-1 focus:ring-cyan-500 focus:outline-none cursor-pointer"
+                        >
+                          {EXPAT_DESTINATIONS.map(d => (
+                            <option key={d.id} value={d.id} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                              {d.flag} {d.name} ({d.purchasingPowerMultiplier.toFixed(1)}x PPP • {d.currencyCode})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Planned Exit Age:</span>
+                        <strong className="text-xs font-mono font-bold text-cyan-900 dark:text-cyan-200 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                          Age {inputs.expat?.emigrationAge || inputs.retirementAge}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('expat')}
+                      className="text-xs font-bold text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Configure Full Expat Parameters</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Next Step Guidance to Living Expenses */}
@@ -1341,103 +1653,39 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
           return (
             <div className="flex flex-col gap-6">
               
-              {/* Header & 3-Way Housing Mode Selection */}
-              <div className="flex flex-col gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+              {/* Contextual Header based on Housing Selection from Primary Profile */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50 flex items-center gap-2">
-                    <Home className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    Canadian Real Estate, Mortgage & Housing Strategy
+                    {housingStatus === 'rent' ? (
+                      <>
+                        <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <span>Canadian Real Estate: Future Home Purchase Simulator</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 font-extrabold uppercase">Simulator</span>
+                      </>
+                    ) : (
+                      <>
+                        <Home className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                        <span>Canadian Real Estate: Home Ownership & Mortgage Equity</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 font-extrabold uppercase">Owns Home</span>
+                      </>
+                    )}
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Model existing homeownership, simulate a future home purchase with FHSA/HBP down payments, or model long-term renting throughout retirement.
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {housingStatus === 'rent'
+                      ? `Currently renting; model future purchase timing at age ${futurePurchaseAge}, FHSA/HBP down payments, and financial impact.`
+                      : 'Model existing home value, mortgage principal amortization, accumulated equity, and downsizing strategy.'}
                   </p>
                 </div>
 
-                {/* 3-Way Segmented Control */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1.5 bg-slate-100/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateRealEstate({
-                        ownsHome: true,
-                        purchaseType: 'current'
-                      });
-                    }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
-                      re.ownsHome && re.purchaseType !== 'future'
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-amber-300 dark:border-amber-500/40 ring-2 ring-amber-400/40'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType !== 'future' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                      <Home className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5">
-                        <span>Owns Home Today</span>
-                      </div>
-                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
-                        Purchased in past; existing mortgage & accumulated equity
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateRealEstate({
-                        ownsHome: true,
-                        purchaseType: 'future',
-                        futurePurchaseAge: re.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3),
-                        ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
-                      });
-                    }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
-                      re.ownsHome && re.purchaseType === 'future'
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-blue-300 dark:border-blue-500/40 ring-2 ring-blue-500/40'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${re.ownsHome && re.purchaseType === 'future' ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                      <Calendar className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5">
-                        <span>Future Home Purchase</span>
-                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 font-extrabold uppercase">Simulator</span>
-                      </div>
-                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
-                        Currently renting; model future purchase & financial impact
-                      </span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateRealEstate({
-                        ownsHome: false
-                      });
-                    }}
-                    className={`p-2.5 rounded-xl text-left transition flex items-start gap-2.5 cursor-pointer ${
-                      !re.ownsHome
-                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-300 dark:border-slate-700 ring-2 ring-slate-400/40'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60'
-                    }`}
-                  >
-                    <div className={`p-1.5 rounded-lg shrink-0 ${!re.ownsHome ? 'bg-slate-700 dark:bg-slate-600 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-xs flex items-center gap-1.5">
-                        <span>Rent Long-Term</span>
-                      </div>
-                      <span className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
-                        No real estate asset; 100% renting throughout retirement
-                      </span>
-                    </div>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('personal')}
+                  className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition self-start sm:self-auto cursor-pointer"
+                >
+                  <span>Change Housing Plan in Profile</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
 
               {/* VIEW 1: RENT LONG-TERM (NO REAL ESTATE) */}
@@ -1447,39 +1695,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     <Building2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h5 className="font-bold text-slate-900 dark:text-slate-50 text-sm">Long-Term Renting Mode</h5>
+                    <h5 className="font-bold text-slate-900 dark:text-slate-50 text-sm">Long-Term Renting Mode Active</h5>
                     <p className="text-xs text-slate-500 dark:text-slate-400 max-w-lg mt-1">
-                      You are modeling retirement with 100% rental housing. Your wealth compounds in Canadian registered accounts (TFSA, RRSP) and non-registered investments without mortgage debt or physical home equity.
+                      You indicated in your Primary Profile that you currently rent and do not plan to purchase a home in the future. Monthly rent is modeled under Living Expenses.
                     </p>
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateRealEstate({
-                          ownsHome: true,
-                          purchaseType: 'future',
-                          futurePurchaseAge: re.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3),
-                          ...(!re.rentOverridden && inputs.monthlyExpenses?.rentOrMortgage ? { currentRent: inputs.monthlyExpenses.rentOrMortgage } : {})
-                        });
-                      }}
-                      className="text-xs font-bold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-4 py-2 rounded-xl border border-blue-200 dark:border-blue-500/30 transition cursor-pointer"
-                    >
-                      + Model Future Home Purchase
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        updateRealEstate({
-                          ownsHome: true,
-                          purchaseType: 'current'
-                        });
-                      }}
-                      className="text-xs font-bold text-amber-800 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/20 px-4 py-2 rounded-xl border border-amber-200 dark:border-amber-500/30 transition cursor-pointer"
-                    >
-                      + Model Current Homeownership
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('personal')}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer mt-1"
+                  >
+                    <span>Change Housing Plan in Primary Profile</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               )}
 

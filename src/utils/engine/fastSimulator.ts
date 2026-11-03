@@ -123,7 +123,8 @@ export function fastSimulateEndNetWorth(
   let netWorthAtRetirement = 0;
   let finalNetWorth = 0;
 
-  const debtStates: DebtYearState[] = initializeDebtStates(inputs.debts || [], currentAge, inputs.debtStrategy);
+  const effectiveDebts = inputs.hasOngoingOrFutureDebts === false ? [] : (inputs.debts || []);
+  const debtStates: DebtYearState[] = initializeDebtStates(effectiveDebts, currentAge, inputs.debtStrategy);
 
   for (let i = 0; i < totalYears; i++) {
     const age = currentAge + i;

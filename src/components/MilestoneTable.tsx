@@ -14,6 +14,8 @@ import {
   X,
   Bot,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Zap,
   Anchor,
   Gem,
@@ -58,6 +60,8 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   const storeInputs = useSimulationStore((state) => state.inputs);
   const storeSummary = useSimulationStore((state) => state.summary);
   const storeIsRecalculatingLedger = useSimulationStore((state) => state.isRecalculatingLedger);
+  const isTableCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.ledger));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const yearlyResults = props.yearlyResults ?? storeYearlyResults;
   const retirementAge = props.retirementAge ?? storeRetirementAge;
@@ -65,6 +69,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
   const inputs = props.inputs ?? storeInputs;
   const summary = props.summary ?? storeSummary;
   const isRecalculatingLedger = props.isRecalculatingLedger ?? storeIsRecalculatingLedger;
+  const isExpanded = !isTableCollapsed;
 
   const [filterMode, setFilterMode] = useState<'milestones' | 'retirement' | 'all'>('milestones');
   const [searchTerm, setSearchTerm] = useState('');
@@ -588,9 +593,59 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
               </>
             )}
           </button>
+
+          {/* Collapse / Expand Table Button */}
+          <button
+            type="button"
+            onClick={() => toggleSectionCollapse('ledger')}
+            title={isExpanded ? 'Collapse Annual Ledger Table' : 'Expand Annual Ledger Table'}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 shadow-xs transition cursor-pointer"
+          >
+            {isExpanded ? (
+              <>
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Collapse</span>
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Expand</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
+      {/* Collapsed Summary Bar */}
+      {!isExpanded && (
+        <div 
+          onClick={() => toggleSectionCollapse('ledger')}
+          className="p-3.5 sm:p-4 bg-slate-50/90 dark:bg-slate-800/50 hover:bg-slate-100/90 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2.5 transition cursor-pointer"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-bold text-slate-900 dark:text-white">Annual Simulation Ledger ({yearlyResults.length} Years):</span>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Ages <strong className="text-slate-900 dark:text-white">{inputs?.currentAge || 30} – {inputs?.lifeExpectancy || 85}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Retiring @ <strong className="text-emerald-600 dark:text-emerald-400">{retirementAge}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Peak Net Worth: <strong className="text-slate-900 dark:text-white">${Math.round(summary?.peakNetWorth || 0).toLocaleString()}</strong> (@ Age {summary?.peakNetWorthAge})
+            </span>
+            <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
+              Ending Net Worth: <strong className="text-emerald-600 dark:text-emerald-400">${Math.round(summary?.netWorthAtLifeExpectancy || 0).toLocaleString()}</strong>
+            </span>
+          </div>
+          <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 ml-auto">
+            <span>Show Full Milestone Ledger & Table</span>
+            <ChevronDown className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      )}
+
+      {isExpanded && (
+        <>
       {/* 2. Key Milestone Schedule Showcase Cards (Top Dashboard) */}
       <div className="bg-slate-50 dark:bg-slate-800/50 p-3 sm:p-4 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center justify-between mb-2">
@@ -1771,6 +1826,8 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
           </tbody>
         </table>
       </div>
+      </>
+      )}
     </div>
   );
 };

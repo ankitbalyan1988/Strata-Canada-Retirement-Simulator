@@ -47,6 +47,9 @@ export interface SimulationState {
   isCompareModalOpen: boolean;
   isAIPersonaModalOpen: boolean;
 
+  // Section Collapse State
+  collapsedSections: Record<string, boolean>;
+
   // What-If Sensitivity Analysis
   whatIfSettings: WhatIfSettings;
 
@@ -74,6 +77,9 @@ export interface SimulationState {
   setActiveChartTab: (tab: 'networth' | 'cashflow') => void;
   setIsCompareModalOpen: (open: boolean) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
+  toggleSectionCollapse: (sectionId: string) => void;
+  setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
+  toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
 }
 
@@ -231,6 +237,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isExportingPdf: false,
   isCompareModalOpen: false,
   isAIPersonaModalOpen: false,
+  collapsedSections: {
+    planning: false,
+    pulse: false,
+    charts: false,
+    ledger: false,
+    breakEven: false,
+    estate: false,
+    expat: false,
+    tips: false
+  },
   whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
 
   setTheme: (theme) => {
@@ -469,6 +485,40 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setIsAIPersonaModalOpen: (open) => {
     set({ isAIPersonaModalOpen: open });
+  },
+
+  toggleSectionCollapse: (sectionId) => {
+    set((state) => ({
+      collapsedSections: {
+        ...state.collapsedSections,
+        [sectionId]: !state.collapsedSections[sectionId]
+      }
+    }));
+  },
+
+  setSectionCollapse: (sectionId, collapsed) => {
+    set((state) => ({
+      collapsedSections: {
+        ...state.collapsedSections,
+        [sectionId]: collapsed
+      }
+    }));
+  },
+
+  toggleCollapseAll: () => {
+    set((state) => {
+      const keys = Object.keys(state.collapsedSections);
+      // Check if any registered section is currently expanded (i.e. not collapsed)
+      const hasAnyExpanded = keys.some((k) => !state.collapsedSections[k]);
+      // If at least one section is expanded, collapse all (set all to true)
+      // Otherwise if all are already collapsed, expand all (set all to false)
+      const nextCollapsedState = hasAnyExpanded;
+      const next: Record<string, boolean> = {};
+      for (const k of keys) {
+        next[k] = nextCollapsedState;
+      }
+      return { collapsedSections: next };
+    });
   },
 
   exportPdf: async () => {

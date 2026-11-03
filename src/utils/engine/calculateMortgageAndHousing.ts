@@ -90,8 +90,22 @@ export function initializeMortgageAndHousingParams(
   isCouple: boolean
 ): MortgageAndHousingParams {
   const re = inputs.realEstate;
-  const ownsHome = Boolean(re && re.ownsHome);
-  const purchaseType = re?.purchaseType ?? (ownsHome ? 'current' : 'rent');
+  let ownsHome = Boolean(re && re.ownsHome);
+  let purchaseType: 'current' | 'future' | 'rent' = (re?.purchaseType as ('current' | 'future' | undefined)) ?? (ownsHome ? 'current' : 'rent');
+
+  if (inputs.housingStatus === 'rent') {
+    if (inputs.planFutureHomePurchase) {
+      ownsHome = true;
+      purchaseType = 'future';
+    } else {
+      ownsHome = false;
+      purchaseType = 'rent';
+    }
+  } else if (inputs.housingStatus === 'own') {
+    ownsHome = true;
+    purchaseType = 'current';
+  }
+
   const isFuturePurchase = Boolean(ownsHome && purchaseType === 'future');
   const futurePurchaseAge = Math.max(inputs.currentAge + 1, re?.futurePurchaseAge ?? (inputs.currentAge + 5));
   const yearsToPurchase = Math.max(1, futurePurchaseAge - inputs.currentAge);

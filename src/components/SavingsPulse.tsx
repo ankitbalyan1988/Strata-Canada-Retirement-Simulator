@@ -36,7 +36,18 @@ export const SavingsPulse: React.FC<SavingsPulseProps> = (props) => {
   const summary = props.summary ?? storeSummary;
   const onApplyMonthlyBoost = props.onApplyMonthlyBoost ?? storeApplyMonthlyBoost;
 
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isPulseCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.pulse));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+
+  const isExpanded = !isPulseCollapsed;
+  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('pulse');
+    } else {
+      setSectionCollapse('pulse', !expanded);
+    }
+  };
   const pulse: SavingsPulseResult = useMemo(() => {
     if (props.pulse) return props.pulse;
     if (storePulse && typeof storePulse.currentMonthlySavings === 'number') return storePulse;

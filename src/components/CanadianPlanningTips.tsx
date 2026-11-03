@@ -9,10 +9,22 @@ import {
   Landmark, 
   Users 
 } from 'lucide-react';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export const CanadianPlanningTips: React.FC = () => {
   const [openSection, setOpenSection] = useState<number | null>(0);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const isTipsCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.tips));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+
+  const isExpanded = !isTipsCollapsed;
+  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('tips');
+    } else {
+      setSectionCollapse('tips', !expanded);
+    }
+  };
 
   const tips = [
     {

@@ -153,8 +153,9 @@ export function runRetirementSimulation(
   let sumEffectiveTaxInRetirement = 0;
 
   // Initialize Consumer & Fixed-Term Debt State Machine
-  const debtStates: DebtYearState[] = initializeDebtStates(inputs.debts || [], currentAge, inputs.debtStrategy);
-  const totalInitialDebt = (inputs.debts || []).reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+  const effectiveDebts = inputs.hasOngoingOrFutureDebts === false ? [] : (inputs.debts || []);
+  const debtStates: DebtYearState[] = initializeDebtStates(effectiveDebts, currentAge, inputs.debtStrategy);
+  const totalInitialDebt = effectiveDebts.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
   let debtAtRetirement = 0;
   let lifetimeDebtInterest = 0;
 
