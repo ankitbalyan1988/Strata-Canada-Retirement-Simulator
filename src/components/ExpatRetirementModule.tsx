@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, startTransition } from 'react';
 import { 
   RetirementInputs, 
   YearSimulationResult, 
@@ -99,7 +99,9 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
     const next = updater(currentExpatInputs);
     setLocalExpatInputs(next);
     if (onUpdateExpatInputs) {
-      onUpdateExpatInputs(next);
+      startTransition(() => {
+        onUpdateExpatInputs(next);
+      });
     }
   };
 

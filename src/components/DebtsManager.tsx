@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, startTransition } from 'react';
 import { 
   CreditCard, 
   Plus, 
@@ -98,11 +98,13 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
       ...currentStrategy,
       ...patch
     };
-    if (onUpdateStrategy) {
-      onUpdateStrategy(updated);
-    } else {
-      storeUpdateField('debtStrategy', updated);
-    }
+    startTransition(() => {
+      if (onUpdateStrategy) {
+        onUpdateStrategy(updated);
+      } else {
+        storeUpdateField('debtStrategy', updated);
+      }
+    });
   };
 
   const handleAddPreset = (preset: DebtPreset) => {

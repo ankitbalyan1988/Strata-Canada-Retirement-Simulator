@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, startTransition } from 'react';
 import {
   Sliders,
   Zap,
@@ -51,6 +51,19 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
   const summary = useSimulationStore((state) => state.summary);
   const yearlyResults = useSimulationStore((state) => state.yearlyResults);
   const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+
+  const handleUpdateDelta = (field: 'returnDelta' | 'appreciationDelta' | 'inflationDelta', value: number) => {
+    startTransition(() => {
+      onUpdateDelta(field, value);
+    });
+  };
+
+  const handleApplyPreset = (settings: { returnDelta: number; appreciationDelta: number; inflationDelta: number }) => {
+    startTransition(() => {
+      onApplyPreset(settings);
+    });
+  };
+
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [matrixDimension, setMatrixDimension] = useState<'inflation' | 'appreciation'>('inflation');
 
@@ -213,7 +226,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
             <button
               key={preset.id}
               type="button"
-              onClick={() => onApplyPreset(preset.settings)}
+              onClick={() => handleApplyPreset(preset.settings)}
               className={`shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition border flex items-center gap-1.5 ${
                 isSelected
                   ? 'bg-purple-600 text-white border-purple-400 shadow-xs'
@@ -251,7 +264,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
             max="2.0"
             step="0.25"
             value={whatIfSettings.returnDelta}
-            onChange={(e) => onUpdateDelta('returnDelta', parseFloat(e.target.value))}
+            onChange={(e) => handleUpdateDelta('returnDelta', parseFloat(e.target.value))}
             className="w-full accent-emerald-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
           />
 
@@ -260,7 +273,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
               <button
                 key={val}
                 type="button"
-                onClick={() => onUpdateDelta('returnDelta', val)}
+                onClick={() => handleUpdateDelta('returnDelta', val)}
                 className={`px-1 py-0.5 rounded transition ${
                   whatIfSettings.returnDelta === val
                     ? 'font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/40'
@@ -294,7 +307,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
             max="2.0"
             step="0.25"
             value={whatIfSettings.appreciationDelta}
-            onChange={(e) => onUpdateDelta('appreciationDelta', parseFloat(e.target.value))}
+            onChange={(e) => handleUpdateDelta('appreciationDelta', parseFloat(e.target.value))}
             className="w-full accent-orange-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
           />
 
@@ -303,7 +316,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
               <button
                 key={val}
                 type="button"
-                onClick={() => onUpdateDelta('appreciationDelta', val)}
+                onClick={() => handleUpdateDelta('appreciationDelta', val)}
                 className={`px-1 py-0.5 rounded transition ${
                   whatIfSettings.appreciationDelta === val
                     ? 'font-bold text-orange-300 bg-orange-950/80 border border-orange-500/40'
@@ -337,7 +350,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
             max="2.0"
             step="0.25"
             value={whatIfSettings.inflationDelta}
-            onChange={(e) => onUpdateDelta('inflationDelta', parseFloat(e.target.value))}
+            onChange={(e) => handleUpdateDelta('inflationDelta', parseFloat(e.target.value))}
             className="w-full accent-rose-500 bg-slate-800 h-1.5 rounded-lg cursor-pointer"
           />
 
@@ -346,7 +359,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
               <button
                 key={val}
                 type="button"
-                onClick={() => onUpdateDelta('inflationDelta', val)}
+                onClick={() => handleUpdateDelta('inflationDelta', val)}
                 className={`px-1 py-0.5 rounded transition ${
                   whatIfSettings.inflationDelta === val
                     ? 'font-bold text-rose-300 bg-rose-950/80 border border-rose-500/40'
@@ -873,7 +886,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
                           <td
                             key={cIdx}
                             onClick={() => {
-                              onApplyPreset({
+                              handleApplyPreset({
                                 returnDelta: cell.returnDelta,
                                 appreciationDelta: matrixDimension === 'appreciation' ? cell.otherDelta : whatIfSettings.appreciationDelta,
                                 inflationDelta: matrixDimension === 'inflation' ? cell.otherDelta : whatIfSettings.inflationDelta

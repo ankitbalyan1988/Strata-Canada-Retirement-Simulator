@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { startTransition } from 'react';
 import { 
   Calendar, 
   Hourglass, 
@@ -40,6 +40,12 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
   const targetSpending = props.inputs?.targetRetirementSpendingToday ?? storeTargetSpending;
   const summary = props.summary ?? storeSummary;
   const onChangeRetirementAge = props.onChangeRetirementAge ?? applyRetirementAge;
+
+  const handleRetirementAgeChange = (age: number) => {
+    startTransition(() => {
+      onChangeRetirementAge(age);
+    });
+  };
 
   const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.retirementAgeSimulator));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
@@ -130,7 +136,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => onChangeRetirementAge(Math.max(currentAge + 1, retirementAge - 1))}
+                    onClick={() => handleRetirementAgeChange(Math.max(currentAge + 1, retirementAge - 1))}
                     disabled={retirementAge <= currentAge + 1}
                     className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-700 dark:text-slate-200 transition shadow-xs cursor-pointer"
                     title="Retire 1 year earlier"
@@ -144,7 +150,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
 
                   <button
                     type="button"
-                    onClick={() => onChangeRetirementAge(Math.min(75, retirementAge + 1))}
+                    onClick={() => handleRetirementAgeChange(Math.min(75, retirementAge + 1))}
                     disabled={retirementAge >= 75}
                     className="p-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-40 text-slate-700 dark:text-slate-200 transition shadow-xs cursor-pointer"
                     title="Retire 1 year later"
@@ -162,7 +168,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
                   max={75}
                   step={1}
                   value={retirementAge}
-                  onChange={(e) => onChangeRetirementAge(Number(e.target.value))}
+                  onChange={(e) => handleRetirementAgeChange(Number(e.target.value))}
                   aria-label="Target Retirement Age"
                   className="w-full h-2 rounded-lg cursor-pointer bg-slate-200 dark:bg-slate-700 accent-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
@@ -177,7 +183,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
                         key={lm.age}
                         type="button"
                         disabled={isPast}
-                        onClick={() => onChangeRetirementAge(lm.age)}
+                        onClick={() => handleRetirementAgeChange(lm.age)}
                         className={`py-2 px-2 rounded-xl text-center transition flex flex-col items-center justify-center cursor-pointer ${
                           isActive
                             ? 'bg-emerald-600 text-white font-bold ring-2 ring-emerald-500/40 shadow-xs'

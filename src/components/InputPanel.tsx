@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, startTransition } from 'react';
 import { 
   PiggyBank, 
   User, 
@@ -111,13 +111,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     }
   }, [activeTab, hasDebts, showRealEstateSection, planExpatExit]);
 
+  const dispatchInputsChange = (updater: (prev: RetirementInputs) => RetirementInputs) => {
+    startTransition(() => {
+      (onChange as any)(updater);
+    });
+  };
+
   const updateExpatField = <K extends keyof ExpatInputs>(field: K, value: ExpatInputs[K]) => {
     const current = inputs.expat || {
       ...DEFAULT_EXPAT_INPUTS,
       emigrationAge: Math.max(inputs.currentAge + 1, inputs.retirementAge - 2),
       yearsLivedInCanadaAfter18: Math.min(40, Math.max(20, inputs.retirementAge - 18))
     };
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       return {
         ...base,
@@ -130,7 +136,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const updateField = <K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       return {
         ...base,
@@ -140,7 +146,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const updateRealEstate = (patch: Partial<RealEstateInputs>) => {
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       const current = base.realEstate || DEFAULT_REAL_ESTATE_INPUTS;
       return {
@@ -158,7 +164,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const updateAccountReturn = (field: keyof AccountReturnRates, value: any) => {
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       const current = base.accountReturns || DEFAULT_ACCOUNT_RETURNS;
       return {
@@ -172,7 +178,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const handleMaritalStatusChange = (status: MaritalStatus) => {
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       if (status === 'married') {
         return {
@@ -196,7 +202,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   const updateSpouseField = <K extends keyof SpouseInputs>(field: K, value: SpouseInputs[K]) => {
-    (onChange as any)((prev: RetirementInputs) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
       if (!base.spouse) return base;
       return {
@@ -1220,7 +1226,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
               realEstate={inputs.realEstate}
               targetRetirementSpendingToday={inputs.targetRetirementSpendingToday}
               onUpdateExpenses={(newExpenses, newSpending) => {
-                (onChange as any)((prev: RetirementInputs) => {
+                dispatchInputsChange((prev: RetirementInputs) => {
                   const base = typeof prev === 'object' && prev !== null ? prev : inputs;
                   return {
                     ...base,
@@ -1571,23 +1577,27 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 baseAnnualContribution={inputs.nonRegAnnualContribution}
                 baseReturn={inputs.accountReturns?.nonRegReturn ?? 5.5}
                 onUpdate={(newAccounts, totalBal, totalCont, weightedRet) => {
-                  onChange({
-                    ...inputs,
-                    nonRegBalance: totalBal,
-                    nonRegAnnualContribution: totalCont,
-                    nonRegCustomAccounts: newAccounts,
-                    accountReturns: {
-                      ...(inputs.accountReturns || DEFAULT_ACCOUNT_RETURNS),
-                      nonRegReturn: weightedRet
-                    }
+                  startTransition(() => {
+                    onChange({
+                      ...inputs,
+                      nonRegBalance: totalBal,
+                      nonRegAnnualContribution: totalCont,
+                      nonRegCustomAccounts: newAccounts,
+                      accountReturns: {
+                        ...(inputs.accountReturns || DEFAULT_ACCOUNT_RETURNS),
+                        nonRegReturn: weightedRet
+                      }
+                    });
                   });
                 }}
                 onClearToSimple={(fallbackBal, fallbackCont) => {
-                  onChange({
-                    ...inputs,
-                    nonRegBalance: fallbackBal,
-                    nonRegAnnualContribution: fallbackCont,
-                    nonRegCustomAccounts: []
+                  startTransition(() => {
+                    onChange({
+                      ...inputs,
+                      nonRegBalance: fallbackBal,
+                      nonRegAnnualContribution: fallbackCont,
+                      nonRegCustomAccounts: []
+                    });
                   });
                 }}
               />

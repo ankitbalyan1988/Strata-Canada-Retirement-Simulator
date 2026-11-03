@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, startTransition } from 'react';
 import { 
   CanadianProvince, 
   RetirementInputs, 
@@ -100,10 +100,12 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
   };
 
   const handlePassingAgeChange = (newAge: number) => {
-    setEstateInputs(prev => ({
-      ...prev,
-      passingAge: newAge
-    }));
+    startTransition(() => {
+      setEstateInputs(prev => ({
+        ...prev,
+        passingAge: newAge
+      }));
+    });
   };
 
   const handleNextOfKinToggle = (hasKin: boolean) => {

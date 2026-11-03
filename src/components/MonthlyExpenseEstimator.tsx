@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, startTransition } from 'react';
 import { 
   Receipt, 
   Home, 
@@ -128,7 +128,9 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
       postRetirementAdjustmentPercent: clamped
     };
     const newPostRetirement = Math.max(10000, Math.round(totalAnnual * (1 + clamped / 100)));
-    onUpdateExpenses(updated, newPostRetirement);
+    startTransition(() => {
+      onUpdateExpenses(updated, newPostRetirement);
+    });
   };
 
   const handleResetToMortgage = () => {
