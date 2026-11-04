@@ -14,6 +14,7 @@ import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
 import { RrspBreakEvenModule } from './components/RrspBreakEvenModule';
 import { StressTestHealthCard } from './components/StressTestHealthCard';
 import { useSimulationStore } from './store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Layers, Wallet, Percent, Sun, Moon, ChevronsDown, ChevronsUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Dynamic lazy-loaded modules and modals to optimize critical rendering path
@@ -31,12 +32,12 @@ export default function App() {
   const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
   const province = useSimulationStore((state) => state.inputs.province);
   const isCouple = useSimulationStore((state) => state.inputs.maritalStatus === 'married');
-  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
   const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
   const stressTiming = useSimulationStore((state) => state.stressTiming);
   const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const stressSimulation = useSimulationStore((state) => state.stressSimulation);
+  const stressSimulation = useSimulationStore(useShallow((state) => state.stressSimulation));
   const activeChartTab = useSimulationStore((state) => state.activeChartTab);
   const setActiveChartTab = useSimulationStore((state) => state.setActiveChartTab);
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
@@ -47,7 +48,7 @@ export default function App() {
     state.inputs.planExpatExit ?? Boolean(state.inputs.expat?.planToEmigrate)
   );
 
-  const collapsedSections = useSimulationStore((state) => state.collapsedSections);
+  const collapsedSections = useSimulationStore(useShallow((state) => state.collapsedSections));
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 

@@ -27,7 +27,6 @@ import {
   EstateFilterMode 
 } from '../types/estate';
 import { generateEstateMilestoneLedger } from '../utils/estatePlanning';
-import { exportEstateLedgerToExcel } from '../utils/excelExport';
 
 export interface EstateMilestoneLedgerProps {
   estateInputs: EstatePlanningInputs;
@@ -102,6 +101,7 @@ export const EstateMilestoneLedger: React.FC<EstateMilestoneLedgerProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
+      const { exportEstateLedgerToExcel } = await import('../utils/excelExport');
       await exportEstateLedgerToExcel({
         data: filteredData,
         filterMode,

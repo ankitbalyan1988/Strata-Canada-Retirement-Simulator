@@ -6,11 +6,11 @@ import {
   SimulationSummary
 } from '../types/retirement';
 import { runRetirementSimulation, calculateSavingsPulse, SavingsPulseResult, SimulationOptions } from './simulator';
-import { SimWorkerRequest, SimWorkerResponse } from '../worker/simWorker';
+import { SimulatorWorkerRequest, SimulatorWorkerResponse } from './simulator.worker';
 
 let workerInstance: Worker | null = null;
 let currentRequestId = 0;
-const pendingCallbacks = new Map<number, (res: SimWorkerResponse) => void>();
+const pendingCallbacks = new Map<number, (res: SimulatorWorkerResponse) => void>();
 
 /**
  * Initializes or retrieves the singleton Web Worker instance with fallback detection.
@@ -22,16 +22,16 @@ function getSimulationWorker(): Worker | null {
 
   if (!workerInstance) {
     try {
-      workerInstance = new Worker(new URL('../worker/simWorker.ts', import.meta.url), {
+      workerInstance = new Worker(new URL('./simulator.worker.ts', import.meta.url), {
         type: 'module'
       });
 
-      workerInstance.addEventListener('message', (event: MessageEvent<SimWorkerResponse>) => {
+      workerInstance.addEventListener('message', (event: MessageEvent<SimulatorWorkerResponse>) => {
         const { id } = event.data;
-        const callback = pendingCallbacks.get(id);
-        if (callback) {
-          callback(event.data);
+        if (id !== undefined && pendingCallbacks.has(id)) {
+          const callback = pendingCallbacks.get(id);
           pendingCallbacks.delete(id);
+          callback?.(event.data);
         }
       });
 
@@ -95,7 +95,7 @@ export function calculateSimulationAsync(
 
     pendingCallbacks.set(id, (response) => {
       clearTimeout(timeoutId);
-      if (response.type === 'SIMULATION_RESULT' && response.yearlyResults && response.summary && response.pulse) {
+      if (response && response.success && response.yearlyResults && response.summary && response.pulse) {
         resolve({
           yearlyResults: response.yearlyResults,
           summary: response.summary,
@@ -117,9 +117,8 @@ export function calculateSimulationAsync(
       }
     });
 
-    const request: SimWorkerRequest = {
+    const request: SimulatorWorkerRequest = {
       id,
-      type: 'RUN_SIMULATION',
       inputs,
       stressTest,
       simulationOptions

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface HeroRetirementSliderProps {
   inputs?: RetirementInputs;
@@ -27,9 +28,9 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
   const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
   const storeLifeExpectancy = useSimulationStore((state) => state.inputs.lifeExpectancy);
   const storeMaritalStatus = useSimulationStore((state) => state.inputs.maritalStatus);
-  const storeSpouse = useSimulationStore((state) => state.inputs.spouse);
+  const storeSpouse = useSimulationStore(useShallow((state) => state.inputs.spouse));
   const storeTargetSpending = useSimulationStore((state) => state.inputs.targetRetirementSpendingToday);
-  const storeSummary = useSimulationStore((state) => state.summary);
+  const storeSummary = useSimulationStore(useShallow((state) => state.summary));
   const applyRetirementAge = useSimulationStore((state) => state.applyRetirementAge);
 
   const currentAge = props.inputs?.currentAge ?? storeCurrentAge;

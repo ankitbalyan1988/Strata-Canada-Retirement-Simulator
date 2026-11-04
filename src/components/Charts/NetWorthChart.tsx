@@ -13,6 +13,7 @@ import {
   Anchor
 } from 'lucide-react';
 import { useSimulationStore } from '../../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
 import { WhatIfSensitivityPanel } from './WhatIfSensitivityPanel';
 
@@ -46,9 +47,9 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   });
 
   // What-If State from Centralized Store
-  const inputs = useSimulationStore((state) => state.inputs);
-  const summary = useSimulationStore((state) => state.summary);
-  const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
+  const summary = useSimulationStore(useShallow((state) => state.summary));
+  const whatIfSettings = useSimulationStore(useShallow((state) => state.whatIfSettings));
   const setIsWhatIfActive = useSimulationStore((state) => state.setIsWhatIfActive);
   const setWhatIfSettings = useSimulationStore((state) => state.setWhatIfSettings);
   const resetWhatIfSettings = useSimulationStore((state) => state.resetWhatIfSettings);

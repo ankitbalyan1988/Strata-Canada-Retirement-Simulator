@@ -17,7 +17,6 @@ import {
   SavingsPulseResult,
   fastSimulateEndNetWorth
 } from '../utils/simulator';
-import { calculateSimulationAsync } from '../utils/simulationClient';
 import { triggerConfetti } from '../utils/confettiHelper';
 
 export interface SimulationState {
@@ -121,6 +120,99 @@ export function computeOptimisticSummary(
     peakNetWorth: Math.max(baseSummary.peakNetWorth, netWorthAtRetire),
     peakNetWorthAge: netWorthAtRetire > baseSummary.peakNetWorth ? inputs.retirementAge : baseSummary.peakNetWorthAge
   };
+}
+
+// Instantiate Vite Web Worker for asynchronous multi-decade calculations
+let simulatorWorker: Worker | null = null;
+let currentWorkerRequestId = 0;
+const pendingWorkerRequests = new Map<number, (res: any) => void>();
+
+function getSimulatorWorker(): Worker | null {
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') {
+    return null;
+  }
+  if (!simulatorWorker) {
+    try {
+      simulatorWorker = new Worker(new URL('../utils/simulator.worker.ts', import.meta.url), {
+        type: 'module'
+      });
+      simulatorWorker.addEventListener('message', (event: MessageEvent) => {
+        const { id } = event.data;
+        if (id !== undefined && pendingWorkerRequests.has(id)) {
+          const callback = pendingWorkerRequests.get(id);
+          pendingWorkerRequests.delete(id);
+          callback?.(event.data);
+        }
+      });
+      simulatorWorker.addEventListener('error', (err) => {
+        console.warn('Simulation worker encountered an error, falling back to sync execution:', err);
+      });
+    } catch (err) {
+      console.warn('Failed to construct Simulation Worker, using sync fallback:', err);
+      simulatorWorker = null;
+    }
+  }
+  return simulatorWorker;
+}
+
+function calculateSimulationAsync(
+  inputs: RetirementInputs,
+  stressTest?: StressTestOptions
+): Promise<{ yearlyResults: YearSimulationResult[]; summary: SimulationSummary; pulse: SavingsPulseResult }> {
+  const worker = getSimulatorWorker();
+
+  if (!worker) {
+    const sim = runRetirementSimulation(inputs, stressTest);
+    const pulse = calculateSavingsPulse(inputs, sim.summary);
+    return Promise.resolve({
+      yearlyResults: sim.yearlyResults,
+      summary: sim.summary,
+      pulse
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const id = ++currentWorkerRequestId;
+    const timeoutId = setTimeout(() => {
+      pendingWorkerRequests.delete(id);
+      try {
+        const sim = runRetirementSimulation(inputs, stressTest);
+        const pulse = calculateSavingsPulse(inputs, sim.summary);
+        resolve({
+          yearlyResults: sim.yearlyResults,
+          summary: sim.summary,
+          pulse
+        });
+      } catch (err) {
+        reject(err);
+      }
+    }, 2000);
+
+    pendingWorkerRequests.set(id, (response) => {
+      clearTimeout(timeoutId);
+      if (response && response.success && response.yearlyResults && response.summary && response.pulse) {
+        resolve({
+          yearlyResults: response.yearlyResults,
+          summary: response.summary,
+          pulse: response.pulse
+        });
+      } else {
+        try {
+          const sim = runRetirementSimulation(inputs, stressTest);
+          const pulse = calculateSavingsPulse(inputs, sim.summary);
+          resolve({
+            yearlyResults: sim.yearlyResults,
+            summary: sim.summary,
+            pulse
+          });
+        } catch (err) {
+          reject(new Error(response?.error || 'Worker simulation calculation failed'));
+        }
+      }
+    });
+
+    worker.postMessage({ id, inputs, stressTest });
+  });
 }
 
 // Module-scoped timer and request tracker for debounced execution (250ms)

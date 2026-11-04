@@ -24,7 +24,6 @@ import {
   Loader2,
   X
 } from 'lucide-react';
-import { exportExpatLedgerToExcel } from '../utils/excelExport';
 
 export interface ExpatMilestoneLedgerProps {
   expatResult: ExpatSimulationSummary;
@@ -348,6 +347,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
+      const { exportExpatLedgerToExcel } = await import('../utils/excelExport');
       await exportExpatLedgerToExcel({
         data: filteredData,
         filterMode,
