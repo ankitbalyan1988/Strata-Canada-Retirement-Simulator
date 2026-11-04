@@ -9,7 +9,8 @@ import {
   Sun,
   Moon,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  History
 } from 'lucide-react';
 import { CanadianProvince, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
@@ -45,6 +46,9 @@ export const Header: React.FC<HeaderProps> = (props) => {
   const applyProvince = useSimulationStore((state) => state.applyProvince);
   const collapsedSections = useSimulationStore((state) => state.collapsedSections);
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
+  const historyCount = useSimulationStore((state) => state.history.length);
+  const toggleHistoryPanel = useSimulationStore((state) => state.toggleHistoryPanel);
+  const isHistoryPanelOpen = useSimulationStore((state) => state.isHistoryPanelOpen);
 
   const areAllSectionsCollapsed = React.useMemo(() => {
     const values = Object.values(collapsedSections);
@@ -147,6 +151,31 @@ export const Header: React.FC<HeaderProps> = (props) => {
             >
               <Scale className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
               <span className="hidden sm:inline">Compare</span> Ages
+            </button>
+
+            {/* Simulation History Button */}
+            <button
+              type="button"
+              onClick={toggleHistoryPanel}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border transition shadow-xs cursor-pointer ${
+                isHistoryPanelOpen
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
+                  : 'bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-200 border-zinc-200/80 dark:border-zinc-700/70'
+              }`}
+              title="Open Simulation Version History"
+              aria-label="Simulation History"
+            >
+              <History className={`w-3.5 h-3.5 ${isHistoryPanelOpen ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'}`} />
+              <span>History</span>
+              {historyCount > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  isHistoryPanelOpen
+                    ? 'bg-emerald-700 text-white'
+                    : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                }`}>
+                  {historyCount}
+                </span>
+              )}
             </button>
 
             {/* Estate Planning Quick Link */}

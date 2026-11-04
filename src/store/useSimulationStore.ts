@@ -18,6 +18,7 @@ import {
   fastSimulateEndNetWorth
 } from '../utils/simulator';
 import { triggerConfetti } from '../utils/confettiHelper';
+import { SimulationSnapshot } from '../types/history';
 
 export interface SimulationState {
   // Primary state
@@ -52,6 +53,11 @@ export interface SimulationState {
   // What-If Sensitivity Analysis
   whatIfSettings: WhatIfSettings;
 
+  // Simulation History
+  history: SimulationSnapshot[];
+  isHistoryPanelOpen: boolean;
+  activePreviewSnapshotId: string | null;
+
   // Actions
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
@@ -80,6 +86,16 @@ export interface SimulationState {
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
+
+  // History Actions
+  setIsHistoryPanelOpen: (open: boolean) => void;
+  toggleHistoryPanel: () => void;
+  setActivePreviewSnapshotId: (id: string | null) => void;
+  saveSnapshot: (label?: string, notes?: string, source?: SimulationSnapshot['source']) => SimulationSnapshot;
+  restoreSnapshot: (snapshotId: string) => void;
+  deleteSnapshot: (snapshotId: string) => void;
+  clearHistory: () => void;
+  renameSnapshot: (snapshotId: string, label: string, notes?: string) => void;
 }
 
 /**
@@ -306,6 +322,19 @@ const getInitialTheme = (): 'light' | 'dark' => {
   return 'light';
 };
 
+const loadSavedHistory = (): SimulationSnapshot[] => {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem('strata_simulation_history');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (_) {}
+  }
+  return [];
+};
+
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   inputs: DEFAULT_INPUTS,
   activePresetId: 'canadian_average',
@@ -343,6 +372,11 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     tips: false
   },
   whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
+
+  // History State
+  history: loadSavedHistory(),
+  isHistoryPanelOpen: false,
+  activePreviewSnapshotId: null,
 
   setTheme: (theme) => {
     if (typeof window !== 'undefined') {
@@ -627,5 +661,106 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     } finally {
       set({ isExportingPdf: false });
     }
+  },
+
+  setIsHistoryPanelOpen: (open) => set({ isHistoryPanelOpen: open }),
+  toggleHistoryPanel: () => set((state) => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
+  setActivePreviewSnapshotId: (id) => set({ activePreviewSnapshotId: id }),
+
+  saveSnapshot: (customLabel, notes, source = 'manual') => {
+    const state = get();
+    const timestamp = Date.now();
+    const timeStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const defaultLabel = customLabel || `Scenario @ Age ${state.inputs.retirementAge} (${timeStr})`;
+
+    const snapshot: SimulationSnapshot = {
+      id: `snap_${timestamp}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp,
+      label: defaultLabel,
+      notes,
+      source,
+      inputs: JSON.parse(JSON.stringify(state.inputs)),
+      summary: JSON.parse(JSON.stringify(state.summary)),
+      metrics: {
+        retirementAge: state.inputs.retirementAge,
+        currentAge: state.inputs.currentAge,
+        province: state.inputs.province,
+        netWorthAtLifeExpectancy: state.summary.netWorthAtLifeExpectancy,
+        netWorthAtRetirement: state.summary.netWorthAtRetirement,
+        peakNetWorth: state.summary.peakNetWorth,
+        peakNetWorthAge: state.summary.peakNetWorthAge,
+        lifetimeTaxesPaid: state.summary.lifetimeTaxesPaid,
+        isFullyFunded: state.summary.isFullyFunded,
+        yearsFunded: state.summary.yearsFunded,
+        portfolioDepletionAge: state.summary.portfolioDepletionAge
+      }
+    };
+
+    const nextHistory = [snapshot, ...state.history].slice(0, 50);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata_simulation_history', JSON.stringify(nextHistory));
+      } catch (_) {}
+    }
+
+    set({ history: nextHistory });
+    return snapshot;
+  },
+
+  restoreSnapshot: (snapshotId) => {
+    const target = get().history.find((s) => s.id === snapshotId);
+    if (!target) return;
+
+    const restoredInputs = JSON.parse(JSON.stringify(target.inputs));
+    const optimisticSummary = computeOptimisticSummary(restoredInputs, target.summary);
+
+    set({
+      inputs: restoredInputs,
+      optimisticSummary,
+      activePreviewSnapshotId: null,
+      isRecalculatingLedger: true
+    });
+    scheduleHeavyCalculation(get, set);
+  },
+
+  deleteSnapshot: (snapshotId) => {
+    const nextHistory = get().history.filter((s) => s.id !== snapshotId);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata_simulation_history', JSON.stringify(nextHistory));
+      } catch (_) {}
+    }
+    set((state) => ({
+      history: nextHistory,
+      activePreviewSnapshotId: state.activePreviewSnapshotId === snapshotId ? null : state.activePreviewSnapshotId
+    }));
+  },
+
+  clearHistory: () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('strata_simulation_history');
+      } catch (_) {}
+    }
+    set({ history: [], activePreviewSnapshotId: null });
+  },
+
+  renameSnapshot: (snapshotId, label, notes) => {
+    const nextHistory = get().history.map((s) => {
+      if (s.id === snapshotId) {
+        return {
+          ...s,
+          label,
+          ...(notes !== undefined ? { notes } : {})
+        };
+      }
+      return s;
+    });
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata_simulation_history', JSON.stringify(nextHistory));
+      } catch (_) {}
+    }
+    set({ history: nextHistory });
   }
 }));

@@ -13,6 +13,7 @@ import { CanadianPlanningTips } from './components/CanadianPlanningTips';
 import { AIPersonaDescriptorBar } from './components/AIPersonaDescriptorBar';
 import { RrspBreakEvenModule } from './components/RrspBreakEvenModule';
 import { StressTestHealthCard } from './components/StressTestHealthCard';
+import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
 import { useSimulationStore } from './store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { Layers, Wallet, Percent, Sun, Moon, ChevronsDown, ChevronsUp, ChevronDown, ChevronUp } from 'lucide-react';
@@ -281,6 +282,9 @@ export default function App() {
       <Suspense fallback={null}>
         {isAIPersonaModalOpen && <AIPersonaModal />}
       </Suspense>
+
+      {/* Simulation Version History Side-Panel Drawer */}
+      <SimulationHistoryPanel />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-slate-500 dark:text-slate-400 text-xs transition-colors">

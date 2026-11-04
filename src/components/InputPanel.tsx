@@ -33,7 +33,9 @@ import {
   Plane,
   CreditCard,
   FileText,
-  Check
+  Check,
+  Minus,
+  Plus
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -1157,10 +1159,60 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Planned Exit Age:</span>
-                        <strong className="text-xs font-mono font-bold text-cyan-900 dark:text-cyan-200 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
-                          Age {inputs.expat?.emigrationAge || inputs.retirementAge}
-                        </strong>
+                        <label htmlFor="expat-planned-exit-age" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                          Planned Exit Age:
+                        </label>
+                        <div className="flex items-center bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg shadow-2xs overflow-hidden focus-within:ring-1 focus-within:ring-cyan-500">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cur = inputs.expat?.emigrationAge || inputs.retirementAge;
+                              const next = Math.max(inputs.currentAge, cur - 1);
+                              updateExpatField('emigrationAge', next);
+                            }}
+                            disabled={(inputs.expat?.emigrationAge || inputs.retirementAge) <= inputs.currentAge}
+                            className="px-1.5 py-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            title="Decrease planned exit age"
+                            aria-label="Decrease planned exit age"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <div className="flex items-center px-1">
+                            <span className="text-[11px] font-medium text-slate-400 select-none mr-1">Age</span>
+                            <input
+                              id="expat-planned-exit-age"
+                              type="number"
+                              min={inputs.currentAge}
+                              max={Math.max(inputs.currentAge + 1, inputs.lifeExpectancy - 1)}
+                              value={inputs.expat?.emigrationAge || inputs.retirementAge}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                if (!isNaN(val) && val > 0) {
+                                  updateExpatField(
+                                    'emigrationAge',
+                                    Math.max(inputs.currentAge, Math.min(inputs.lifeExpectancy - 1, val))
+                                  );
+                                }
+                              }}
+                              aria-label="Planned Exit Age"
+                              className="w-10 text-xs font-mono font-bold text-cyan-900 dark:text-cyan-200 bg-transparent text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const cur = inputs.expat?.emigrationAge || inputs.retirementAge;
+                              const next = Math.min(inputs.lifeExpectancy - 1, cur + 1);
+                              updateExpatField('emigrationAge', next);
+                            }}
+                            disabled={(inputs.expat?.emigrationAge || inputs.retirementAge) >= inputs.lifeExpectancy - 1}
+                            className="px-1.5 py-1 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                            title="Increase planned exit age"
+                            aria-label="Increase planned exit age"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
