@@ -139,7 +139,7 @@ export const CanadianPlanningTips: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800/80 dark:hover:bg-slate-750 transition border border-slate-200/80 dark:border-slate-700/80 font-medium self-start sm:self-auto cursor-pointer"
+          className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800/80 dark:hover:bg-slate-700 transition border border-slate-200/80 dark:border-slate-700/80 font-medium self-start sm:self-auto cursor-pointer"
           title={isExpanded ? 'Collapse Wealth Guide' : 'Expand Wealth Guide'}
           aria-expanded={isExpanded}
         >

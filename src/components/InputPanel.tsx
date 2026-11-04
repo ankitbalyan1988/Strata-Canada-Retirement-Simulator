@@ -770,7 +770,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                                 className={`py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                                   inputs.careerDisruption?.reductionPercent === pct
                                     ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
+                                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                                 }`}
                               >
                                 -{pct}% {pct === 15 ? 'Pay Cut' : pct === 30 ? 'Layoff' : 'Step-down'}
@@ -2253,7 +2253,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
                                 mortgageTermYears === term
                                   ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                               }`}
                             >
                               {term} yrs
@@ -2584,7 +2584,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
                                 mortgageTermYears === term
                                   ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750'
+                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                               }`}
                             >
                               {term} yrs

@@ -45,6 +45,8 @@ export interface SimulationState {
   activeChartTab: 'networth' | 'cashflow' | 'taxbracket';
   isExportingPdf: boolean;
   isCompareModalOpen: boolean;
+  isSnapshotCompareModalOpen: boolean;
+  selectedCompareSnapshotIds: string[];
   isAIPersonaModalOpen: boolean;
 
   // Section Collapse State
@@ -81,6 +83,9 @@ export interface SimulationState {
   resetWhatIfSettings: () => void;
   setActiveChartTab: (tab: 'networth' | 'cashflow' | 'taxbracket') => void;
   setIsCompareModalOpen: (open: boolean) => void;
+  setIsSnapshotCompareModalOpen: (open: boolean) => void;
+  setSelectedCompareSnapshotIds: (ids: string[]) => void;
+  openSnapshotCompare: (snapshotIds?: string[]) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
@@ -357,6 +362,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   activeChartTab: 'networth',
   isExportingPdf: false,
   isCompareModalOpen: false,
+  isSnapshotCompareModalOpen: false,
+  selectedCompareSnapshotIds: [],
   isAIPersonaModalOpen: false,
   collapsedSections: {
     aiPersona: false,
@@ -610,6 +617,21 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setIsCompareModalOpen: (open) => {
     set({ isCompareModalOpen: open });
+  },
+
+  setIsSnapshotCompareModalOpen: (open) => {
+    set({ isSnapshotCompareModalOpen: open });
+  },
+
+  setSelectedCompareSnapshotIds: (ids) => {
+    set({ selectedCompareSnapshotIds: ids });
+  },
+
+  openSnapshotCompare: (snapshotIds) => {
+    set((state) => ({
+      isSnapshotCompareModalOpen: true,
+      selectedCompareSnapshotIds: snapshotIds || state.selectedCompareSnapshotIds
+    }));
   },
 
   setIsAIPersonaModalOpen: (open) => {

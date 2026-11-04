@@ -309,7 +309,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 
                 {/* Method / Strategy Type */}
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 flex flex-col gap-2">
+                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 flex flex-col gap-2">
                   <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
                     <span>Payoff Methodology:</span>
                     <span className="text-[10px] text-slate-400 font-normal">Cascading allocation</span>
@@ -369,7 +369,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                 </div>
 
                 {/* Extra Monthly Payment */}
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 flex flex-col gap-2">
+                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 flex flex-col gap-2">
                   <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                     <span>Extra Monthly Prepayment:</span>
                     <span className="text-rose-600 dark:text-rose-400 font-mono font-extrabold">
@@ -403,7 +403,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                 </div>
 
                 {/* Target Payoff Age & Reinvest Toggle */}
-                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-850 border border-slate-200 dark:border-slate-750 flex flex-col justify-between gap-2">
+                <div className="p-3 rounded-xl bg-white/90 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between gap-2">
                   <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                     <span>Target Freedom Age:</span>
                     <span className="text-rose-600 dark:text-rose-400 font-mono font-bold">

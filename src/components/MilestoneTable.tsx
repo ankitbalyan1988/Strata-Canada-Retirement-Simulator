@@ -1115,7 +1115,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                   </span>
                   <div className="space-y-1.5 text-xs text-slate-200">
                     {aiExplanation.mathBreakdown.map((step, sIdx) => (
-                      <div key={sIdx} className="flex items-start gap-2 bg-slate-850/60 p-2 rounded-lg border border-slate-800">
+                      <div key={sIdx} className="flex items-start gap-2 bg-slate-800/60 p-2 rounded-lg border border-slate-800">
                         <span className="w-4 h-4 rounded-full bg-indigo-600/30 text-indigo-300 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
                           {sIdx + 1}
                         </span>
@@ -1152,7 +1152,7 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
                           setAiQuestion(followUp);
                           handleAskAi(followUp);
                         }}
-                        className="text-left text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-750 text-indigo-300 hover:text-white border border-slate-700 transition"
+                        className="text-left text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-indigo-300 hover:text-white border border-slate-700 transition"
                       >
                         {followUp}
                       </button>

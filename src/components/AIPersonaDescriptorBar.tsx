@@ -114,7 +114,7 @@ export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (pr
         <button
           type="button"
           onClick={() => toggleSectionCollapse('aiPersona')}
-          className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 transition border border-slate-200/80 dark:border-slate-700/80 cursor-pointer"
+          className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition border border-slate-200/80 dark:border-slate-700/80 cursor-pointer"
           title={isExpanded ? 'Collapse AI Persona Descriptor' : 'Expand AI Persona Descriptor'}
           aria-expanded={isExpanded}
         >
@@ -197,7 +197,7 @@ export const AIPersonaDescriptorBar: React.FC<AIPersonaDescriptorBarProps> = (pr
                 key={idx}
                 type="button"
                 onClick={() => setPrompt(sample)}
-                className="text-[11px] px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 transition truncate max-w-[280px] cursor-pointer"
+                className="text-[11px] px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/70 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700 transition truncate max-w-[280px] cursor-pointer"
               >
                 "{sample.substring(0, 36)}..."
               </button>

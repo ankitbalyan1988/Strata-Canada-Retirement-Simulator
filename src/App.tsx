@@ -28,6 +28,9 @@ const ScenarioComparisonModal = React.lazy(() =>
 const AIPersonaModal = React.lazy(() =>
   import('./components/AIPersonaModal').then((m) => ({ default: m.AIPersonaModal }))
 );
+const SnapshotComparisonModal = React.lazy(() =>
+  import('./components/SnapshotComparisonModal').then((m) => ({ default: m.SnapshotComparisonModal }))
+);
 
 export default function App() {
   const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
@@ -42,6 +45,7 @@ export default function App() {
   const activeChartTab = useSimulationStore((state) => state.activeChartTab);
   const setActiveChartTab = useSimulationStore((state) => state.setActiveChartTab);
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
+  const isSnapshotCompareModalOpen = useSimulationStore((state) => state.isSnapshotCompareModalOpen);
   const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
@@ -276,6 +280,11 @@ export default function App() {
       {/* Scenario Comparison Modal (Lazy Loaded) */}
       <Suspense fallback={null}>
         {isCompareModalOpen && <ScenarioComparisonModal />}
+      </Suspense>
+
+      {/* Snapshot Comparison Modal (Lazy Loaded) */}
+      <Suspense fallback={null}>
+        {isSnapshotCompareModalOpen && <SnapshotComparisonModal />}
       </Suspense>
 
       {/* AI Persona Generator Modal (Lazy Loaded) */}

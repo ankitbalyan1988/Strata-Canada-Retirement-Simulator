@@ -896,7 +896,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
                               isCurrentActive
                                 ? 'bg-purple-950/90 border-purple-500 shadow-xs'
                                 : isBaseCell
-                                ? 'bg-slate-850 bg-slate-800/40'
+                                ? 'bg-slate-800/60'
                                 : cell.retireMonthlyCashflow >= retirementCashflow.baselineNominalMonthly
                                 ? 'hover:bg-emerald-950/40'
                                 : 'hover:bg-rose-950/40'

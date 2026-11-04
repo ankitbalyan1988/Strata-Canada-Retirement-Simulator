@@ -854,7 +854,7 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
                       : isHighlighted
                       ? 'bg-amber-100 dark:bg-amber-500/20 ring-2 ring-amber-400 font-bold z-10'
                       : isNonResident
-                      ? 'bg-slate-50/40 dark:bg-slate-850/50'
+                      ? 'bg-slate-50/40 dark:bg-slate-800/50'
                       : 'bg-white dark:bg-slate-900'
                   }`}
                 >

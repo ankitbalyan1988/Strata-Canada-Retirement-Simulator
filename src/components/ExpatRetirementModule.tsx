@@ -181,26 +181,26 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
     <div id="expat-retirement-section" className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-sm overflow-hidden flex flex-col transition duration-200">
       
       {/* 1. Header Banner */}
-      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-slate-900 via-cyan-950 to-slate-900 text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-cyan-50/70 via-slate-50 to-cyan-50/40 dark:from-slate-900 dark:via-cyan-950 dark:to-slate-900 text-slate-900 dark:text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="p-2 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            <span className="p-2 rounded-xl bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-500/30">
               <Globe className="w-5 h-5" />
             </span>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-white text-base tracking-tight">
+                <h3 className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
                   Canadian Expat & Non-Resident Retirement Planning
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-500/20 text-cyan-800 dark:text-cyan-300 border border-cyan-200/80 dark:border-cyan-500/30 flex items-center gap-1">
                   <span>{destinationCountry.flag}</span>
                   <span>{destinationCountry.name} ({destinationCountry.purchasingPowerMultiplier.toFixed(1)}x PPP)</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-500/30">
                   CRA Part XIII & Treaty Model
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
                 Model leaving Canada before or after retirement: CRA departure tax, non-resident withholding on CPP/OAS/RRSP, real estate rules, and currency conversion adjusted for Purchasing Power Parity (PPP).
               </p>
             </div>
@@ -214,19 +214,19 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
               if (!isExpanded) setIsExpanded(true);
               setIsAiOpen(prev => !prev);
             }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs border ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-xs border cursor-pointer ${
               isAiOpen
-                ? 'bg-gradient-to-r from-cyan-500 to-indigo-500 text-white border-transparent ring-2 ring-cyan-400/40'
-                : 'bg-white/10 hover:bg-white/15 text-slate-200 border-white/20'
+                ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white border-transparent ring-2 ring-cyan-400/40'
+                : 'bg-white hover:bg-slate-100 active:bg-slate-200/80 dark:bg-white/10 dark:hover:bg-white/15 text-cyan-800 dark:text-slate-200 border-slate-200/90 dark:border-white/20'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 dark:text-amber-300" />
             <span>Ask Expat AI</span>
           </button>
 
-          <div className="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs flex items-center gap-2">
-            <span className="text-slate-400">PPP Value:</span>
-            <strong className="font-mono text-emerald-300 font-bold">{formatCur(averagePPPEquivalentCAD)}/yr</strong>
+          <div className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-xs flex items-center gap-2 shadow-2xs">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">PPP Value:</span>
+            <strong className="font-mono text-emerald-700 dark:text-emerald-300 font-bold">{formatCur(averagePPPEquivalentCAD)}/yr</strong>
           </div>
 
           <button
@@ -234,16 +234,16 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             onClick={() => setIsExpanded(prev => !prev)}
             aria-expanded={isExpanded}
             aria-label={isExpanded ? 'Collapse Expat section' : 'Expand Expat section'}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white/15 hover:bg-white/25 active:bg-white/30 text-white border border-white/25 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-white hover:bg-slate-100 active:bg-slate-200 dark:bg-white/15 dark:hover:bg-white/25 dark:active:bg-white/30 text-slate-700 dark:text-white border border-slate-200 dark:border-white/25 transition cursor-pointer shadow-2xs"
           >
             {isExpanded ? (
               <>
-                <ChevronUp className="w-4 h-4 text-slate-200" />
+                <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-200" />
                 <span>Collapse</span>
               </>
             ) : (
               <>
-                <ChevronDown className="w-4 h-4 text-slate-200" />
+                <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-200" />
                 <span>Expand</span>
               </>
             )}
@@ -255,25 +255,25 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
       {!isExpanded && (
         <div
           onClick={() => setIsExpanded(true)}
-          className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100/90 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-800 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+          className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700/80 transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
         >
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
             <div className="flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">Departure:</span>
-              <strong className="text-slate-900 dark:text-slate-100 font-bold font-mono">Age {departureAge}</strong>
-              <span className="text-slate-400 text-[11px]">(Yr {departureYear})</span>
+              <strong className="text-slate-900 dark:text-slate-50 font-bold font-mono">Age {departureAge}</strong>
+              <span className="text-slate-400 dark:text-slate-500 text-[11px]">(Yr {departureYear})</span>
             </div>
             <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div className="flex items-center gap-1.5">
               <span className="text-base leading-none">{destinationCountry.flag}</span>
               <span className="text-slate-600 dark:text-slate-400 font-medium">Destination:</span>
-              <strong className="text-slate-900 dark:text-slate-100 font-bold">{destinationCountry.name}</strong>
+              <strong className="text-slate-900 dark:text-slate-50 font-bold">{destinationCountry.name}</strong>
             </div>
             <div className="h-3.5 w-px bg-slate-300 dark:bg-slate-700 hidden sm:block" />
             <div>
               <span className="text-slate-600 dark:text-slate-400 font-medium">Net Expat Income: </span>
-              <strong className="text-cyan-950 dark:text-cyan-300 font-bold font-mono">{formatCur(averageExpatNetCAD)} CAD/yr</strong>
+              <strong className="text-cyan-900 dark:text-cyan-300 font-bold font-mono">{formatCur(averageExpatNetCAD)} CAD/yr</strong>
               <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-1">
                 ({formatCur(averageExpatNetLocalCurrency, destinationCountry.currencySymbol)} {destinationCountry.currencyCode})
               </span>
@@ -293,7 +293,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-cyan-700 dark:text-cyan-400 hover:text-cyan-800 dark:hover:text-cyan-300 font-bold text-xs shrink-0 self-end md:self-center">
+          <div className="flex items-center gap-1.5 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-bold text-xs shrink-0 self-end md:self-center">
             <span>Expand Full Expat Planner</span>
             <ChevronDown className="w-4 h-4" />
           </div>
@@ -305,16 +305,16 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
         <>
           {/* AI Advisor Drawer */}
           {isAiOpen && (
-            <div className="bg-cyan-950 text-white p-4 border-b border-cyan-900/60 flex flex-col gap-3 animate-in fade-in duration-150">
+            <div className="bg-cyan-50/90 dark:bg-cyan-950 text-slate-800 dark:text-white p-4 border-b border-cyan-200 dark:border-cyan-900/60 flex flex-col gap-3 animate-in fade-in duration-150">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-cyan-300 flex items-center gap-1.5">
-                  <Bot className="w-4 h-4 text-cyan-400" />
+                <span className="font-bold text-cyan-900 dark:text-cyan-300 flex items-center gap-1.5">
+                  <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
                   <span>AI Canadian Expat & Cross-Border Tax Specialist:</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsAiOpen(false)}
-                  className="p-1 rounded text-slate-400 hover:text-white"
+                  className="p-1 rounded text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -328,7 +328,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     setAiQuestion(q);
                     handleAskExpatAi(q);
                   }}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-200 border border-cyan-700/50"
+                  className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-cyan-900/50 hover:bg-cyan-50 dark:hover:bg-cyan-800/60 text-cyan-900 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-700/50 shadow-2xs cursor-pointer"
                 >
                   OAS 20-Year Rule
                 </button>
@@ -339,7 +339,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     setAiQuestion(q);
                     handleAskExpatAi(q);
                   }}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-200 border border-cyan-700/50"
+                  className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-cyan-900/50 hover:bg-cyan-50 dark:hover:bg-cyan-800/60 text-cyan-900 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-700/50 shadow-2xs cursor-pointer"
                 >
                   CRA Departure Tax (S. 128.1)
                 </button>
@@ -350,7 +350,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     setAiQuestion(q);
                     handleAskExpatAi(q);
                   }}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-200 border border-cyan-700/50"
+                  className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-cyan-900/50 hover:bg-cyan-50 dark:hover:bg-cyan-800/60 text-cyan-900 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-700/50 shadow-2xs cursor-pointer"
                 >
                   {destinationCountry.name} Tax Treaty Rates
                 </button>
@@ -361,7 +361,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                     setAiQuestion(q);
                     handleAskExpatAi(q);
                   }}
-                  className="text-xs px-2.5 py-1 rounded-lg bg-cyan-900/50 hover:bg-cyan-800/60 text-cyan-200 border border-cyan-700/50"
+                  className="text-xs px-2.5 py-1 rounded-lg bg-white dark:bg-cyan-900/50 hover:bg-cyan-50 dark:hover:bg-cyan-800/60 text-cyan-900 dark:text-cyan-200 border border-cyan-200 dark:border-cyan-700/50 shadow-2xs cursor-pointer"
                 >
                   Section 216 Net Rental Election
                 </button>
@@ -374,13 +374,13 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                   value={aiQuestion}
                   onChange={(e) => setAiQuestion(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !isLoadingAi && handleAskExpatAi()}
-                  className="flex-1 bg-slate-900 border border-cyan-800/80 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                  className="flex-1 bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-800/80 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => handleAskExpatAi()}
                   disabled={isLoadingAi || !aiQuestion.trim()}
-                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5 shrink-0"
+                  className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
                 >
                   {isLoadingAi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   <span>Ask</span>
@@ -388,7 +388,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
               </div>
 
               {aiAnswer && (
-                <div className="p-3 rounded-xl bg-slate-900/80 border border-cyan-800/60 text-xs text-slate-200 leading-relaxed font-sans">
+                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/80 border border-cyan-200 dark:border-cyan-800/60 text-xs text-slate-800 dark:text-slate-200 leading-relaxed font-sans shadow-2xs">
                   {aiAnswer}
                 </div>
               )}

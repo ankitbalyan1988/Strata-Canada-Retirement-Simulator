@@ -10,7 +10,8 @@ import {
   Moon,
   ChevronsDown,
   ChevronsUp,
-  History
+  History,
+  Layers
 } from 'lucide-react';
 import { CanadianProvince, ScenarioPreset } from '../types/retirement';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
@@ -25,6 +26,7 @@ export interface HeaderProps {
   onExportPdf?: () => void;
   isExportingPdf?: boolean;
   onOpenCompare?: () => void;
+  onOpenCompareSnapshots?: () => void;
   onOpenAIPersonaModal?: () => void;
   onProvinceChange?: (province: CanadianProvince) => void;
 }
@@ -42,6 +44,8 @@ export const Header: React.FC<HeaderProps> = (props) => {
   const resetToDefault = useSimulationStore((state) => state.resetToDefault);
   const exportPdf = useSimulationStore((state) => state.exportPdf);
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
+  const isSnapshotCompareModalOpen = useSimulationStore((state) => state.isSnapshotCompareModalOpen);
+  const setIsSnapshotCompareModalOpen = useSimulationStore((state) => state.setIsSnapshotCompareModalOpen);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const applyProvince = useSimulationStore((state) => state.applyProvince);
   const collapsedSections = useSimulationStore((state) => state.collapsedSections);
@@ -62,6 +66,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
   const onExportPdf = props.onExportPdf ?? exportPdf;
   const isExportingPdf = props.isExportingPdf ?? storeIsExportingPdf;
   const onOpenCompare = props.onOpenCompare ?? (() => setIsCompareModalOpen(true));
+  const onOpenCompareSnapshots = props.onOpenCompareSnapshots ?? (() => setIsSnapshotCompareModalOpen(true));
   const onOpenAIPersonaModal = props.onOpenAIPersonaModal ?? (() => setIsAIPersonaModalOpen(true));
   const onProvinceChange = props.onProvinceChange ?? applyProvince;
 
@@ -142,15 +147,40 @@ export const Header: React.FC<HeaderProps> = (props) => {
               <span className="hidden sm:inline">AI Persona</span>
             </button>
 
-            {/* Compare Scenarios button */}
+            {/* Compare Ages button */}
             <button
               type="button"
               onClick={onOpenCompare}
-              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/70 transition shadow-xs"
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/70 transition shadow-xs cursor-pointer"
               title="Compare retiring at 58 vs 62 vs 67"
             >
               <Scale className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-              <span className="hidden sm:inline">Compare</span> Ages
+              <span><span className="hidden sm:inline">Compare</span> Ages</span>
+            </button>
+
+            {/* Compare Snapshots button */}
+            <button
+              type="button"
+              onClick={onOpenCompareSnapshots}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border transition shadow-xs cursor-pointer ${
+                isSnapshotCompareModalOpen
+                  ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                  : 'bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/70'
+              }`}
+              title="Compare saved simulation snapshots side-by-side"
+              aria-label="Compare Snapshots"
+            >
+              <Layers className={`w-3.5 h-3.5 ${isSnapshotCompareModalOpen ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'}`} />
+              <span><span className="hidden sm:inline">Compare</span> Snapshots</span>
+              {historyCount > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                  isSnapshotCompareModalOpen
+                    ? 'bg-indigo-700 text-white'
+                    : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300'
+                }`}>
+                  {historyCount}
+                </span>
+              )}
             </button>
 
             {/* Simulation History Button */}
@@ -160,7 +190,7 @@ export const Header: React.FC<HeaderProps> = (props) => {
               className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-xl border transition shadow-xs cursor-pointer ${
                 isHistoryPanelOpen
                   ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                  : 'bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-200 border-zinc-200/80 dark:border-zinc-700/70'
+                  : 'bg-zinc-100 hover:bg-zinc-200/70 dark:bg-zinc-800/70 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border-zinc-200/80 dark:border-zinc-700/70'
               }`}
               title="Open Simulation Version History"
               aria-label="Simulation History"

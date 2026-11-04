@@ -39,6 +39,7 @@ export const SimulationHistoryPanel: React.FC = () => {
   const deleteSnapshot = useSimulationStore((state) => state.deleteSnapshot);
   const clearHistory = useSimulationStore((state) => state.clearHistory);
   const renameSnapshot = useSimulationStore((state) => state.renameSnapshot);
+  const setIsSnapshotCompareModalOpen = useSimulationStore((state) => state.setIsSnapshotCompareModalOpen);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [newLabelInput, setNewLabelInput] = useState('');
@@ -225,7 +226,7 @@ export const SimulationHistoryPanel: React.FC = () => {
           </div>
 
           {/* Current Live Baseline Pill */}
-          <div className="px-4 py-3 bg-slate-100/70 dark:bg-slate-850/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+          <div className="px-4 py-3 bg-slate-100/70 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="font-bold text-slate-700 dark:text-slate-300">Active Live Simulation:</span>
@@ -262,6 +263,15 @@ export const SimulationHistoryPanel: React.FC = () => {
 
             {history.length > 0 && (
               <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsSnapshotCompareModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                  title="Compare saved snapshots side-by-side"
+                >
+                  <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Compare</span>
+                </button>
                 <button
                   type="button"
                   onClick={handleExportJson}
@@ -409,7 +419,7 @@ export const SimulationHistoryPanel: React.FC = () => {
                     </div>
 
                     {/* Snapshot Key Metrics Grid */}
-                    <div className="p-3.5 grid grid-cols-3 gap-2 bg-slate-50/50 dark:bg-slate-850/40 text-xs">
+                    <div className="p-3.5 grid grid-cols-3 gap-2 bg-slate-50/50 dark:bg-slate-800/50 text-xs">
                       <div>
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Retire Age</span>
                         <strong className="text-slate-900 dark:text-slate-100 font-mono font-bold">

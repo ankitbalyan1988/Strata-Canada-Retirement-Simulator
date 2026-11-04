@@ -41,7 +41,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Persona Select Field / Button Trigger */}
-      <div className="flex items-center bg-slate-800/90 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-750 rounded-lg border border-slate-700/90 px-2.5 py-1 text-xs transition cursor-pointer group">
+      <div className="flex items-center bg-slate-800/90 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 rounded-lg border border-slate-700/90 px-2.5 py-1 text-xs transition cursor-pointer group">
         <Sparkles className="w-3.5 h-3.5 text-amber-400 mr-1.5 shrink-0 animate-pulse" />
         <span className="text-slate-400 mr-1.5 hidden sm:inline">Persona:</span>
         
@@ -120,7 +120,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
             
             {/* Timeline & Income */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-750">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Age & Longevity</span>
                 <span className="font-bold text-slate-800 dark:text-slate-100">
                   Age {inp.currentAge} → Retire at {inp.retirementAge}
@@ -128,7 +128,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
                 <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Horizon to age {inp.lifeExpectancy}</span>
               </div>
 
-              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-750">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Annual Income</span>
                 <span className="font-bold text-emerald-700 dark:text-emerald-400">
                   {formatCur(inp.currentAnnualIncome)}/yr
@@ -140,7 +140,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
             </div>
 
             {/* Balances & Contributions */}
-            <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-750">
+            <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
               <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium mb-1">Registered Account Balances</span>
               <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-[11px]">
                 <div className="bg-white dark:bg-slate-900 p-1 rounded border border-slate-200 dark:border-slate-700">
@@ -180,7 +180,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
 
             {/* Public Pensions & Drawdown Strategy */}
             <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-750">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Pensions (CPP / OAS)</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-100 block">
                   CPP: {inp.cppEstimatedPercentOfMax}% max @ {inp.cppStartAge}
@@ -190,7 +190,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
                 </span>
               </div>
 
-              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-750">
+              <div className="bg-slate-50/80 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-medium">Decumulation Strategy</span>
                 <span className="font-semibold text-rose-700 dark:text-rose-400 capitalize block truncate">
                   {inp.drawdownStrategy.replace('_', ' ')}
@@ -233,7 +233,7 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
                   className={`text-[10px] text-left px-2 py-1.5 rounded-lg border truncate transition cursor-pointer ${
                     activePreset.id === p.id
                       ? 'bg-rose-50 dark:bg-rose-500/20 border-rose-300 dark:border-rose-500/40 text-rose-900 dark:text-rose-300 font-bold'
-                      : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      : 'bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                   }`}
                   title={p.description}
                 >
