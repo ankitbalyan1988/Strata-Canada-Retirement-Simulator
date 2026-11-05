@@ -109,11 +109,21 @@ export function fastSimulateEndNetWorth(
     sFhsaActive
   };
 
+  const pRemainingFhsa = inputs.fhsaRemainingContributionRoom !== undefined
+    ? Math.min(40000, Math.max(0, inputs.fhsaRemainingContributionRoom))
+    : Math.max(0, 40000 - Math.min(40000, initialFhsa));
+  const pInitialCumulativeFhsa = Math.max(0, 40000 - pRemainingFhsa);
+
+  const sRemainingFhsa = (isCouple && spouse && spouse.fhsaRemainingContributionRoom !== undefined)
+    ? Math.min(40000, Math.max(0, spouse.fhsaRemainingContributionRoom))
+    : Math.max(0, 40000 - Math.min(40000, isCouple && spouse ? spouse.fhsaBalance : 0));
+  const sInitialCumulativeFhsa = Math.max(0, 40000 - sRemainingFhsa);
+
   const contributionState: ContributionYearState = {
     pEmploymentIncome: currentAnnualIncome,
     sEmploymentIncome: isCouple && spouse ? spouse.annualIncome : 0,
-    pCumulativeFhsa: Math.min(40000, initialFhsa),
-    sCumulativeFhsa: isCouple && spouse ? Math.min(40000, spouse.fhsaBalance) : 0,
+    pCumulativeFhsa: pInitialCumulativeFhsa,
+    sCumulativeFhsa: sInitialCumulativeFhsa,
     pFhsaActive,
     sFhsaActive,
     lifetimeEmploymentIncome: 0

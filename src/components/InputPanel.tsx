@@ -47,17 +47,20 @@ import {
   AccountReturnRates,
   CustomNonRegAccount,
   MonthlyExpenseEstimates,
-  CppCalculationMethod
+  CppCalculationMethod,
+  EmployerMatchConfig
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
 import { DEFAULT_SPOUSE_INPUTS, DEFAULT_REAL_ESTATE_INPUTS, DEFAULT_ACCOUNT_RETURNS } from '../utils/presets';
 import { EXPAT_DESTINATIONS, DEFAULT_EXPAT_INPUTS } from '../utils/expatCountries';
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { calculateAdjustedServiceCanadaCpp, getCppTimingFactor } from '../utils/cppCalculator';
+import { calculateEmployerRrspMatch } from '../utils/employerMatch';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 import { DebtsManager } from './DebtsManager';
+import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
 import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface InputPanelProps {
@@ -212,6 +215,50 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         spouse: {
           ...base.spouse,
           [field]: value
+        }
+      };
+    });
+  };
+
+  const updateEmployerMatch = (patch: Partial<EmployerMatchConfig>) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      const current: EmployerMatchConfig = base.employerMatch || {
+        enabled: false,
+        matchType: 'percent_of_salary',
+        matchPercentOfSalary: 4,
+        matchRatePercent: 100,
+        fixedAnnualAmount: 3000
+      };
+      return {
+        ...base,
+        employerMatch: {
+          ...current,
+          ...patch
+        }
+      };
+    });
+  };
+
+  const updateSpouseEmployerMatch = (patch: Partial<EmployerMatchConfig>) => {
+    dispatchInputsChange((prev: RetirementInputs) => {
+      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      if (!base.spouse) return base;
+      const current: EmployerMatchConfig = base.spouse.employerMatch || {
+        enabled: false,
+        matchType: 'percent_of_salary',
+        matchPercentOfSalary: 4,
+        matchRatePercent: 100,
+        fixedAnnualAmount: 3000
+      };
+      return {
+        ...base,
+        spouse: {
+          ...base.spouse,
+          employerMatch: {
+            ...current,
+            ...patch
+          }
         }
       };
     });
@@ -1343,9 +1390,19 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 <h4 className="text-sm font-bold text-slate-900 dark:text-slate-50">
                   {isMarried ? 'Your Personal Registered & Taxable Accounts' : 'Canadian Registered & Taxable Accounts'}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Your current balances and planned annual savings</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Your current balances and planned annual contributions target</p>
               </div>
             </div>
+
+            {/* Live Cash Flow Stress Test & Dynamic Priority Waterfall Allocation */}
+            <CashFlowContributionStressTest
+              inputs={inputs}
+              onUpdateInputs={(partial) => {
+                const updated = { ...inputs, ...partial };
+                onChange(updated);
+              }}
+              onNavigateToTab={(tab) => setActiveTab(tab as any)}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               
@@ -1374,13 +1431,13 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
                     <CurrencyInput
                       value={inputs.rrspAnnualContribution}
                       onChange={(val) => updateField('rrspAnnualContribution', val)}
                       min={0}
                       step={500}
-                      aria-label="RRSP Annual Savings"
+                      aria-label="RRSP Annual Contributions Target"
                     />
                   </div>
 
@@ -1399,6 +1456,196 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       <span className="absolute right-2.5 top-2 text-xs text-blue-500 dark:text-blue-400 font-bold">%</span>
                     </div>
                   </div>
+                </div>
+
+                {/* Employer RRSP / DPSP Match Section */}
+                <div className="pt-3 mt-1 border-t border-blue-100 dark:border-blue-500/20 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!inputs.employerMatch?.enabled}
+                        onChange={(e) => updateEmployerMatch({ enabled: e.target.checked })}
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer"
+                      />
+                      <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap">
+                        <span>🏢 Employer Contribution Match</span>
+                        {inputs.employerMatch?.enabled && (
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/90 dark:bg-blue-500/20 px-1.5 py-0.5 rounded">
+                            +${calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution, inputs.employerMatch).toLocaleString()}/yr
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Group RRSP / DPSP</span>
+                  </div>
+
+                  {inputs.employerMatch?.enabled && (
+                    <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-500/10 border border-blue-200/80 dark:border-blue-500/25 space-y-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Match Formula:</span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => updateEmployerMatch({ matchType: 'percent_of_salary' })}
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer ${
+                              (!inputs.employerMatch.matchType || inputs.employerMatch.matchType === 'percent_of_salary')
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            % of Salary Cap
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEmployerMatch({ matchType: 'percent_of_contribution' })}
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer ${
+                              inputs.employerMatch.matchType === 'percent_of_contribution'
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            % of Contribution
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEmployerMatch({ matchType: 'fixed_dollar' })}
+                            className={`px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer ${
+                              inputs.employerMatch.matchType === 'fixed_dollar'
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            Fixed Dollar ($/yr)
+                          </button>
+                        </div>
+                      </div>
+
+                      {(!inputs.employerMatch.matchType || inputs.employerMatch.matchType === 'percent_of_salary') && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">
+                              Match Rate (% of your contrib)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={200}
+                                step={5}
+                                value={inputs.employerMatch.matchRatePercent ?? 100}
+                                onChange={(e) => updateEmployerMatch({ matchRatePercent: Number(e.target.value) })}
+                                className="w-full pl-2.5 pr-7 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">%</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">100% = dollar-for-dollar match</span>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">
+                              Employer Cap (% of base salary)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={0.5}
+                                max={18}
+                                step={0.5}
+                                value={inputs.employerMatch.matchPercentOfSalary ?? 4}
+                                onChange={(e) => updateEmployerMatch({ matchPercentOfSalary: Number(e.target.value) })}
+                                className="w-full pl-2.5 pr-7 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">%</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">
+                              Max match cap: ${Math.round(inputs.currentAnnualIncome * ((inputs.employerMatch.matchPercentOfSalary ?? 4) / 100)).toLocaleString()}/yr
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {inputs.employerMatch.matchType === 'percent_of_contribution' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">
+                              Match Rate (% of contribution)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={200}
+                                step={5}
+                                value={inputs.employerMatch.matchRatePercent ?? 50}
+                                onChange={(e) => updateEmployerMatch({ matchRatePercent: Number(e.target.value) })}
+                                className="w-full pl-2.5 pr-7 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">%</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">e.g. 50% = 50¢ on each dollar</span>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">
+                              Salary Cap (% of base salary)
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={18}
+                                step={0.5}
+                                value={inputs.employerMatch.matchPercentOfSalary ?? 6}
+                                onChange={(e) => updateEmployerMatch({ matchPercentOfSalary: Number(e.target.value) })}
+                                className="w-full pl-2.5 pr-7 py-1.5 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2.5 top-1.5 text-xs text-slate-400 font-bold">%</span>
+                            </div>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 block">Max match cap as % of base salary</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {inputs.employerMatch.matchType === 'fixed_dollar' && (
+                        <div>
+                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">
+                            Fixed Annual Employer Match ($/year)
+                          </label>
+                          <CurrencyInput
+                            value={inputs.employerMatch.fixedAnnualAmount ?? 3000}
+                            onChange={(val) => updateEmployerMatch({ fixedAnnualAmount: val })}
+                            min={0}
+                            step={250}
+                            aria-label="Primary Employer Fixed Annual Match"
+                          />
+                        </div>
+                      )}
+
+                      {/* Real-time match summary badge */}
+                      {(() => {
+                        const matchVal = calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution, inputs.employerMatch);
+                        const totalAddition = inputs.rrspAnnualContribution + matchVal;
+                        return (
+                          <div className="pt-2.5 border-t border-blue-200/60 dark:border-blue-500/20 text-xs flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between font-bold">
+                              <span className="text-blue-800 dark:text-blue-300">Total RRSP Savings Compounding:</span>
+                              <span className="text-slate-900 dark:text-slate-100 font-mono">
+                                ${totalAddition.toLocaleString()}/yr ({formatCur(totalAddition / 12)}/mo)
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 flex-wrap gap-1">
+                              <span>Your out-of-pocket: <strong className="font-mono text-slate-700 dark:text-slate-300">${inputs.rrspAnnualContribution.toLocaleString()}/yr</strong></span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                +${matchVal.toLocaleString()}/yr Free Employer Match
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
+                              CRA note: Employer Group RRSP/DPSP matching is added directly to your retirement portfolio tax-free at contribution (neutral on take-home pay via equal deduction receipt).
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1427,14 +1674,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
+                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
                     <CurrencyInput
                       value={inputs.tfsaAnnualContribution}
                       onChange={(val) => updateField('tfsaAnnualContribution', val)}
                       min={0}
                       max={15000}
                       step={500}
-                      aria-label="TFSA Annual Savings"
+                      aria-label="TFSA Annual Contributions Target"
                     />
                   </div>
 
@@ -1468,46 +1715,136 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
-                    <CurrencyInput
-                      value={inputs.fhsaBalance}
-                      onChange={(val) => updateField('fhsaBalance', val)}
-                      min={0}
-                      step={1000}
-                      aria-label="FHSA Current Balance"
-                    />
-                  </div>
+                {(() => {
+                  const remainingRoom = inputs.fhsaRemainingContributionRoom !== undefined
+                    ? Math.min(40000, Math.max(0, inputs.fhsaRemainingContributionRoom))
+                    : Math.max(0, 40000 - Math.min(40000, inputs.fhsaBalance));
+                  const contributedSoFar = Math.max(0, 40000 - remainingRoom);
 
-                  <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
-                    <CurrencyInput
-                      value={inputs.fhsaAnnualContribution}
-                      onChange={(val) => updateField('fhsaAnnualContribution', val)}
-                      min={0}
-                      max={8000}
-                      step={500}
-                      aria-label="FHSA Annual Savings"
-                    />
-                  </div>
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
+                        {/* Column 1: Current Balance */}
+                        <div className="flex flex-col justify-end">
+                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                              Current Balance
+                            </label>
+                          </div>
+                          <CurrencyInput
+                            value={inputs.fhsaBalance}
+                            onChange={(val) => updateField('fhsaBalance', val)}
+                            min={0}
+                            step={1000}
+                            className="h-[34px]"
+                            aria-label="FHSA Current Balance"
+                          />
+                        </div>
 
-                  <div>
-                    <label className="text-[11px] font-medium text-amber-800 dark:text-amber-300 block mb-1 font-semibold">Expected Return</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min={0}
-                        max={15}
-                        step={0.1}
-                        value={inputs.accountReturns?.fhsaReturn ?? 6.0}
-                        onChange={(e) => updateAccountReturn('fhsaReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-500/40 bg-white dark:bg-slate-950"
-                      />
-                      <span className="absolute right-2.5 top-2 text-xs text-amber-600 dark:text-amber-400 font-bold">%</span>
-                    </div>
-                  </div>
-                </div>
+                        {/* Column 2: Remaining Room */}
+                        <div className="flex flex-col justify-end">
+                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                                Remaining Room
+                              </label>
+                              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">
+                                Max $40k
+                              </span>
+                            </div>
+                          </div>
+                          <CurrencyInput
+                            value={remainingRoom}
+                            onChange={(val) => {
+                              const clamped = Math.min(40000, Math.max(0, val));
+                              updateField('fhsaRemainingContributionRoom', clamped);
+                            }}
+                            min={0}
+                            max={40000}
+                            step={1000}
+                            className="h-[34px]"
+                            aria-label="FHSA Remaining Contribution Room"
+                          />
+                        </div>
+
+                        {/* Column 3: Annual Contributions Target */}
+                        <div className="flex flex-col justify-end">
+                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                                Annual Contributions Target
+                              </label>
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0">
+                                Max $8k/yr
+                              </span>
+                            </div>
+                          </div>
+                          <CurrencyInput
+                            value={inputs.fhsaAnnualContribution}
+                            onChange={(val) => updateField('fhsaAnnualContribution', val)}
+                            min={0}
+                            max={8000}
+                            step={500}
+                            className="h-[34px]"
+                            aria-label="FHSA Annual Contributions Target"
+                          />
+                        </div>
+
+                        {/* Column 4: Expected Return */}
+                        <div className="flex flex-col justify-end">
+                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
+                            <label className="text-[11px] font-medium text-amber-800 dark:text-amber-300 block leading-tight font-semibold">
+                              Expected Return
+                            </label>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              max={15}
+                              step={0.1}
+                              value={inputs.accountReturns?.fhsaReturn ?? 6.0}
+                              onChange={(e) => updateAccountReturn('fhsaReturn', Number(e.target.value))}
+                              className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-500/40 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:outline-none transition"
+                            />
+                            <span className="absolute right-2.5 top-2 text-xs text-amber-600 dark:text-amber-400 font-bold">%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Remaining Contribution Room Status & Quick Presets */}
+                      <div className="p-2.5 rounded-xl bg-amber-100/60 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-amber-950 dark:text-amber-200 text-[11px] flex items-center gap-1">
+                            <span>🍁</span> CRA Lifetime Limit ($40k):
+                          </span>
+                          <span className="font-mono text-amber-900 dark:text-amber-200 text-xs">
+                            <strong className="font-bold text-amber-950 dark:text-amber-100">${contributedSoFar.toLocaleString()}</strong> contributed • <strong className="font-bold text-amber-950 dark:text-amber-100">${remainingRoom.toLocaleString()}</strong> room left to invest
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0 self-start sm:self-auto">
+                          <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 font-medium mr-0.5">Quick set room:</span>
+                          {[40000, 32000, 24000, 16000, 8000, 0].map((amt) => (
+                            <button
+                              key={amt}
+                              type="button"
+                              onClick={() => updateField('fhsaRemainingContributionRoom', amt)}
+                              className={`px-2 py-0.5 text-[10px] font-mono rounded-md border transition cursor-pointer ${
+                                remainingRoom === amt
+                                  ? 'bg-amber-600 text-white border-amber-600 font-bold shadow-2xs'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-amber-50 dark:hover:bg-slate-700'
+                              }`}
+                              title={`Set remaining contribution room to $${amt.toLocaleString()}`}
+                            >
+                              {amt === 40000 ? '$40k' : amt === 0 ? '$0' : `$${amt / 1000}k`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {/* Year FHSA Opened & CRA 15-Year Rollover Rules */}
                 <div className="pt-2.5 border-t border-amber-200/70 dark:border-amber-500/30 flex flex-col gap-2.5 bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200/90 dark:border-amber-500/30 shadow-2xs">
@@ -2841,6 +3178,168 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     />
                   </div>
                 </div>
+
+                {/* Spouse Employer Match Section */}
+                <div className="pt-2 mt-0.5 border-t border-blue-100 dark:border-blue-500/20 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={!!inputs.spouse.employerMatch?.enabled}
+                        onChange={(e) => updateSpouseEmployerMatch({ enabled: e.target.checked })}
+                        className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer"
+                      />
+                      <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap">
+                        <span>🏢 Employer Match</span>
+                        {inputs.spouse.employerMatch?.enabled && (
+                          <span className="text-[9.5px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/90 dark:bg-blue-500/20 px-1.5 py-0.2 rounded">
+                            +${calculateEmployerRrspMatch(inputs.spouse.annualIncome, inputs.spouse.rrspAnnualContribution, inputs.spouse.employerMatch).toLocaleString()}/yr
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                    <span className="text-[9.5px] text-slate-400 dark:text-slate-500">Group RRSP</span>
+                  </div>
+
+                  {inputs.spouse.employerMatch?.enabled && (
+                    <div className="p-2.5 rounded-lg bg-blue-50/50 dark:bg-blue-500/10 border border-blue-200/80 dark:border-blue-500/25 space-y-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Formula:</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => updateSpouseEmployerMatch({ matchType: 'percent_of_salary' })}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
+                              (!inputs.spouse.employerMatch.matchType || inputs.spouse.employerMatch.matchType === 'percent_of_salary')
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            % Salary Cap
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateSpouseEmployerMatch({ matchType: 'percent_of_contribution' })}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
+                              inputs.spouse.employerMatch.matchType === 'percent_of_contribution'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            % Contrib
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateSpouseEmployerMatch({ matchType: 'fixed_dollar' })}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors cursor-pointer ${
+                              inputs.spouse.employerMatch.matchType === 'fixed_dollar'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            Fixed ($)
+                          </button>
+                        </div>
+                      </div>
+
+                      {(!inputs.spouse.employerMatch.matchType || inputs.spouse.employerMatch.matchType === 'percent_of_salary') && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-600 dark:text-slate-400 block mb-0.5">Match Rate</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={200}
+                                step={5}
+                                value={inputs.spouse.employerMatch.matchRatePercent ?? 100}
+                                onChange={(e) => updateSpouseEmployerMatch({ matchRatePercent: Number(e.target.value) })}
+                                className="w-full pl-2 pr-5 py-1 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2 top-1 text-[11px] text-slate-400 font-bold">%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-600 dark:text-slate-400 block mb-0.5">Salary Cap</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={0.5}
+                                max={18}
+                                step={0.5}
+                                value={inputs.spouse.employerMatch.matchPercentOfSalary ?? 4}
+                                onChange={(e) => updateSpouseEmployerMatch({ matchPercentOfSalary: Number(e.target.value) })}
+                                className="w-full pl-2 pr-5 py-1 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2 top-1 text-[11px] text-slate-400 font-bold">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {inputs.spouse.employerMatch.matchType === 'percent_of_contribution' && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-slate-600 dark:text-slate-400 block mb-0.5">Match %</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={200}
+                                step={5}
+                                value={inputs.spouse.employerMatch.matchRatePercent ?? 50}
+                                onChange={(e) => updateSpouseEmployerMatch({ matchRatePercent: Number(e.target.value) })}
+                                className="w-full pl-2 pr-5 py-1 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2 top-1 text-[11px] text-slate-400 font-bold">%</span>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-600 dark:text-slate-400 block mb-0.5">Salary Cap %</label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={1}
+                                max={18}
+                                step={0.5}
+                                value={inputs.spouse.employerMatch.matchPercentOfSalary ?? 6}
+                                onChange={(e) => updateSpouseEmployerMatch({ matchPercentOfSalary: Number(e.target.value) })}
+                                className="w-full pl-2 pr-5 py-1 text-xs font-mono font-bold text-slate-900 dark:text-slate-100 rounded border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                              />
+                              <span className="absolute right-2 top-1 text-[11px] text-slate-400 font-bold">%</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {inputs.spouse.employerMatch.matchType === 'fixed_dollar' && (
+                        <div>
+                          <label className="text-[10px] text-slate-600 dark:text-slate-400 block mb-0.5">Fixed Annual Match ($/yr)</label>
+                          <CurrencyInput
+                            value={inputs.spouse.employerMatch.fixedAnnualAmount ?? 3000}
+                            onChange={(val) => updateSpouseEmployerMatch({ fixedAnnualAmount: val })}
+                            min={0}
+                            step={250}
+                            aria-label="Spouse Fixed Annual Match"
+                          />
+                        </div>
+                      )}
+
+                      {(() => {
+                        const sMatch = calculateEmployerRrspMatch(inputs.spouse.annualIncome, inputs.spouse.rrspAnnualContribution, inputs.spouse.employerMatch);
+                        const sTotal = inputs.spouse.rrspAnnualContribution + sMatch;
+                        return (
+                          <div className="pt-1.5 border-t border-blue-200/50 dark:border-blue-500/20 text-[10.5px] flex items-center justify-between font-semibold">
+                            <span className="text-blue-800 dark:text-blue-300">Total Spouse RRSP Additions:</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-100">
+                              ${sTotal.toLocaleString()}/yr (+${sMatch.toLocaleString()} match)
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Spouse TFSA */}
@@ -2880,29 +3379,63 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse FHSA</span>
                   <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded">Home / RRSP Roll</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Current Balance</label>
-                    <CurrencyInput
-                      value={inputs.spouse.fhsaBalance}
-                      onChange={(val) => updateSpouseField('fhsaBalance', val)}
-                      min={0}
-                      step={1000}
-                      aria-label="Spouse FHSA Current Balance"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-slate-500 dark:text-slate-400 block mb-1">Annual Contrib</label>
-                    <CurrencyInput
-                      value={inputs.spouse.fhsaAnnualContribution}
-                      onChange={(val) => updateSpouseField('fhsaAnnualContribution', val)}
-                      min={0}
-                      max={8000}
-                      step={500}
-                      aria-label="Spouse FHSA Annual Contribution"
-                    />
-                  </div>
-                </div>
+                {(() => {
+                  const sRemainingRoom = inputs.spouse?.fhsaRemainingContributionRoom !== undefined
+                    ? Math.min(40000, Math.max(0, inputs.spouse.fhsaRemainingContributionRoom))
+                    : Math.max(0, 40000 - Math.min(40000, inputs.spouse?.fhsaBalance || 0));
+
+                  return (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
+                      <div className="flex flex-col justify-end">
+                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
+                          <label className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">Current Balance</label>
+                        </div>
+                        <CurrencyInput
+                          value={inputs.spouse.fhsaBalance}
+                          onChange={(val) => updateSpouseField('fhsaBalance', val)}
+                          min={0}
+                          step={1000}
+                          className="h-[34px]"
+                          aria-label="Spouse FHSA Current Balance"
+                        />
+                      </div>
+                      <div className="flex flex-col justify-end">
+                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
+                          <div className="flex items-baseline justify-between gap-1">
+                            <label className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Remaining Room</label>
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">Max $40k</span>
+                          </div>
+                        </div>
+                        <CurrencyInput
+                          value={sRemainingRoom}
+                          onChange={(val) => {
+                            const clamped = Math.min(40000, Math.max(0, val));
+                            updateSpouseField('fhsaRemainingContributionRoom', clamped);
+                          }}
+                          min={0}
+                          max={40000}
+                          step={1000}
+                          className="h-[34px]"
+                          aria-label="Spouse FHSA Remaining Contribution Room"
+                        />
+                      </div>
+                      <div className="flex flex-col justify-end">
+                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
+                          <label className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">Annual Contrib Target</label>
+                        </div>
+                        <CurrencyInput
+                          value={inputs.spouse.fhsaAnnualContribution}
+                          onChange={(val) => updateSpouseField('fhsaAnnualContribution', val)}
+                          min={0}
+                          max={8000}
+                          step={500}
+                          className="h-[34px]"
+                          aria-label="Spouse FHSA Annual Contribution"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Spouse Year FHSA Opened & 15-yr Rollover */}
                 <div className="pt-2 border-t border-amber-200/60 dark:border-amber-500/30 flex flex-col gap-2 bg-white/90 dark:bg-slate-900 p-2.5 rounded-lg border border-amber-200/60 dark:border-amber-500/30 text-xs">

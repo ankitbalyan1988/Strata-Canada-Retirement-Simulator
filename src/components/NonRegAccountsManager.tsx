@@ -192,7 +192,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase block">Total Annual Savings</span>
+            <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase block">Total Annual Contributions Target</span>
             <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono">
               ${Math.round(totalContribution).toLocaleString()}/yr
             </span>
@@ -222,13 +222,13 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
             </div>
 
             <div>
-              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Savings</label>
+              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
               <CurrencyInput
                 value={baseAnnualContribution}
                 onChange={(val) => onClearToSimple(baseBalance, val)}
                 min={0}
                 step={1000}
-                aria-label="Non-Registered Annual Savings"
+                aria-label="Non-Registered Annual Contributions Target"
               />
             </div>
 
@@ -362,7 +362,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                     {/* Annual Contribution */}
                     <div>
                       <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block mb-0.5">
-                        {isGic ? 'Annual Addition' : 'Annual Savings'}
+                        {isGic ? 'Annual Addition' : 'Annual Contributions Target'}
                       </label>
                       <CurrencyInput
                         value={acc.annualContribution}

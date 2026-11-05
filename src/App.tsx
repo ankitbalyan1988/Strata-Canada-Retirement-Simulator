@@ -106,6 +106,9 @@ export default function App() {
           </div>
         </div>
 
+        {/* Financial KPI Scorecard (Positioned at top for instant visibility) */}
+        <RetirementScorecard />
+
         {/* AI Persona Descriptor Bar */}
         <AIPersonaDescriptorBar />
 
@@ -114,9 +117,6 @@ export default function App() {
 
         {/* Hero Interactive Retirement Age Simulator */}
         <HeroRetirementSlider />
-
-        {/* Financial KPI Scorecard */}
-        <RetirementScorecard />
 
         {/* Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
         <SavingsPulse />

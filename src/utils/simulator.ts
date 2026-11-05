@@ -5,6 +5,7 @@ import {
   StressTestOptions
 } from '../types/retirement';
 import { calculateCanadianTax } from './canadianTax';
+import { calculateEmployerRrspMatch } from './employerMatch';
 import {
   initializeMortgageAndHousingParams,
   calculateMortgageAndHousingForYear,
@@ -126,11 +127,21 @@ export function runRetirementSimulation(
     sFhsaActive
   };
 
+  const pRemainingFhsa = inputs.fhsaRemainingContributionRoom !== undefined
+    ? Math.min(40000, Math.max(0, inputs.fhsaRemainingContributionRoom))
+    : Math.max(0, 40000 - Math.min(40000, initialFhsa));
+  const pInitialCumulativeFhsa = Math.max(0, 40000 - pRemainingFhsa);
+
+  const sRemainingFhsa = (isCouple && spouse && spouse.fhsaRemainingContributionRoom !== undefined)
+    ? Math.min(40000, Math.max(0, spouse.fhsaRemainingContributionRoom))
+    : Math.max(0, 40000 - Math.min(40000, isCouple && spouse ? spouse.fhsaBalance : 0));
+  const sInitialCumulativeFhsa = Math.max(0, 40000 - sRemainingFhsa);
+
   const contributionState: ContributionYearState = {
     pEmploymentIncome: currentAnnualIncome,
     sEmploymentIncome: isCouple && spouse ? spouse.annualIncome : 0,
-    pCumulativeFhsa: Math.min(40000, initialFhsa),
-    sCumulativeFhsa: isCouple && spouse ? Math.min(40000, spouse.fhsaBalance) : 0,
+    pCumulativeFhsa: pInitialCumulativeFhsa,
+    sCumulativeFhsa: sInitialCumulativeFhsa,
     pFhsaActive,
     sFhsaActive,
     lifetimeEmploymentIncome: 0
@@ -768,14 +779,20 @@ export function calculateSavingsPulse(
   const spouse = inputs.spouse;
   const workingYears = Math.max(1, inputs.retirementAge - inputs.currentAge);
 
+  const pEmployerMatch = calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution, inputs.employerMatch);
+  const sEmployerMatch = isCouple && spouse?.employerMatch?.enabled
+    ? calculateEmployerRrspMatch(spouse.annualIncome, spouse.rrspAnnualContribution, spouse.employerMatch)
+    : 0;
+
   const primaryAnnualSavings = 
     inputs.rrspAnnualContribution + 
+    pEmployerMatch +
     inputs.tfsaAnnualContribution + 
     inputs.fhsaAnnualContribution + 
     inputs.nonRegAnnualContribution;
 
   const spouseAnnualSavings = isCouple && spouse
-    ? (spouse.rrspAnnualContribution + spouse.tfsaAnnualContribution + spouse.fhsaAnnualContribution + spouse.nonRegAnnualContribution)
+    ? (spouse.rrspAnnualContribution + sEmployerMatch + spouse.tfsaAnnualContribution + spouse.fhsaAnnualContribution + spouse.nonRegAnnualContribution)
     : 0;
 
   const currentAnnualSavings = primaryAnnualSavings + spouseAnnualSavings;
@@ -787,7 +804,7 @@ export function calculateSavingsPulse(
     : 0;
 
   const monthlyBreakdown = {
-    rrsp: Math.round((inputs.rrspAnnualContribution + (isCouple && spouse ? spouse.rrspAnnualContribution : 0)) / 12),
+    rrsp: Math.round((inputs.rrspAnnualContribution + pEmployerMatch + (isCouple && spouse ? (spouse.rrspAnnualContribution + sEmployerMatch) : 0)) / 12),
     tfsa: Math.round((inputs.tfsaAnnualContribution + (isCouple && spouse ? spouse.tfsaAnnualContribution : 0)) / 12),
     fhsa: Math.round((inputs.fhsaAnnualContribution + (isCouple && spouse ? spouse.fhsaAnnualContribution : 0)) / 12),
     nonReg: Math.round((inputs.nonRegAnnualContribution + (isCouple && spouse ? spouse.nonRegAnnualContribution : 0)) / 12)

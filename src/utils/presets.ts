@@ -72,6 +72,7 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   rrspBalance: CRA_ECONOMIC_DEFAULTS.averageRrspBalance,
   tfsaBalance: CRA_ECONOMIC_DEFAULTS.averageTfsaBalance,
   fhsaBalance: 12000,
+  fhsaRemainingContributionRoom: 28000,
   nonRegBalance: CRA_ECONOMIC_DEFAULTS.averageNonRegBalance,
   rrspAnnualContribution: 6800,
   tfsaAnnualContribution: 5800,
@@ -90,7 +91,20 @@ export const CRA_CANADIAN_AVERAGE_INPUTS: RetirementInputs = {
   postRetirementReturn: 4.8, // FP Canada guideline for retirement
   inflationRate: 2.1, // Bank of Canada target
   nonRegYieldTaxRate: 1.2,
-  drawdownStrategy: 'tax_efficient'
+  drawdownStrategy: 'tax_efficient',
+  contributionAllocation: {
+    mode: 'dynamic_waterfall',
+    priorityOrder: ['rrsp', 'tfsa', 'fhsa', 'nonReg'],
+    customCaps: {},
+    autoApplyToInputs: true
+  },
+  employerMatch: {
+    enabled: false,
+    matchType: 'percent_of_salary',
+    matchPercentOfSalary: 4,
+    matchRatePercent: 100,
+    fixedAnnualAmount: 3000
+  }
 };
 
 export const PRESETS: ScenarioPreset[] = [
@@ -441,6 +455,7 @@ export const DEFAULT_SPOUSE_INPUTS: SpouseInputs = {
   tfsaBalance: 38000,
   tfsaAnnualContribution: 5500,
   fhsaBalance: 10000,
+  fhsaRemainingContributionRoom: 30000,
   fhsaAnnualContribution: 5000,
   fhsaOpenYear: 2023,
   fhsaIntent: 'rollover_to_rrsp',
@@ -453,7 +468,14 @@ export const DEFAULT_SPOUSE_INPUTS: SpouseInputs = {
   cppServiceCanadaEstimateAt65: 917,
   oasStartAge: 65,
   oasEligibleYearsInCanada: 40,
-  pensionIncomeSplitting: true
+  pensionIncomeSplitting: true,
+  employerMatch: {
+    enabled: false,
+    matchType: 'percent_of_salary',
+    matchPercentOfSalary: 4,
+    matchRatePercent: 100,
+    fixedAnnualAmount: 3000
+  }
 };
 
 // Initial default loads with official CRA & Statistics Canada national averages!

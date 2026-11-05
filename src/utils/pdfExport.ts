@@ -870,7 +870,7 @@ export function generateRetirementPdfReport(
           formatCur(inputs.fhsaBalance),
           `${formatCur(inputs.fhsaAnnualContribution)}/yr`,
           `${inputs.accountReturns?.fhsaReturn ?? 6.0}%`,
-          `Tax-deductible; tax-free for first home or rolls over to RRSP/RRIF within 15 years (${(inputs.fhsaOpenYear || 2023) + 15})`
+          `Tax-deductible; tax-free for first home or rolls over to RRSP/RRIF within 15 years (${(inputs.fhsaOpenYear || 2023) + 15})${inputs.fhsaRemainingContributionRoom !== undefined ? ` • ${formatCur(inputs.fhsaRemainingContributionRoom)} lifetime room left` : ''}`
         ],
         [
           'Non-Registered / Taxable Portfolio',

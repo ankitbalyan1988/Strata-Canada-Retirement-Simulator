@@ -23,6 +23,28 @@ export type DrawdownStrategyType =
 
 export type MaritalStatus = 'single' | 'married' | 'divorced';
 
+export type ContributionPriorityAccount = 'rrsp' | 'tfsa' | 'fhsa' | 'nonReg';
+
+export interface AccountContributionCapOverwrite {
+  enabled: boolean;
+  maxAmount: number;
+}
+
+export interface ContributionAllocationConfig {
+  mode: 'manual' | 'dynamic_waterfall';
+  priorityOrder: ContributionPriorityAccount[];
+  customCaps?: Partial<Record<ContributionPriorityAccount, AccountContributionCapOverwrite>>;
+  autoApplyToInputs?: boolean;
+}
+
+export interface EmployerMatchConfig {
+  enabled: boolean;
+  matchType: 'percent_of_salary' | 'percent_of_contribution' | 'fixed_dollar';
+  matchPercentOfSalary?: number; // e.g. 4 for 4% of base salary
+  matchRatePercent?: number; // e.g. 100 for 100% match, or 50 for 50% match
+  fixedAnnualAmount?: number; // e.g. $3,000 flat annual employer match
+}
+
 export type DebtCategory =
   | 'student_loan'
   | 'vehicle_loan'
@@ -96,9 +118,11 @@ export interface SpouseInputs {
   // Spouse Accounts
   rrspBalance: number;
   rrspAnnualContribution: number;
+  employerMatch?: EmployerMatchConfig;
   tfsaBalance: number;
   tfsaAnnualContribution: number;
   fhsaBalance: number;
+  fhsaRemainingContributionRoom?: number; // Remaining lifetime CRA contribution room out of $40,000 maximum limit
   fhsaAnnualContribution: number;
   fhsaOpenYear?: number; // Year FHSA was opened (determines 15-year participation period)
   fhsaIntent: 'home_purchase' | 'rollover_to_rrsp';
@@ -198,13 +222,16 @@ export interface RetirementInputs {
   rrspBalance: number;
   tfsaBalance: number;
   fhsaBalance: number;
+  fhsaRemainingContributionRoom?: number; // Remaining lifetime CRA contribution room out of $40,000 maximum limit
   nonRegBalance: number;
 
   // Pre-Retirement Annual Contributions (Primary)
   rrspAnnualContribution: number;
+  employerMatch?: EmployerMatchConfig;
   tfsaAnnualContribution: number;
   fhsaAnnualContribution: number;
   nonRegAnnualContribution: number;
+  contributionAllocation?: ContributionAllocationConfig;
 
   // Custom Non-Registered Sub-Accounts (Savings, Investment, GIC)
   nonRegCustomAccounts?: CustomNonRegAccount[];

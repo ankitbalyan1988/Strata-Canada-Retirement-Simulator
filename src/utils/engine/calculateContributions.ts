@@ -1,5 +1,6 @@
 import { RetirementInputs, SpouseInputs } from '../../types/retirement';
 import { calculateCanadianTax, TFSA_ANNUAL_LIMIT, FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT } from '../canadianTax';
+import { calculateEmployerRrspMatch } from '../employerMatch';
 
 export interface CustomAccountState {
   id: string;
@@ -200,7 +201,12 @@ export function calculateContributionsForYear(
     pYearIncome = Math.max(0, state.pEmploymentIncome);
     state.lifetimeEmploymentIncome += pYearIncome;
 
-    pRrspContrib = Math.max(0, inputs.rrspAnnualContribution);
+    let pEmployeeRrsp = Math.max(0, inputs.rrspAnnualContribution);
+    let pEmployerMatch = inputs.employerMatch?.enabled
+      ? calculateEmployerRrspMatch(pYearIncome, pEmployeeRrsp, inputs.employerMatch)
+      : 0;
+    pRrspContrib = pEmployeeRrsp + pEmployerMatch;
+
     pTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, inputs.tfsaAnnualContribution));
     if (state.pFhsaActive && state.pCumulativeFhsa < FHSA_LIFETIME_LIMIT) {
       const allowed = Math.min(FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT - state.pCumulativeFhsa, Math.max(0, inputs.fhsaAnnualContribution));
@@ -218,6 +224,64 @@ export function calculateContributionsForYear(
       pNonRegContrib = customContribSum;
     } else {
       pNonRegContrib = Math.max(0, inputs.nonRegAnnualContribution);
+    }
+
+    // Dynamic waterfall calculation: net of in-hand income minus living expenses, allocated by priority order
+    if (inputs.contributionAllocation?.mode === 'dynamic_waterfall' && (!stopContributionsAge || age < stopContributionsAge)) {
+      const pTaxBaseline = calculateCanadianTax(pYearIncome, inputs.province, age, 0).totalTax;
+      const pCppEi = Math.min(5200 * inflationFactor, pYearIncome * 0.075);
+      const pInHand = Math.max(0, pYearIncome - pTaxBaseline - pCppEi);
+      const estLivingCost = initialAnnualExpenses * inflationFactor;
+      let surplus = Math.max(0, pInHand - estLivingCost);
+
+      const pOrder = inputs.contributionAllocation.priorityOrder || ['rrsp', 'tfsa', 'fhsa', 'nonReg'];
+      const caps = inputs.contributionAllocation.customCaps || {};
+
+      pRrspContrib = 0;
+      pTfsaContrib = 0;
+      pFhsaContrib = 0;
+      pNonRegContrib = 0;
+
+      for (const acc of pOrder) {
+        if (surplus <= 0) break;
+
+        if (acc === 'rrsp') {
+          const rrspCap = caps.rrsp?.enabled ? caps.rrsp.maxAmount : Math.min(32490 * inflationFactor, pYearIncome * 0.18);
+          const c = Math.min(surplus, rrspCap);
+          pEmployeeRrsp = c;
+          pEmployerMatch = inputs.employerMatch?.enabled
+            ? calculateEmployerRrspMatch(pYearIncome, c, inputs.employerMatch)
+            : 0;
+          pRrspContrib = c + pEmployerMatch;
+          surplus -= c;
+        } else if (acc === 'tfsa') {
+          const tfsaCap = caps.tfsa?.enabled ? caps.tfsa.maxAmount : (TFSA_ANNUAL_LIMIT * inflationFactor);
+          const c = Math.min(surplus, tfsaCap);
+          pTfsaContrib = c;
+          surplus -= c;
+        } else if (acc === 'fhsa') {
+          if (state.pFhsaActive && state.pCumulativeFhsa < FHSA_LIFETIME_LIMIT) {
+            const maxFhsaRoom = Math.min(FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT - state.pCumulativeFhsa);
+            const fhsaCap = caps.fhsa?.enabled ? caps.fhsa.maxAmount : maxFhsaRoom;
+            const c = Math.min(surplus, fhsaCap);
+            pFhsaContrib = c;
+            state.pCumulativeFhsa += c;
+            surplus -= c;
+          }
+        } else if (acc === 'nonReg') {
+          const nonRegCap = caps.nonReg?.enabled ? caps.nonReg.maxAmount : Infinity;
+          const c = Math.min(surplus, nonRegCap);
+          pNonRegContrib = c;
+          surplus -= c;
+        }
+      }
+
+      if (hasCustomNonReg && balances.customAccountsState.length > 0) {
+        const perAcc = pNonRegContrib / balances.customAccountsState.length;
+        balances.customAccountsState.forEach((acc) => {
+          acc.currentContribution = perAcc;
+        });
+      }
     }
 
     if (stopContributionsAge !== undefined && age >= stopContributionsAge) {
@@ -275,7 +339,7 @@ export function calculateContributionsForYear(
       }
     }
 
-    pTaxable = Math.max(0, pYearIncome - pRrspContrib - pFhsaContrib);
+    pTaxable = Math.max(0, pYearIncome - pEmployeeRrsp - pFhsaContrib);
     pTaxPaid = calculateCanadianTax(pTaxable, inputs.province, age, 0).totalTax;
   }
 
@@ -299,7 +363,12 @@ export function calculateContributionsForYear(
     sYearIncome = Math.max(0, state.sEmploymentIncome);
     state.lifetimeEmploymentIncome += sYearIncome;
 
-    sRrspContrib = Math.max(0, spouse.rrspAnnualContribution);
+    let sEmployeeRrsp = Math.max(0, spouse.rrspAnnualContribution);
+    let sEmployerMatch = spouse.employerMatch?.enabled
+      ? calculateEmployerRrspMatch(sYearIncome, sEmployeeRrsp, spouse.employerMatch)
+      : 0;
+    sRrspContrib = sEmployeeRrsp + sEmployerMatch;
+
     sTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, spouse.tfsaAnnualContribution));
     if (state.sFhsaActive && state.sCumulativeFhsa < FHSA_LIFETIME_LIMIT) {
       const allowed = Math.min(FHSA_ANNUAL_LIMIT, FHSA_LIFETIME_LIMIT - state.sCumulativeFhsa, Math.max(0, spouse.fhsaAnnualContribution));
@@ -329,7 +398,7 @@ export function calculateContributionsForYear(
       }
     }
 
-    sTaxable = Math.max(0, sYearIncome - sRrspContrib - sFhsaContrib);
+    sTaxable = Math.max(0, sYearIncome - sEmployeeRrsp - sFhsaContrib);
     sTaxPaid = calculateCanadianTax(sTaxable, inputs.province, spouseAge!, 0).totalTax;
   }
 
