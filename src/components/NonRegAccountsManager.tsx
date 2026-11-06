@@ -184,22 +184,34 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
 
       {/* Cumulative Bucket Badge when Custom Accounts Exist */}
       {hasCustom && (
-        <div className="p-3 bg-purple-100/60 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl grid grid-cols-3 gap-2 text-center">
-          <div>
-            <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase block">Total Balance</span>
-            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono">
+        <div className="p-3 bg-purple-100/60 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl grid grid-cols-3 gap-2 text-center items-end">
+          <div className="flex flex-col justify-between h-full">
+            <div className="min-h-[28px] flex items-center justify-center">
+              <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
+                Total Balance
+              </span>
+            </div>
+            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono mt-1">
               ${Math.round(totalBalance).toLocaleString()}
             </span>
           </div>
-          <div>
-            <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase block">Total Annual Contributions Target</span>
-            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono">
+          <div className="flex flex-col justify-between h-full">
+            <div className="min-h-[28px] flex items-center justify-center">
+              <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
+                Total Annual Contributions Target
+              </span>
+            </div>
+            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono mt-1">
               ${Math.round(totalContribution).toLocaleString()}/yr
             </span>
           </div>
-          <div>
-            <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase block">Blended Return</span>
-            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono">
+          <div className="flex flex-col justify-between h-full">
+            <div className="min-h-[28px] flex items-center justify-center">
+              <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
+                Blended Return
+              </span>
+            </div>
+            <span className="text-sm font-extrabold text-purple-950 dark:text-purple-100 font-mono mt-1">
               {weightedReturn}%
             </span>
           </div>
@@ -209,31 +221,45 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
       {/* Simple View (No Custom Sub-accounts yet) */}
       {!hasCustom ? (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            <div>
-              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
+            <div className="flex flex-col justify-end">
+              <div className="min-h-[32px] flex flex-col justify-end pb-1">
+                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                  Current Balance
+                </label>
+              </div>
               <CurrencyInput
                 value={baseBalance}
                 onChange={(val) => onClearToSimple(val, baseAnnualContribution)}
                 min={0}
                 step={2000}
+                className="h-[34px]"
                 aria-label="Non-Registered Current Balance"
               />
             </div>
 
-            <div>
-              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
+            <div className="flex flex-col justify-end">
+              <div className="min-h-[32px] flex flex-col justify-end pb-1">
+                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                  Annual Contributions Target
+                </label>
+              </div>
               <CurrencyInput
                 value={baseAnnualContribution}
                 onChange={(val) => onClearToSimple(baseBalance, val)}
                 min={0}
                 step={1000}
+                className="h-[34px]"
                 aria-label="Non-Registered Annual Contributions Target"
               />
             </div>
 
-            <div>
-              <label className="text-[11px] font-medium text-purple-800 dark:text-purple-300 block mb-1 font-semibold">Expected Return</label>
+            <div className="flex flex-col justify-end">
+              <div className="min-h-[32px] flex flex-col justify-end pb-1">
+                <label className="text-[11px] font-medium text-purple-800 dark:text-purple-300 block leading-tight font-semibold">
+                  Expected Return
+                </label>
+              </div>
               <div className="relative">
                 <input
                   type="number"
@@ -242,7 +268,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                   step={0.1}
                   value={baseReturn}
                   onChange={(e) => onUpdate([], baseBalance, baseAnnualContribution, Number(e.target.value))}
-                  className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-purple-700 dark:text-purple-300 rounded-lg border border-purple-200 dark:border-slate-700 bg-white dark:bg-slate-950"
+                  className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-purple-700 dark:text-purple-300 rounded-lg border border-purple-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:outline-none transition"
                 />
                 <span className="absolute right-2.5 top-2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
               </div>
@@ -345,40 +371,48 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                   </div>
 
                   {/* Account Inputs Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  <div className={`grid grid-cols-1 sm:grid-cols-3 ${isGic ? 'lg:grid-cols-4' : ''} gap-2.5 items-end`}>
                     {/* Current Balance */}
-                    <div>
-                      <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block mb-0.5">Current Balance</label>
+                    <div className="flex flex-col justify-end">
+                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
+                        <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
+                          Current Balance
+                        </label>
+                      </div>
                       <CurrencyInput
                         value={acc.balance}
                         onChange={(val) => handleUpdateAccount(acc.id, { balance: val })}
                         min={0}
                         step={1000}
-                        className="text-xs font-mono font-bold"
+                        className="h-[34px] text-xs font-mono font-bold"
                         aria-label={`${acc.name} Balance`}
                       />
                     </div>
 
                     {/* Annual Contribution */}
-                    <div>
-                      <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block mb-0.5">
-                        {isGic ? 'Annual Addition' : 'Annual Contributions Target'}
-                      </label>
+                    <div className="flex flex-col justify-end">
+                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
+                        <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
+                          {isGic ? 'Annual Addition' : 'Annual Contributions Target'}
+                        </label>
+                      </div>
                       <CurrencyInput
                         value={acc.annualContribution}
                         onChange={(val) => handleUpdateAccount(acc.id, { annualContribution: val })}
                         min={0}
                         step={500}
-                        className="text-xs font-mono font-bold"
+                        className="h-[34px] text-xs font-mono font-bold"
                         aria-label={`${acc.name} Annual Contribution`}
                       />
                     </div>
 
                     {/* Expected Return */}
-                    <div>
-                      <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block mb-0.5">
-                        {isGic ? 'GIC Annual Return' : 'Expected Return'}
-                      </label>
+                    <div className="flex flex-col justify-end">
+                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
+                        <label className="text-[10px] font-medium text-purple-800 dark:text-purple-300 block leading-tight font-semibold">
+                          {isGic ? 'GIC Annual Return' : 'Expected Return'}
+                        </label>
+                      </div>
                       <div className="relative">
                         <input
                           type="number"
@@ -389,41 +423,38 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                           onChange={(e) =>
                             handleUpdateAccount(acc.id, { expectedReturn: Number(e.target.value) })
                           }
-                          className="w-full pl-2 pr-6 py-1 text-xs font-mono font-bold text-purple-800 dark:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950"
+                          className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-purple-800 dark:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:outline-none transition"
                         />
-                        <span className="absolute right-2 top-1.5 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
+                        <span className="absolute right-2.5 top-2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
                       </div>
                     </div>
 
                     {/* GIC Specific Close Date / Maturity Year */}
                     {isGic && (
-                      <div className="sm:col-span-3 lg:col-span-1 bg-amber-50/70 dark:bg-amber-500/10 p-1.5 rounded-lg border border-amber-200 dark:border-amber-500/20 flex flex-col justify-between">
-                        <label className="text-[10px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-amber-700 dark:text-amber-400" />
-                          GIC Close / Maturity Year
-                        </label>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <select
-                            value={acc.gicCloseYear || 2028}
-                            onChange={(e) => {
-                              const yr = Number(e.target.value);
-                              handleUpdateAccount(acc.id, {
-                                gicCloseYear: yr,
-                                gicCloseDate: `${yr}-12-31`
-                              });
-                            }}
-                            className="w-full py-1 px-1.5 text-xs font-mono font-bold text-amber-900 dark:text-amber-200 bg-white dark:bg-slate-950 border border-amber-300 dark:border-amber-600/40 rounded-md cursor-pointer"
-                          >
-                            {[2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035].map((year) => (
-                              <option key={year} value={year}>
-                                Year {year} ({year - 2026} yr term)
-                              </option>
-                            ))}
-                          </select>
+                      <div className="flex flex-col justify-end">
+                        <div className="min-h-[34px] flex flex-col justify-end pb-1">
+                          <label className="text-[10px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1 leading-tight">
+                            <Calendar className="w-3 h-3 text-amber-700 dark:text-amber-400" />
+                            GIC Maturity Year
+                          </label>
                         </div>
-                        <span className="text-[9px] text-amber-800 dark:text-amber-300 mt-0.5 leading-tight block">
-                          Principal + yield roll into liquid Non-Reg upon maturity.
-                        </span>
+                        <select
+                          value={acc.gicCloseYear || 2028}
+                          onChange={(e) => {
+                            const yr = Number(e.target.value);
+                            handleUpdateAccount(acc.id, {
+                              gicCloseYear: yr,
+                              gicCloseDate: `${yr}-12-31`
+                            });
+                          }}
+                          className="w-full h-[34px] px-2 text-xs font-mono font-bold text-amber-900 dark:text-amber-200 bg-white dark:bg-slate-950 border border-amber-300 dark:border-amber-600/40 rounded-lg cursor-pointer focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:outline-none transition"
+                        >
+                          {[2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035].map((year) => (
+                            <option key={year} value={year}>
+                              Year {year} ({year - 2026} yr term)
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     )}
                   </div>
@@ -445,7 +476,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                 className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700/60 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                + Savings (HISA)
+                <span>Savings (HISA)</span>
               </button>
               <button
                 type="button"
@@ -453,7 +484,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                 className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-purple-200 dark:border-purple-700/60 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                + Investment
+                <span>Investment</span>
               </button>
               <button
                 type="button"
@@ -461,7 +492,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                 className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
               >
                 <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                + GIC
+                <span>GIC</span>
               </button>
             </div>
           </div>

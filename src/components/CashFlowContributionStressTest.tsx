@@ -587,7 +587,7 @@ export const CashFlowContributionStressTest: React.FC<CashFlowContributionStress
                           <span className="text-xs text-slate-400 font-medium">/yr</span>
                         </div>
                         <span className="text-[10.5px] text-slate-500 dark:text-slate-400 font-mono block">
-                          ({formatCur(item.monthlyAmount)}/mo)
+                          ({item.monthlyAmount === 0 ? '$0/mo' : `$${item.monthlyAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mo`})
                         </span>
                       </div>
 
@@ -599,7 +599,7 @@ export const CashFlowContributionStressTest: React.FC<CashFlowContributionStress
                               item.isCapped ? 'bg-emerald-500' : 'bg-indigo-500'
                             }`}
                             style={{ 
-                              width: `${Math.min(100, Math.round((item.allocatedAmount / item.effectiveCap) * 100))}%` 
+                              width: `${Math.min(100, Math.round(((item.totalAdditionAmount ?? item.allocatedAmount) / (item.totalStatutoryRoom ?? item.effectiveCap)) * 100))}%` 
                             }}
                           />
                         </div>
@@ -607,16 +607,27 @@ export const CashFlowContributionStressTest: React.FC<CashFlowContributionStress
 
                       {/* Cap status */}
                       <div className="text-[10.5px] text-slate-500 dark:text-slate-400 flex items-center justify-between mt-1">
-                        <span>Max Cap:</span>
+                        <span>{accountKey === 'rrsp' && (item.employerMatchAmount || 0) > 0 ? 'Total CRA Room:' : 'Max Cap:'}</span>
                         <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-                          {item.effectiveCap === Infinity ? 'Unlimited' : `${formatCur(item.effectiveCap)}/yr`}
+                          {item.effectiveCap === Infinity ? 'Unlimited' : `${formatCur(item.totalStatutoryRoom ?? item.effectiveCap)}/yr`}
                         </span>
                       </div>
 
-                      {accountKey === 'rrsp' && result.primaryEmployerMatch > 0 && (
-                        <div className="mt-1.5 px-2 py-0.5 rounded bg-blue-100/70 dark:bg-blue-500/20 text-[10px] font-semibold text-blue-800 dark:text-blue-200 flex items-center justify-between">
-                          <span>🏢 Employer Match:</span>
-                          <span className="font-mono font-bold">+{formatCur(result.primaryEmployerMatch)}/yr</span>
+                      {accountKey === 'rrsp' && (item.employerMatchAmount || result.primaryEmployerMatch) > 0 && (
+                        <div className="mt-2 px-2.5 py-1.5 rounded-lg bg-blue-100/70 dark:bg-blue-500/20 text-[10.5px] font-semibold text-blue-900 dark:text-blue-100 flex flex-col gap-1 border border-blue-200/60 dark:border-blue-500/30">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <span>🏢 Employer Match:</span>
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-blue-200/80 dark:bg-blue-400/20 text-blue-800 dark:text-blue-200 font-bold">Consumes Room</span>
+                            </span>
+                            <span className="font-mono font-bold">+{formatCur(item.employerMatchAmount ?? result.primaryEmployerMatch)}/yr</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-blue-700 dark:text-blue-300 border-t border-blue-200/50 dark:border-blue-400/20 pt-1">
+                            <span>Total Compounding in RRSP:</span>
+                            <span className="font-mono font-bold text-slate-900 dark:text-white">
+                              {formatCur(item.totalAdditionAmount ?? (item.allocatedAmount + result.primaryEmployerMatch))}/yr
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>

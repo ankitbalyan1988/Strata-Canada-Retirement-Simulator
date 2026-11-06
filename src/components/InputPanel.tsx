@@ -1639,7 +1639,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">
-                              CRA note: Employer Group RRSP/DPSP matching is added directly to your retirement portfolio tax-free at contribution (neutral on take-home pay via equal deduction receipt).
+                              CRA note: An employer's group RRSP / DPSP contribution consumes your overall statutory RRSP deduction limit ($32,490/yr). Your out-of-pocket paycheck contributions (${inputs.rrspAnnualContribution.toLocaleString()}/yr) plus employer match (${matchVal.toLocaleString()}/yr) together fill your statutory room without overcontributing.
                             </p>
                           </div>
                         );

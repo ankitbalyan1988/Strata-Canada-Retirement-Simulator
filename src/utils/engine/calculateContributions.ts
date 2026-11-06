@@ -205,6 +205,10 @@ export function calculateContributionsForYear(
     let pEmployerMatch = inputs.employerMatch?.enabled
       ? calculateEmployerRrspMatch(pYearIncome, pEmployeeRrsp, inputs.employerMatch)
       : 0;
+    const pStatutoryRrspCap = Math.min(32490 * inflationFactor, pYearIncome * 0.18);
+    if (pEmployeeRrsp + pEmployerMatch > pStatutoryRrspCap) {
+      pEmployeeRrsp = Math.max(0, pStatutoryRrspCap - pEmployerMatch);
+    }
     pRrspContrib = pEmployeeRrsp + pEmployerMatch;
 
     pTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, inputs.tfsaAnnualContribution));
@@ -246,12 +250,37 @@ export function calculateContributionsForYear(
         if (surplus <= 0) break;
 
         if (acc === 'rrsp') {
-          const rrspCap = caps.rrsp?.enabled ? caps.rrsp.maxAmount : Math.min(32490 * inflationFactor, pYearIncome * 0.18);
-          const c = Math.min(surplus, rrspCap);
+          const rrspTotalRoom = caps.rrsp?.enabled ? caps.rrsp.maxAmount : Math.min(32490 * inflationFactor, pYearIncome * 0.18);
+          
+          let potentialEmployerMatch = 0;
+          if (inputs.employerMatch?.enabled) {
+            if (inputs.employerMatch.matchType === 'fixed_dollar') {
+              potentialEmployerMatch = Math.min(rrspTotalRoom, Math.max(0, inputs.employerMatch.fixedAnnualAmount || 0));
+            } else if (inputs.employerMatch.matchType === 'percent_of_contribution') {
+              const rate = (inputs.employerMatch.matchRatePercent ?? 50) / 100;
+              const maxSalaryCap = pYearIncome > 0 ? pYearIncome * ((inputs.employerMatch.matchPercentOfSalary ?? 6) / 100) : Infinity;
+              const employeeCapNoSalary = rrspTotalRoom / (1 + rate);
+              const employeeCapWithSalary = Math.max(0, rrspTotalRoom - maxSalaryCap);
+              const maxEmployee = Math.max(0, Math.min(employeeCapNoSalary, employeeCapWithSalary));
+              potentialEmployerMatch = Math.min(rrspTotalRoom, Math.min(maxEmployee * rate, maxSalaryCap));
+            } else {
+              const matchPercent = (inputs.employerMatch.matchPercentOfSalary ?? 4) / 100;
+              const matchRate = (inputs.employerMatch.matchRatePercent ?? 100) / 100;
+              potentialEmployerMatch = Math.min(rrspTotalRoom, Math.round(pYearIncome * matchPercent * matchRate));
+            }
+          }
+
+          // CRA Rule: Employer group RRSP/DPSP contribution consumes employee's overall statutory RRSP room.
+          // Paycheck out-of-pocket contribution is capped at rrspTotalRoom - employerMatch.
+          const maxEmployeeRrsp = Math.max(0, rrspTotalRoom - potentialEmployerMatch);
+          const c = Math.min(surplus, maxEmployeeRrsp);
           pEmployeeRrsp = c;
           pEmployerMatch = inputs.employerMatch?.enabled
             ? calculateEmployerRrspMatch(pYearIncome, c, inputs.employerMatch)
             : 0;
+          if (c + pEmployerMatch > rrspTotalRoom) {
+            pEmployerMatch = Math.max(0, rrspTotalRoom - c);
+          }
           pRrspContrib = c + pEmployerMatch;
           surplus -= c;
         } else if (acc === 'tfsa') {
@@ -367,6 +396,10 @@ export function calculateContributionsForYear(
     let sEmployerMatch = spouse.employerMatch?.enabled
       ? calculateEmployerRrspMatch(sYearIncome, sEmployeeRrsp, spouse.employerMatch)
       : 0;
+    const sStatutoryRrspCap = Math.min(32490 * inflationFactor, sYearIncome * 0.18);
+    if (sEmployeeRrsp + sEmployerMatch > sStatutoryRrspCap) {
+      sEmployeeRrsp = Math.max(0, sStatutoryRrspCap - sEmployerMatch);
+    }
     sRrspContrib = sEmployeeRrsp + sEmployerMatch;
 
     sTfsaContrib = Math.min(TFSA_ANNUAL_LIMIT * inflationFactor, Math.max(0, spouse.tfsaAnnualContribution));

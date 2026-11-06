@@ -32,8 +32,11 @@ export interface AccountAllocationDetail {
   rank: number;
   statutoryLimit: number;
   customCap?: number;
-  effectiveCap: number;
-  allocatedAmount: number;
+  effectiveCap: number; // Employee paycheck contribution cap
+  totalStatutoryRoom?: number; // Total combined account ceiling (e.g. $32,490 CRA limit)
+  employerMatchAmount?: number; // Employer match portion
+  totalAdditionAmount?: number; // Combined Employee + Employer additions compounding
+  allocatedAmount: number; // Employee paycheck allocation
   monthlyAmount: number;
   isCapped: boolean;
   remainingRoomAfterAllocation: number;
@@ -314,21 +317,69 @@ export function runCashFlowStressTest(inputs: RetirementInputs): CashFlowStressT
     const isCustom = Boolean(overwrite && overwrite.enabled && overwrite.maxAmount >= 0);
     const customCap = isCustom ? overwrite!.maxAmount : undefined;
     
-    // Effective cap: user custom overwrite or statutory limit
-    const effectiveCap = isCustom ? customCap! : meta.statutoryLimit;
+    // Overall account ceiling (user custom overwrite or CRA statutory limit)
+    const totalAccountCap = isCustom ? customCap! : meta.statutoryLimit;
 
-    // Allocate up to effective cap from available cash flow surplus
-    const allocated = Math.min(remainingSurplusToAllocate, effectiveCap);
+    let employerMatchPortion = 0;
+    let effectiveEmployeeCap = totalAccountCap;
+
+    if (accKey === 'rrsp' && inputs.employerMatch?.enabled) {
+      if (inputs.employerMatch.matchType === 'fixed_dollar') {
+        employerMatchPortion = Math.min(totalAccountCap, Math.max(0, inputs.employerMatch.fixedAnnualAmount || 0));
+      } else if (inputs.employerMatch.matchType === 'percent_of_contribution') {
+        const rate = (inputs.employerMatch.matchRatePercent ?? 50) / 100;
+        const maxSalaryCap = inputs.currentAnnualIncome > 0
+          ? inputs.currentAnnualIncome * ((inputs.employerMatch.matchPercentOfSalary ?? 6) / 100)
+          : Infinity;
+        // Total addition = employee + min(employee * rate, maxSalaryCap) <= totalAccountCap
+        const employeeCapNoSalary = totalAccountCap / (1 + rate);
+        const employeeCapWithSalary = Math.max(0, totalAccountCap - maxSalaryCap);
+        const maxEmployee = Math.max(0, Math.min(employeeCapNoSalary, employeeCapWithSalary));
+        employerMatchPortion = Math.min(totalAccountCap, Math.min(maxEmployee * rate, maxSalaryCap));
+      } else {
+        // Default: percent_of_salary
+        const matchPercent = (inputs.employerMatch.matchPercentOfSalary ?? 4) / 100;
+        const matchRate = (inputs.employerMatch.matchRatePercent ?? 100) / 100;
+        const maxSalaryMatch = inputs.currentAnnualIncome * matchPercent * matchRate;
+        employerMatchPortion = Math.min(totalAccountCap, Math.round(maxSalaryMatch));
+      }
+
+      // CRA Rule: Employer group RRSP/DPSP contributions consume the employee's statutory RRSP room.
+      // Employee out-of-pocket paycheck contribution is capped at total cap minus employer match.
+      effectiveEmployeeCap = Math.max(0, totalAccountCap - employerMatchPortion);
+    }
+
+    // Allocate up to effective employee cap from available cash flow surplus
+    const allocated = Math.min(remainingSurplusToAllocate, effectiveEmployeeCap);
     remainingSurplusToAllocate -= allocated;
+
+    // Actual match triggered by this allocated employee contribution
+    let actualMatch = 0;
+    if (accKey === 'rrsp' && inputs.employerMatch?.enabled) {
+      actualMatch = calculateEmployerRrspMatch(inputs.currentAnnualIncome, allocated, inputs.employerMatch);
+      // Ensure combined additions don't exceed the total account ceiling
+      if (allocated + actualMatch > totalAccountCap) {
+        actualMatch = Math.max(0, totalAccountCap - allocated);
+      }
+    }
+
+    const totalAddition = accKey === 'rrsp' ? allocated + actualMatch : allocated;
+    const monthlyAlloc = Math.round((allocated / 12) * 100) / 100;
 
     let note = '';
     let remainingRoomAfter = 0;
 
     if (accKey === 'rrsp') {
-      remainingRoomAfter = Math.max(0, meta.statutoryLimit - allocated);
-      note = isCustom 
-        ? `Custom cap applied ($${customCap?.toLocaleString()}/yr).`
-        : `18% earned income CRA room ($${meta.statutoryLimit.toLocaleString()}/yr).`;
+      remainingRoomAfter = Math.max(0, totalAccountCap - totalAddition);
+      const matchToShow = actualMatch > 0 ? actualMatch : employerMatchPortion;
+      if (matchToShow > 0) {
+        const monthlyEmployeeCap = (effectiveEmployeeCap / 12).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        note = `CRA limit: $${totalAccountCap.toLocaleString()}/yr. Employer match ($${matchToShow.toLocaleString()}/yr) consumes room, leaving $${effectiveEmployeeCap.toLocaleString()}/yr ($${monthlyEmployeeCap}/mo) for employee paycheck contributions.`;
+      } else {
+        note = isCustom 
+          ? `Custom cap applied ($${customCap?.toLocaleString()}/yr).`
+          : `18% earned income CRA room ($${meta.statutoryLimit.toLocaleString()}/yr).`;
+      }
     } else if (accKey === 'tfsa') {
       remainingRoomAfter = Math.max(0, meta.statutoryLimit - allocated);
       note = isCustom 
@@ -344,16 +395,23 @@ export function runCashFlowStressTest(inputs: RetirementInputs): CashFlowStressT
       note = 'Unlimited capacity. Catches all residual surplus cash flow.';
     }
 
+    const isCapped = accKey === 'rrsp'
+      ? (totalAddition >= totalAccountCap && totalAccountCap < Infinity) || (allocated >= effectiveEmployeeCap && effectiveEmployeeCap < Infinity)
+      : (allocated >= effectiveEmployeeCap && effectiveEmployeeCap < Infinity);
+
     waterfallAllocations[accKey] = {
       account: accKey,
       name: meta.name,
       rank: index + 1,
       statutoryLimit: meta.statutoryLimit,
       customCap,
-      effectiveCap,
+      effectiveCap: effectiveEmployeeCap,
+      totalStatutoryRoom: totalAccountCap,
+      employerMatchAmount: accKey === 'rrsp' ? (actualMatch > 0 ? actualMatch : employerMatchPortion) : 0,
+      totalAdditionAmount: Math.round(totalAddition),
       allocatedAmount: Math.round(allocated),
-      monthlyAmount: Math.round(allocated / 12),
-      isCapped: allocated >= effectiveCap && effectiveCap < Infinity,
+      monthlyAmount: monthlyAlloc,
+      isCapped,
       remainingRoomAfterAllocation: remainingRoomAfter,
       note
     };
