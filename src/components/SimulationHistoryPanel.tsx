@@ -43,8 +43,11 @@ export const SimulationHistoryPanel: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [newLabelInput, setNewLabelInput] = useState('');
+  const [newNotesInput, setNewNotesInput] = useState('');
+  const [showNotesField, setShowNotesField] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState('');
+  const [editingNotes, setEditingNotes] = useState('');
   const [expandedDiffId, setExpandedDiffId] = useState<string | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
   const [justRestoredId, setJustRestoredId] = useState<string | null>(null);
@@ -78,8 +81,11 @@ export const SimulationHistoryPanel: React.FC = () => {
   const handleCapture = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const label = newLabelInput.trim() || undefined;
-    const snap = saveSnapshot(label, undefined, 'manual');
+    const notes = newNotesInput.trim() || undefined;
+    const snap = saveSnapshot(label, notes, 'manual');
     setNewLabelInput('');
+    setNewNotesInput('');
+    setShowNotesField(false);
     setSaveSuccessMessage(`Captured: "${snap.label}"`);
     setTimeout(() => setSaveSuccessMessage(null), 3000);
   };
@@ -90,14 +96,15 @@ export const SimulationHistoryPanel: React.FC = () => {
     setTimeout(() => setJustRestoredId(null), 2500);
   };
 
-  const handleStartRename = (id: string, currentText: string) => {
+  const handleStartRename = (id: string, currentText: string, currentNotes?: string) => {
     setEditingId(id);
     setEditingLabel(currentText);
+    setEditingNotes(currentNotes || '');
   };
 
   const handleSaveRename = (id: string) => {
     if (editingLabel.trim()) {
-      renameSnapshot(id, editingLabel.trim());
+      renameSnapshot(id, editingLabel.trim(), editingNotes.trim());
     }
     setEditingId(null);
   };
@@ -196,25 +203,55 @@ export const SimulationHistoryPanel: React.FC = () => {
 
           {/* Quick Capture Bar */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-950/20">
-            <form onSubmit={handleCapture} className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={newLabelInput}
-                  onChange={(e) => setNewLabelInput(e.target.value)}
-                  placeholder={`Snapshot name (e.g. Age ${currentInputs.retirementAge} + Downsizing)...`}
-                  className="w-full text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2 pr-8 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs font-medium"
-                />
-                <Camera className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <form onSubmit={handleCapture} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    maxLength={80}
+                    value={newLabelInput}
+                    onChange={(e) => setNewLabelInput(e.target.value)}
+                    placeholder={`Snapshot title (e.g. Age ${currentInputs.retirementAge} + Downsizing)...`}
+                    className="w-full text-xs bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/30 rounded-xl px-3 py-2 pr-14 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 shadow-2xs font-medium"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9.5px] font-mono text-slate-400 pointer-events-none">
+                    {newLabelInput.length}/80
+                  </span>
+                </div>
+                <button
+                  type="submit"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Capture</span>
+                </button>
               </div>
-              <button
-                type="submit"
-                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>Capture</span>
-              </button>
+
+              {/* Optional Description / Scenario Notes Accordion */}
+              {showNotesField ? (
+                <div className="relative animate-in slide-in-from-top-1 duration-150">
+                  <input
+                    type="text"
+                    maxLength={200}
+                    value={newNotesInput}
+                    onChange={(e) => setNewNotesInput(e.target.value)}
+                    placeholder="Optional scenario notes / assumptions (max 200 chars)..."
+                    className="w-full text-[11px] bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-500/20 rounded-xl px-3 py-1.5 pr-14 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500/40"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-mono text-slate-400 pointer-events-none">
+                    {newNotesInput.length}/200
+                  </span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowNotesField(true)}
+                  className="self-start text-[10.5px] text-emerald-700 dark:text-emerald-400 hover:underline font-medium cursor-pointer"
+                >
+                  + Add scenario description (optional)
+                </button>
+              )}
             </form>
 
             {saveSuccessMessage && (
@@ -348,36 +385,74 @@ export const SimulationHistoryPanel: React.FC = () => {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           {isEditing ? (
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="text"
-                                value={editingLabel}
-                                onChange={(e) => setEditingLabel(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(snapshot.id)}
-                                autoFocus
-                                className="text-xs font-bold bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded border border-emerald-500 text-slate-900 dark:text-slate-100 focus:outline-none w-full"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleSaveRename(snapshot.id)}
-                                className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 text-xs"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
+                            <div className="flex flex-col gap-1.5 w-full bg-slate-50 dark:bg-slate-800/60 p-2 rounded-xl border border-emerald-400 dark:border-emerald-500/40">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editingLabel}
+                                  onChange={(e) => setEditingLabel(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(snapshot.id)}
+                                  autoFocus
+                                  placeholder="Snapshot title (max 80 chars)"
+                                  className="text-xs font-bold bg-white dark:bg-slate-900 px-2 py-1.5 pr-12 rounded-lg border border-emerald-500 text-slate-900 dark:text-slate-100 focus:outline-none w-full"
+                                />
+                                <span className="absolute right-2 top-1.5 text-[9px] font-mono text-slate-400 pointer-events-none">
+                                  {editingLabel.length}/80
+                                </span>
+                              </div>
+                              <div className="relative">
+                                <textarea
+                                  maxLength={200}
+                                  rows={2}
+                                  value={editingNotes}
+                                  onChange={(e) => setEditingNotes(e.target.value)}
+                                  placeholder="Optional description / notes (max 200 chars)"
+                                  className="text-[11px] bg-white dark:bg-slate-900 px-2 py-1 pr-14 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none w-full resize-none leading-relaxed"
+                                />
+                                <span className="absolute right-2 bottom-1.5 text-[9px] font-mono text-slate-400 pointer-events-none">
+                                  {editingNotes.length}/200
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(null)}
+                                  className="px-2 py-0.5 rounded text-[10.5px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveRename(snapshot.id)}
+                                  className="px-2.5 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-500 text-[10.5px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  <span>Save</span>
+                                </button>
+                              </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-1.5 group">
-                              <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                                {snapshot.label}
-                              </h4>
-                              <button
-                                type="button"
-                                onClick={() => handleStartRename(snapshot.id, snapshot.label)}
-                                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
-                                title="Rename snapshot"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
+                            <div className="group">
+                              <div className="flex items-start gap-1.5">
+                                <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] leading-snug">
+                                  {snapshot.label}
+                                </h4>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartRename(snapshot.id, snapshot.label, snapshot.notes)}
+                                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition shrink-0 p-0.5 cursor-pointer"
+                                  title="Rename snapshot & edit description"
+                                  aria-label="Rename snapshot"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                              {snapshot.notes && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 break-words [overflow-wrap:anywhere] leading-relaxed line-clamp-3" title={snapshot.notes}>
+                                  {snapshot.notes}
+                                </p>
+                              )}
                             </div>
                           )}
 

@@ -693,13 +693,20 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     const state = get();
     const timestamp = Date.now();
     const timeStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const defaultLabel = customLabel || `Scenario @ Age ${state.inputs.retirementAge} (${timeStr})`;
+    
+    // Character limits: max 80 for title, max 200 for description/notes
+    const SNAPSHOT_TITLE_MAX = 80;
+    const SNAPSHOT_NOTES_MAX = 200;
+
+    const trimmedLabel = customLabel ? customLabel.trim().slice(0, SNAPSHOT_TITLE_MAX) : '';
+    const defaultLabel = trimmedLabel || `Scenario @ Age ${state.inputs.retirementAge} (${timeStr})`;
+    const trimmedNotes = notes ? notes.trim().slice(0, SNAPSHOT_NOTES_MAX) : undefined;
 
     const snapshot: SimulationSnapshot = {
       id: `snap_${timestamp}_${Math.random().toString(36).substring(2, 7)}`,
       timestamp,
       label: defaultLabel,
-      notes,
+      notes: trimmedNotes,
       source,
       inputs: JSON.parse(JSON.stringify(state.inputs)),
       summary: JSON.parse(JSON.stringify(state.summary)),
@@ -768,12 +775,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   renameSnapshot: (snapshotId, label, notes) => {
+    const cleanLabel = (label || '').trim().slice(0, 80);
+    const cleanNotes = notes !== undefined ? notes.trim().slice(0, 200) : undefined;
     const nextHistory = get().history.map((s) => {
       if (s.id === snapshotId) {
         return {
           ...s,
-          label,
-          ...(notes !== undefined ? { notes } : {})
+          label: cleanLabel || s.label,
+          ...(cleanNotes !== undefined ? { notes: cleanNotes } : {})
         };
       }
       return s;

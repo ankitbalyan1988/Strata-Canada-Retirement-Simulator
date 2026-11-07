@@ -129,8 +129,8 @@ export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = (
 
   // Chart Dimensions & Scales
   const svgWidth = 860;
-  const svgHeight = 340;
-  const padding = { top: 38, right: 30, bottom: 45, left: 65 };
+  const svgHeight = 355;
+  const padding = { top: 56, right: 30, bottom: 45, left: 65 };
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
@@ -187,20 +187,142 @@ export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = (
     return chartData.find((d) => d.age === hoveredAge) ?? null;
   }, [hoveredAge, chartData]);
 
-  // Milestone points on chart
+  // Raw Milestone points on chart
   const milestones = useMemo(() => {
     const list: { age: number; label: string; color: string; sublabel?: string }[] = [];
     if (minAge <= retirementAge && retirementAge <= maxAge) {
-      list.push({ age: retirementAge, label: `Retirement (${retirementAge})`, color: '#10b981' });
+      const label = retirementAge === 71 
+        ? 'Age 71 (Retire + RRIF)' 
+        : retirementAge === 65 
+        ? 'Age 65 (Retire + Pensions)' 
+        : `Retire (Age ${retirementAge})`;
+      list.push({ age: retirementAge, label, color: '#10b981' });
     }
     if (minAge <= 65 && 65 <= maxAge && retirementAge !== 65) {
-      list.push({ age: 65, label: 'Age 65 (OAS/CPP)', color: '#3b82f6' });
+      list.push({ age: 65, label: 'Age 65 (OAS/CPP)', color: '#0284c7' });
     }
-    if (minAge <= 71 && 71 <= maxAge) {
-      list.push({ age: 71, label: 'Age 71 (RRIF Rollover)', color: '#f59e0b' });
+    if (minAge <= 71 && 71 <= maxAge && retirementAge !== 71) {
+      list.push({ age: 71, label: 'Age 71 (RRIF Rollover)', color: '#d97706' });
     }
     return list;
   }, [minAge, maxAge, retirementAge]);
+
+  // Smart Multi-Tier Milestone Layout with collision avoidance & leader lines
+  interface PositionedMilestone {
+    age: number;
+    label: string;
+    color: string;
+    x: number;
+    badgeX: number;
+    badgeY: number;
+    badgeWidth: number;
+    badgeHeight: number;
+    tier: number;
+  }
+
+  const positionedMilestones = useMemo<PositionedMilestone[]>(() => {
+    const sorted = [...milestones].sort((a, b) => a.age - b.age);
+    if (sorted.length === 0) return [];
+
+    const minClearance = 96; // Minimum pixels between badge centers on the same horizontal tier
+    const result: PositionedMilestone[] = [];
+
+    sorted.forEach((m, i) => {
+      const x = getX(m.age);
+      const badgeWidth = m.label.length >= 20 ? 116 : m.label.length >= 16 ? 100 : 90;
+      const badgeHeight = 18;
+
+      let tier = 0;
+      let badgeX = x;
+
+      if (i > 0) {
+        const prev = result[i - 1];
+        const dist = Math.abs(x - prev.x);
+        if (dist < minClearance) {
+          // Horizontal collision detected: alternate tier (Tier 1 is elevated above Tier 0)
+          tier = prev.tier === 0 ? 1 : 0;
+
+          // If extremely close (e.g. 1 year apart, ~18px), gently nudge badge centers apart
+          if (dist < 32) {
+            badgeX = x + 10;
+            if (prev.badgeX === prev.x) {
+              prev.badgeX = prev.x - 10;
+            }
+          }
+        }
+      }
+
+      // Clamp badgeX within SVG chart margins to avoid clipping at chart edges
+      const halfW = badgeWidth / 2;
+      const minX = padding.left + halfW + 2;
+      const maxX = padding.left + chartWidth - halfW - 2;
+      badgeX = Math.max(minX, Math.min(maxX, badgeX));
+
+      // Tier 0 (lower): padding.top - 21 (Y: 35 to 53)
+      // Tier 1 (upper): padding.top - 43 (Y: 13 to 31) - 4px clearance between tracks
+      const badgeY = tier === 1 ? padding.top - 43 : padding.top - 21;
+
+      result.push({
+        age: m.age,
+        label: m.label,
+        color: m.color,
+        x,
+        badgeX,
+        badgeY,
+        badgeWidth,
+        badgeHeight,
+        tier
+      });
+    });
+
+    return result;
+  }, [milestones, getX, padding.left, padding.top, chartWidth]);
+
+  // Intelligent collision-free X-axis ticks (guarantees >= 52px spacing, eliminating label overlaps)
+  const xAxisTicks = useMemo(() => {
+    if (chartData.length === 0) return [];
+
+    const minPixelDistance = 52;
+    const criticalAges = new Set<number>();
+    criticalAges.add(chartData[0].age);
+    criticalAges.add(chartData[chartData.length - 1].age);
+    if (retirementAge >= minAge && retirementAge <= maxAge) {
+      criticalAges.add(retirementAge);
+    }
+
+    const regularStep = Math.max(4, Math.round(ageSpan / 7));
+    const candidateAges: number[] = [];
+
+    for (let a = minAge; a <= maxAge; a++) {
+      if (criticalAges.has(a) || (a - minAge) % regularStep === 0) {
+        candidateAges.push(a);
+      }
+    }
+    candidateAges.sort((a, b) => a - b);
+
+    const accepted: number[] = [];
+    
+    // Always insert critical milestone ages first
+    for (const ca of Array.from(criticalAges).sort((a, b) => a - b)) {
+      accepted.push(ca);
+    }
+
+    // Now insert candidate regular ages that don't collide with existing accepted ticks
+    for (const cand of candidateAges) {
+      if (accepted.includes(cand)) continue;
+      const candX = getX(cand);
+      const hasConflict = accepted.some((acc) => Math.abs(getX(acc) - candX) < minPixelDistance);
+      if (!hasConflict) {
+        accepted.push(cand);
+      }
+    }
+
+    accepted.sort((a, b) => a - b);
+
+    return accepted
+      .map((a) => chartData.find((d) => d.age === a))
+      .filter((d): d is YearSimulationResult => Boolean(d));
+  }, [chartData, minAge, maxAge, ageSpan, retirementAge, getX]);
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-sm transition-all">
@@ -416,39 +538,86 @@ export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = (
             );
           })}
 
-          {/* Milestone Vertical Reference Lines (Retirement, Age 65, Age 71) */}
-          {milestones.map((m) => {
-            const x = getX(m.age);
+          {/* Milestone Vertical Reference Lines (Retirement, Age 65, Age 71) with Multi-Tier Collision Avoidance */}
+          {positionedMilestones.map((m) => {
+            const isHovered = hoveredAge === m.age;
+            const badgeHalfW = m.badgeWidth / 2;
+            const hasLeaderLine = m.tier === 1 || Math.abs(m.badgeX - m.x) > 2;
+
             return (
-              <g key={`milestone-${m.age}`}>
+              <g
+                key={`milestone-${m.age}`}
+                className="cursor-pointer group"
+                onClick={() => setHoveredAge(m.age)}
+                onMouseEnter={() => setHoveredAge(m.age)}
+              >
+                {/* Full-height vertical reference dashed line */}
                 <line
-                  x1={x}
+                  x1={m.x}
                   y1={padding.top}
-                  x2={x}
+                  x2={m.x}
                   y2={padding.top + chartHeight}
                   stroke={m.color}
-                  strokeWidth="1.5"
+                  strokeWidth={isHovered ? '2' : '1.5'}
                   strokeDasharray="4 3"
-                  opacity="0.6"
+                  opacity={isHovered ? '0.9' : '0.55'}
+                  className="transition-all"
                 />
+
+                {/* Leader line connecting elevated/offset badge down to timeline anchor */}
+                {hasLeaderLine && (
+                  <path
+                    d={`M ${m.badgeX} ${m.badgeY + m.badgeHeight} L ${m.badgeX} ${padding.top - 5} L ${m.x} ${padding.top}`}
+                    stroke={m.color}
+                    strokeWidth="1.2"
+                    strokeDasharray="2 2"
+                    fill="none"
+                    opacity={isHovered ? '0.85' : '0.6'}
+                  />
+                )}
+
+                {/* Anchor indicator dot on top grid line */}
+                <circle
+                  cx={m.x}
+                  cy={padding.top}
+                  r="2.5"
+                  fill={m.color}
+                />
+
+                {/* Staggered Milestone Pill Badge */}
                 <rect
-                  x={x - 42}
-                  y={padding.top - 20}
-                  width="84"
-                  height="16"
-                  rx="4"
+                  x={m.badgeX - badgeHalfW}
+                  y={m.badgeY}
+                  width={m.badgeWidth}
+                  height={m.badgeHeight}
+                  rx="5"
                   fill="currentColor"
-                  className="text-white dark:text-slate-800"
+                  className={`text-white dark:text-slate-900 transition-all ${
+                    isHovered
+                      ? 'filter drop-shadow-md'
+                      : 'filter drop-shadow-xs'
+                  }`}
                   stroke={m.color}
-                  strokeWidth="1"
+                  strokeWidth={isHovered ? '1.8' : '1.2'}
                 />
+
+                {/* Badge color indicator dot */}
+                <circle
+                  cx={m.badgeX - badgeHalfW + 7.5}
+                  cy={m.badgeY + m.badgeHeight / 2}
+                  r="2.5"
+                  fill={m.color}
+                />
+
+                {/* Badge Label */}
                 <text
-                  x={x}
-                  y={padding.top - 8}
+                  x={m.badgeX + 3}
+                  y={m.badgeY + m.badgeHeight / 2 + 3.5}
                   textAnchor="middle"
                   fontSize="9.5"
-                  fontWeight="bold"
+                  fontWeight={isHovered ? 'bold' : '600'}
                   fill={m.color}
+                  className="select-none pointer-events-none"
                 >
                   {m.label}
                 </text>
@@ -576,46 +745,52 @@ export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = (
             );
           })}
 
-          {/* X-Axis Labels (Ages & Years) */}
-          {chartData
-            .filter((d, i) => {
-              const step = Math.max(1, Math.round(chartData.length / 8));
-              return i % step === 0 || i === chartData.length - 1 || d.age === retirementAge;
-            })
-            .map((d) => {
-              const x = getX(d.age);
-              return (
-                <g key={`x-axis-${d.age}`}>
-                  <line
-                    x1={x}
-                    y1={padding.top + chartHeight}
-                    x2={x}
-                    y2={padding.top + chartHeight + 5}
-                    stroke="currentColor"
-                    className="text-slate-300 dark:text-slate-700"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={x}
-                    y={padding.top + chartHeight + 18}
-                    textAnchor="middle"
-                    fontSize="11"
-                    className="fill-slate-600 dark:fill-slate-400 font-medium"
-                  >
-                    Age {d.age}
-                  </text>
-                  <text
-                    x={x}
-                    y={padding.top + chartHeight + 30}
-                    textAnchor="middle"
-                    fontSize="9.5"
-                    className="fill-slate-400 dark:fill-slate-500"
-                  >
-                    {d.year}
-                  </text>
-                </g>
-              );
-            })}
+          {/* X-Axis Labels (Ages & Years) with collision-free spacing */}
+          {xAxisTicks.map((d) => {
+            const x = getX(d.age);
+            const isRetirement = d.age === retirementAge;
+
+            return (
+              <g key={`x-axis-${d.age}`}>
+                <line
+                  x1={x}
+                  y1={padding.top + chartHeight}
+                  x2={x}
+                  y2={padding.top + chartHeight + (isRetirement ? 7 : 5)}
+                  stroke="currentColor"
+                  className={isRetirement ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-700'}
+                  strokeWidth={isRetirement ? '1.8' : '1'}
+                />
+                <text
+                  x={x}
+                  y={padding.top + chartHeight + 18}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fontWeight={isRetirement ? 'bold' : '500'}
+                  className={
+                    isRetirement
+                      ? 'fill-emerald-600 dark:fill-emerald-400'
+                      : 'fill-slate-600 dark:fill-slate-400'
+                  }
+                >
+                  Age {d.age}
+                </text>
+                <text
+                  x={x}
+                  y={padding.top + chartHeight + 30}
+                  textAnchor="middle"
+                  fontSize="9.5"
+                  className={
+                    isRetirement
+                      ? 'fill-emerald-600/80 dark:fill-emerald-400/80 font-medium'
+                      : 'fill-slate-400 dark:fill-slate-500'
+                  }
+                >
+                  {d.year}
+                </text>
+              </g>
+            );
+          })}
         </svg>
 
         {/* Floating Tooltip Card */}

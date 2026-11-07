@@ -17,7 +17,8 @@ import {
   Plus,
   ShieldCheck,
   Trash2,
-  Clock
+  Clock,
+  Edit2
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -33,6 +34,7 @@ interface ComparisonColumnData {
   id: string;
   isLive: boolean;
   label: string;
+  notes?: string;
   timestamp?: number;
   source?: SimulationSnapshot['source'];
   inputs: RetirementInputs;
@@ -48,6 +50,7 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
   const restoreSnapshot = useSimulationStore((state) => state.restoreSnapshot);
   const saveSnapshot = useSimulationStore((state) => state.saveSnapshot);
   const deleteSnapshot = useSimulationStore((state) => state.deleteSnapshot);
+  const renameSnapshot = useSimulationStore((state) => state.renameSnapshot);
   const selectedCompareSnapshotIds = useSimulationStore((state) => state.selectedCompareSnapshotIds);
   const setSelectedCompareSnapshotIds = useSimulationStore((state) => state.setSelectedCompareSnapshotIds);
 
@@ -57,6 +60,16 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
   const [includeLive, setIncludeLive] = useState<boolean>(true);
   const [restoredNotification, setRestoredNotification] = useState<string | null>(null);
   const [capturedMessage, setCapturedMessage] = useState<string | null>(null);
+
+  // Rename inline state
+  const [editingSnapshotId, setEditingSnapshotId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+
+  // Custom capture modal state
+  const [isCaptureModalOpen, setIsCaptureModalOpen] = useState(false);
+  const [newSnapshotTitle, setNewSnapshotTitle] = useState('');
+  const [newSnapshotNotes, setNewSnapshotNotes] = useState('');
 
   // Initialize selected snapshot IDs if empty: default to up to 2 most recent snapshots
   const activeSelectedIds = useMemo(() => {
@@ -111,6 +124,7 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
           id: snap.id,
           isLive: false,
           label: snap.label,
+          notes: snap.notes,
           timestamp: snap.timestamp,
           source: snap.source,
           inputs: snap.inputs,
@@ -146,11 +160,34 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
     }, 1200);
   };
 
-  const handleCaptureCurrent = () => {
-    const snap = saveSnapshot(undefined, undefined, 'manual');
+  const handleStartEdit = (id: string, currentTitle: string, currentNotes?: string) => {
+    setEditingSnapshotId(id);
+    setEditTitle(currentTitle);
+    setEditNotes(currentNotes || '');
+  };
+
+  const handleSaveEdit = (id: string) => {
+    if (editTitle.trim()) {
+      renameSnapshot(id, editTitle.trim(), editNotes.trim());
+    }
+    setEditingSnapshotId(null);
+  };
+
+  const handleOpenCaptureModal = () => {
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setNewSnapshotTitle(`Scenario @ Age ${currentInputs.retirementAge} (${timeStr})`);
+    setNewSnapshotNotes('');
+    setIsCaptureModalOpen(true);
+  };
+
+  const handleConfirmSaveSnapshot = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const title = newSnapshotTitle.trim() || undefined;
+    const notes = newSnapshotNotes.trim() || undefined;
+    const snap = saveSnapshot(title, notes, 'manual');
     setCapturedMessage(`Saved snapshot: "${snap.label}"`);
-    // Also select this newly captured snapshot for compare
     setSelectedCompareSnapshotIds([...activeSelectedIds, snap.id].slice(-maxSnapshots));
+    setIsCaptureModalOpen(false);
     setTimeout(() => setCapturedMessage(null), 3000);
   };
 
@@ -225,9 +262,9 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleCaptureCurrent}
+              onClick={handleOpenCaptureModal}
               className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition cursor-pointer"
-              title="Snapshot your current configuration right now"
+              title="Snapshot your current configuration with title and description"
             >
               <Camera className="w-3.5 h-3.5 text-indigo-500" />
               <span>Snapshot Current</span>
@@ -277,16 +314,16 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
                   key={snap.id}
                   type="button"
                   onClick={() => handleToggleSnapshot(snap.id)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer truncate max-w-[220px] ${
+                  className={`px-2.5 py-1 rounded-xl text-xs font-medium border transition flex items-center gap-1.5 cursor-pointer max-w-[240px] ${
                     isSelected
                       ? 'bg-indigo-600 text-white border-indigo-500 shadow-2xs font-semibold'
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                   }`}
-                  title={`${snap.label} • Age ${snap.metrics.retirementAge} • ${snap.inputs.province}`}
+                  title={`${snap.label}${snap.notes ? ` • ${snap.notes}` : ''} • Age ${snap.metrics.retirementAge} • ${snap.inputs.province}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-500'}`} />
-                  <span className="truncate">{snap.label}</span>
-                  <span className="text-[10px] opacity-75 font-mono">Age {snap.metrics.retirementAge}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isSelected ? 'bg-white' : 'bg-indigo-500'}`} />
+                  <span className="truncate flex-1 min-w-0 text-left">{snap.label}</span>
+                  <span className="text-[10px] opacity-75 font-mono shrink-0">Age {snap.metrics.retirementAge}</span>
                 </button>
               );
             })}
@@ -383,8 +420,8 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
                     <div>
                       {/* Column Title Header */}
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                               {isLive ? 'Current Workspace' : `Snapshot #${index}`}
                             </span>
@@ -395,12 +432,87 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
                               </span>
                             )}
                           </div>
-                          <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 truncate mt-0.5">
-                            {col.label}
-                          </h4>
+
+                          {editingSnapshotId === col.id ? (
+                            <div className="mt-2 flex flex-col gap-1.5 bg-slate-50 dark:bg-slate-800/80 p-2.5 rounded-xl border border-indigo-300 dark:border-indigo-500/40">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  maxLength={80}
+                                  value={editTitle}
+                                  onChange={(e) => setEditTitle(e.target.value)}
+                                  placeholder="Snapshot title (max 80 chars)"
+                                  className="w-full text-xs font-bold bg-white dark:bg-slate-900 px-2.5 py-1.5 pr-12 rounded-lg border border-indigo-400 dark:border-indigo-500/50 text-slate-900 dark:text-slate-100 focus:outline-none"
+                                />
+                                <span className="absolute right-2 top-1.5 text-[9.5px] font-mono text-slate-400 pointer-events-none">
+                                  {editTitle.length}/80
+                                </span>
+                              </div>
+                              <div className="relative">
+                                <textarea
+                                  maxLength={200}
+                                  rows={2}
+                                  value={editNotes}
+                                  onChange={(e) => setEditNotes(e.target.value)}
+                                  placeholder="Optional description / scenario notes (max 200 chars)"
+                                  className="w-full text-[11px] bg-white dark:bg-slate-900 p-2 pr-14 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-none resize-none leading-relaxed"
+                                />
+                                <span className="absolute right-2 bottom-1.5 text-[9.5px] font-mono text-slate-400 pointer-events-none">
+                                  {editNotes.length}/200
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 justify-end mt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingSnapshotId(null)}
+                                  className="px-2.5 py-1 rounded-lg text-[10.5px] font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEdit(col.id)}
+                                  className="px-3 py-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 text-[10.5px] font-bold flex items-center gap-1 cursor-pointer shadow-2xs"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  <span>Save</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="group mt-1">
+                              <div className="flex items-start gap-1.5">
+                                <h4
+                                  className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 break-words [overflow-wrap:anywhere] leading-snug"
+                                  title={col.label}
+                                >
+                                  {col.label}
+                                </h4>
+                                {!isLive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(col.id, col.label, col.notes)}
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 transition shrink-0 cursor-pointer"
+                                    title="Edit title & description"
+                                    aria-label="Edit title and description"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                              {col.notes && (
+                                <p
+                                  className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 break-words [overflow-wrap:anywhere] leading-normal line-clamp-3"
+                                  title={col.notes}
+                                >
+                                  {col.notes}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
 
-                        <div className="text-right shrink-0">
+                        <div className="text-right shrink-0 self-start">
                           <span className="text-xl font-black font-mono text-slate-900 dark:text-slate-50">
                             Age {inputs.retirementAge}
                           </span>
@@ -595,6 +707,100 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
         </div>
 
       </div>
+
+      {/* 6. Custom Capture Snapshot Modal with strict character limits */}
+      {isCaptureModalOpen && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-100">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-4 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <Camera className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Snapshot Current Workspace
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Save as a comparative scenario
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCaptureModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSaveSnapshot} className="flex flex-col gap-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Snapshot Title <span className="text-rose-500">*</span>
+                  </label>
+                  <span className={`text-[10px] font-mono ${newSnapshotTitle.length >= 75 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-400'}`}>
+                    {newSnapshotTitle.length}/80
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={80}
+                  value={newSnapshotTitle}
+                  onChange={(e) => setNewSnapshotTitle(e.target.value)}
+                  placeholder="E.g. Early FIRE at Age 60 + Downsizing"
+                  autoFocus
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">
+                  Max 80 characters
+                </span>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Description & Assumptions <span className="text-slate-400 font-normal">(optional)</span>
+                  </label>
+                  <span className={`text-[10px] font-mono ${newSnapshotNotes.length >= 180 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-slate-400'}`}>
+                    {newSnapshotNotes.length}/200
+                  </span>
+                </div>
+                <textarea
+                  maxLength={200}
+                  rows={3}
+                  value={newSnapshotNotes}
+                  onChange={(e) => setNewSnapshotNotes(e.target.value)}
+                  placeholder="Briefly describe key changes (e.g. tested $60k spending with 4-year delayed CPP/OAS)..."
+                  className="w-full text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 resize-none leading-relaxed"
+                />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 block">
+                  Max 200 characters
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsCaptureModalOpen(false)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Save Snapshot</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
