@@ -524,7 +524,12 @@ export const SnapshotComparisonModal: React.FC<SnapshotComparisonModalProps> = (
 
                       {/* Funded Status Banner */}
                       <div className="mt-3.5">
-                        {summary.isFullyFunded ? (
+                        {(summary.readinessScore === 0 && (inputs.currentAnnualIncome || 0) === 0 && (inputs.targetRetirementSpendingToday || 0) === 0) ? (
+                          <div className="flex items-center gap-1.5 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 text-xs font-semibold">
+                            <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span>Blank Canvas • Awaiting Profile Inputs</span>
+                          </div>
+                        ) : summary.isFullyFunded ? (
                           <div className="flex items-center gap-1.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                             <span>100% Fully Funded to Age {inputs.lifeExpectancy}</span>

@@ -185,11 +185,13 @@ function simulateTrajectory(
     // 3. Government pensions (CPP + OAS)
     let cppIncome = 0;
     if (age >= inputs.cppStartAge) {
-      cppIncome = calculateCppAnnualBenefit(inputs.cppStartAge, inputs.cppEstimatedPercentOfMax || 64, inflationFactor, config);
+      const cppPct = inputs.cppEstimatedPercentOfMax !== undefined ? inputs.cppEstimatedPercentOfMax : 64;
+      cppIncome = calculateCppAnnualBenefit(inputs.cppStartAge, cppPct, inflationFactor, config);
     }
     let oasGross = 0;
     if (age >= inputs.oasStartAge) {
-      oasGross = calculateOasGrossBenefit(age, inputs.oasStartAge, inputs.oasEligibleYearsInCanada || 40, inflationFactor, config);
+      const oasYears = inputs.oasEligibleYearsInCanada !== undefined ? inputs.oasEligibleYearsInCanada : 40;
+      oasGross = calculateOasGrossBenefit(age, inputs.oasStartAge, oasYears, inflationFactor, config);
     }
 
     // 4. Determine RRSP / RRIF withdrawal for this year

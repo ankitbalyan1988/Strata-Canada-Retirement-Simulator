@@ -318,7 +318,7 @@ export function calculatePersonCppAnnualBenefit(
   }
 
   // Standard percentage method
-  const percent = Math.min(100, Math.max(0, person.cppEstimatedPercentOfMax || 64));
+  const percent = Math.min(100, Math.max(0, person.cppEstimatedPercentOfMax !== undefined ? person.cppEstimatedPercentOfMax : 64));
   const baseAt65 = config.cpp.maxAnnualAt65 * (percent / 100);
   const timing = getCppTimingFactor(person.cppStartAge, config);
   const annualToday = baseAt65 * timing.factor;

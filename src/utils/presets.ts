@@ -478,5 +478,87 @@ export const DEFAULT_SPOUSE_INPUTS: SpouseInputs = {
   }
 };
 
-// Initial default loads with official CRA & Statistics Canada national averages!
-export const DEFAULT_INPUTS = CRA_CANADIAN_AVERAGE_INPUTS;
+export const BLANK_CANVAS_INPUTS: RetirementInputs = {
+  userName: '',
+  maritalStatus: 'single',
+  currentAge: 35,
+  retirementAge: 65,
+  lifeExpectancy: 85,
+  province: 'ON',
+  currentAnnualIncome: 0,
+  incomeGrowthRate: 2.0,
+  monthlyExpenses: {
+    rentOrMortgage: 0,
+    utilities: 0,
+    creditCard: 0,
+    otherExpenses: 0,
+    postRetirementAdjustmentPercent: 0,
+    autoSyncMortgage: false
+  },
+  targetRetirementSpendingToday: 0,
+  realEstate: {
+    ownsHome: false,
+    purchaseType: 'current',
+    futurePurchaseAge: 35,
+    useHbp: false,
+    costOfHome: 0,
+    currentMarketValue: 0,
+    downPayment: 0,
+    mortgageInterestRate: 4.5,
+    mortgageTermYears: 25,
+    mortgageStartYear: 2024,
+    ownershipSharePercent: 100,
+    annualAppreciationRate: 3.0,
+    planToSellHome: false,
+    sellHomeAge: 70,
+    sellingCostPercent: 4.5,
+    fundWithFhsa: false,
+    fundWithHbp: false,
+    fundWithTfsa: false,
+    fundWithNonReg: false,
+    downPaymentPercentPreset: 20,
+    rentOverridden: false
+  },
+  accountReturns: { ...DEFAULT_ACCOUNT_RETURNS },
+  rrspBalance: 0,
+  tfsaBalance: 0,
+  fhsaBalance: 0,
+  fhsaRemainingContributionRoom: 40000,
+  nonRegBalance: 0,
+  rrspAnnualContribution: 0,
+  tfsaAnnualContribution: 0,
+  fhsaAnnualContribution: 0,
+  nonRegAnnualContribution: 0,
+  fhsaOpenYear: 2024,
+  fhsaIntent: 'rollover_to_rrsp',
+  fhsaHomePurchaseAge: 45,
+  debts: [],
+  nonRegCustomAccounts: [],
+  cppStartAge: 65,
+  cppEstimatedPercentOfMax: 0,
+  cppCalculationMethod: 'percentage',
+  cppServiceCanadaEstimateAt65: 0,
+  oasStartAge: 65,
+  oasEligibleYearsInCanada: 0,
+  preRetirementReturn: 6.0,
+  postRetirementReturn: 5.0,
+  inflationRate: 2.1,
+  nonRegYieldTaxRate: 1.2,
+  drawdownStrategy: 'tax_efficient',
+  contributionAllocation: {
+    mode: 'dynamic_waterfall',
+    priorityOrder: ['rrsp', 'tfsa', 'fhsa', 'nonReg'],
+    customCaps: {},
+    autoApplyToInputs: true
+  },
+  employerMatch: {
+    enabled: false,
+    matchType: 'percent_of_salary',
+    matchPercentOfSalary: 0,
+    matchRatePercent: 0,
+    fixedAnnualAmount: 0
+  }
+};
+
+// Initial default loads with a blank canvas (zero pre-loaded data)
+export const DEFAULT_INPUTS = BLANK_CANVAS_INPUTS;

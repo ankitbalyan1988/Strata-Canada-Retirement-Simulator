@@ -69,6 +69,140 @@ export function runRetirementSimulation(
     drawdownStrategy
   } = inputs;
 
+  const isBlankCanvas = (
+    (currentAnnualIncome || 0) === 0 &&
+    (targetRetirementSpendingToday || 0) === 0 &&
+    (initialRrsp || 0) === 0 &&
+    (initialTfsa || 0) === 0 &&
+    (initialNonReg || 0) === 0 &&
+    (initialFhsa || 0) === 0 &&
+    (!isCouple || (((spouse?.annualIncome || 0) === 0) && ((spouse?.rrspBalance || 0) === 0)))
+  );
+
+  if (isBlankCanvas) {
+    const totalRetirementYears = Math.max(1, lifeExpectancy - retirementAge);
+    const totalSimYears = Math.max(1, lifeExpectancy - currentAge + 1);
+    const emptyResults: YearSimulationResult[] = [];
+
+    for (let i = 0; i < totalSimYears; i++) {
+      const age = currentAge + i;
+      emptyResults.push({
+        age,
+        year: i + 1,
+        isRetired: age >= retirementAge,
+        employmentIncome: 0,
+        cppIncome: 0,
+        oasGrossIncome: 0,
+        oasClawback: 0,
+        oasNetIncome: 0,
+        rrspBalance: 0,
+        rrifBalance: 0,
+        tfsaBalance: 0,
+        fhsaBalance: 0,
+        nonRegBalance: 0,
+        totalNetWorth: 0,
+        homeValue: 0,
+        remainingMortgage: 0,
+        homeEquity: 0,
+        realEstateShare: 0,
+        homeSoldThisYear: false,
+        homeSaleProceeds: 0,
+        remainingDebt: 0,
+        debtPayment: 0,
+        debtPrincipalPaid: 0,
+        debtInterestPaid: 0,
+        rrspContribution: 0,
+        tfsaContribution: 0,
+        fhsaContribution: 0,
+        nonRegContribution: 0,
+        rrspWithdrawal: 0,
+        rrifWithdrawal: 0,
+        tfsaWithdrawal: 0,
+        nonRegWithdrawal: 0,
+        fhsaWithdrawalOrTransfer: 0,
+        totalWithdrawals: 0,
+        totalInvestmentGrowth: 0,
+        targetSpendingNominal: 0,
+        totalGrossIncome: 0,
+        taxableIncome: 0,
+        totalTaxPaid: 0,
+        effectiveTaxRate: 0,
+        marginalTaxRate: 0,
+        netSpendableCashflow: 0,
+        cashflowGap: 0,
+        isRrifMandatory: false,
+        rrifMinimumWithdrawal: 0,
+        fhsaRolledOver: false,
+        notes: [],
+        isCouple,
+        spouseAge: isCouple && spouse ? spouse.currentAge + i : undefined,
+        isSpouseRetired: isCouple && spouse ? ((spouse.currentAge + i) >= spouse.retirementAge) : true,
+        spouseEmploymentIncome: 0,
+        spouseCppIncome: 0,
+        spouseOasNetIncome: 0,
+        spouseTaxPaid: 0,
+        isRrspMeltdownStartMilestone: false,
+        isRrspMeltdownActive: false,
+        rrspMeltdownDrawdown: 0,
+        rrspMeltdownSurplusReinvested: 0
+      });
+    }
+
+    const blankSummary: SimulationSummary = {
+      portfolioDepletionAge: null,
+      yearsFunded: 0,
+      totalYearsInRetirement: totalRetirementYears,
+      isFullyFunded: false,
+      readinessScore: 0,
+      netWorthAtRetirement: 0,
+      netWorthAtLifeExpectancy: 0,
+      peakNetWorth: 0,
+      peakNetWorthAge: retirementAge,
+      ownsHome: false,
+      isFutureHomeBuyer: false,
+      futurePurchaseAge: null,
+      futurePurchaseYear: null,
+      homeEquityAtRetirement: 0,
+      homeSoldAge: null,
+      homeNetProceedsAtSale: 0,
+      liquidNetWorthAtRetirement: 0,
+      lifetimeEmploymentIncome: 0,
+      lifetimeCppReceived: 0,
+      lifetimeOasReceived: 0,
+      lifetimeTaxesPaid: 0,
+      lifetimeInvestmentGrowth: 0,
+      averageAnnualRetirementSpendNominal: 0,
+      averageEffectiveTaxInRetirement: 0,
+      retirementAge,
+      firstRrifMandatoryYear: 72,
+      cppStartAge: inputs.cppStartAge,
+      oasStartAge: inputs.oasStartAge,
+      crossoverAge: null,
+      crossoverYear: null,
+      crossoverInvestmentGrowth: 0,
+      crossoverLivingExpenses: 0,
+      coastFireAge: null,
+      coastFireYear: null,
+      coastFireNetWorth: 0,
+      millionaireAge: null,
+      millionaireYear: null,
+      mortgagePayoffAge: null,
+      mortgagePayoffYear: null,
+      debtPayoffAge: null,
+      debtPayoffYear: null,
+      totalInitialDebt: 0,
+      debtAtRetirement: 0,
+      totalDebtInterestPaid: 0,
+      debtInterestSaved: 0,
+      isCouple,
+      spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined,
+      isMeltdownActive: false,
+      meltdownTargetStrategy: 'bracket1'
+    };
+
+    return { yearlyResults: emptyResults, summary: blankSummary };
+  }
+
   const totalYears = Math.max(1, lifeExpectancy - currentAge + 1);
   const yearlyResults: YearSimulationResult[] = [];
 
@@ -777,6 +911,34 @@ export function calculateSavingsPulse(
 ): SavingsPulseResult {
   const isCouple = inputs.maritalStatus === 'married' && Boolean(inputs.spouse);
   const spouse = inputs.spouse;
+
+  const isBlankCanvas = (
+    (inputs.currentAnnualIncome || 0) === 0 &&
+    (inputs.targetRetirementSpendingToday || 0) === 0 &&
+    (inputs.rrspBalance || 0) === 0 &&
+    (inputs.tfsaBalance || 0) === 0 &&
+    (inputs.nonRegBalance || 0) === 0 &&
+    (inputs.fhsaBalance || 0) === 0 &&
+    (!isCouple || (((spouse?.annualIncome || 0) === 0) && ((spouse?.rrspBalance || 0) === 0)))
+  );
+
+  if (isBlankCanvas) {
+    return {
+      currentMonthlySavings: 0,
+      requiredMonthlySavings: 0,
+      monthlyGap: 0,
+      status: 'underfunded',
+      currentSavingsRate: 0,
+      requiredSavingsRate: 0,
+      projectedNestEggAtRetire: 0,
+      targetNestEggNeeded: 0,
+      recommendedAction: 'Enter your household profile, accounts, and spending target in Profile & Inputs to generate your retirement roadmap.',
+      rrspTaxSavingsMonthly: 0,
+      workingYearsRemaining: Math.max(1, inputs.retirementAge - inputs.currentAge),
+      monthlyBreakdown: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0 }
+    };
+  }
+
   const workingYears = Math.max(1, inputs.retirementAge - inputs.currentAge);
 
   const pEmployerMatch = calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution, inputs.employerMatch);

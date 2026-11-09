@@ -53,6 +53,25 @@ export function fastSimulateEndNetWorth(
     drawdownStrategy
   } = inputs;
 
+  const isBlankCanvas = (
+    (currentAnnualIncome || 0) === 0 &&
+    (targetRetirementSpendingToday || 0) === 0 &&
+    (initialRrsp || 0) === 0 &&
+    (initialTfsa || 0) === 0 &&
+    (initialNonReg || 0) === 0 &&
+    (initialFhsa || 0) === 0 &&
+    (!isCouple || (((spouse?.annualIncome || 0) === 0) && ((spouse?.rrspBalance || 0) === 0)))
+  );
+
+  if (isBlankCanvas) {
+    return {
+      isFullyFunded: false,
+      netWorthAtLifeExpectancy: 0,
+      netWorthAtRetirement: 0,
+      depletionAge: null
+    };
+  }
+
   const totalYears = Math.max(1, lifeExpectancy - currentAge + 1);
 
   // 1. Housing Engine Params

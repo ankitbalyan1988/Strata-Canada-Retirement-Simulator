@@ -11,7 +11,8 @@ import {
   PiggyBank,
   ChevronDown,
   ChevronUp,
-  Coins
+  Coins,
+  HelpCircle
 } from 'lucide-react';
 import { RetirementInputs, SimulationSummary, YearSimulationResult } from '../types/retirement';
 import { useSimulationStore } from '../store/useSimulationStore';
@@ -71,6 +72,12 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
   const spouseNonRegBal = isCouple && spouse ? (spouse.nonRegBalance || 0) : 0;
 
   const totalCurrentBalance = rrspBal + tfsaBal + fhsaBal + nonRegBal + spouseRrspBal + spouseTfsaBal + spouseFhsaBal + spouseNonRegBal;
+
+  const isBlankCanvas = (
+    (inputs.currentAnnualIncome || 0) === 0 &&
+    (inputs.targetRetirementSpendingToday || 0) === 0 &&
+    totalCurrentBalance === 0
+  );
 
   // Primary Annual Contributions Target (including Employer Match if applicable)
   const pEmployerMatch = calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution || 0, inputs.employerMatch);
@@ -182,23 +189,29 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
               Readiness Score
             </span>
             <span className={`p-1.5 rounded-xl border ${
-              summary.isFullyFunded 
+              isBlankCanvas
+                ? 'bg-slate-50 dark:bg-slate-800/60 text-slate-400 border-slate-200/80 dark:border-slate-700/60'
+                : summary.isFullyFunded 
                 ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-500/20' 
                 : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200/80 dark:border-rose-500/20'
             }`}>
-              {summary.isFullyFunded ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+              {isBlankCanvas ? <HelpCircle className="w-4 h-4" /> : summary.isFullyFunded ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
             </span>
           </div>
 
           <div className="my-2">
             <div className="flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-50 font-mono tracking-tight">
-                {summary.readinessScore}%
+                {isBlankCanvas ? '0%' : `${summary.readinessScore}%`}
               </span>
               <span className={`text-xs font-semibold ${
-                summary.isFullyFunded ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                isBlankCanvas
+                  ? 'text-slate-500 dark:text-slate-400'
+                  : summary.isFullyFunded 
+                  ? 'text-emerald-600 dark:text-emerald-400' 
+                  : 'text-rose-600 dark:text-rose-400'
               }`}>
-                {summary.isFullyFunded ? 'Fully Funded' : 'Shortfall Risk'}
+                {isBlankCanvas ? 'Awaiting Inputs' : summary.isFullyFunded ? 'Fully Funded' : 'Shortfall Risk'}
               </span>
             </div>
 
@@ -206,21 +219,23 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-2 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  summary.isFullyFunded ? 'bg-emerald-500' : 'bg-rose-500'
+                  isBlankCanvas ? 'bg-slate-300 dark:bg-slate-700' : summary.isFullyFunded ? 'bg-emerald-500' : 'bg-rose-500'
                 }`}
-                style={{ width: `${summary.readinessScore}%` }}
+                style={{ width: `${isBlankCanvas ? 0 : summary.readinessScore}%` }}
               />
             </div>
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2 flex items-center justify-between gap-1 text-[10.5px] text-slate-500 dark:text-slate-400">
-            <span>{summary.yearsFunded}/{summary.totalYearsInRetirement} yrs funded</span>
-            {summary.coastFireAge !== undefined && summary.coastFireAge !== null && (
+            <span>{isBlankCanvas ? '0' : summary.yearsFunded}/{summary.totalYearsInRetirement || 21} yrs funded</span>
+            {isBlankCanvas ? (
+              <span className="text-slate-400 italic font-mono text-[10px]">Blank Canvas</span>
+            ) : summary.coastFireAge !== undefined && summary.coastFireAge !== null ? (
               <span className="inline-flex items-center gap-0.5 text-slate-700 dark:text-slate-300 font-semibold font-mono">
                 <Anchor className="w-2.5 h-2.5 text-slate-400" />
                 Coast FIRE
               </span>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -272,14 +287,16 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
               <span>Indexed avg:</span>
               <span className="font-mono font-medium text-slate-800 dark:text-slate-200">
-                ${Math.round(monthlyRetirementSpend).toLocaleString()}/mo
+                ${Math.round(isBlankCanvas ? 0 : monthlyRetirementSpend).toLocaleString()}/mo
               </span>
             </div>
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
             <span>Pensions Cover:</span>
-            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">~{pensionCoveragePercent}% of needs</span>
+            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+              {isBlankCanvas ? '0%' : `~${pensionCoveragePercent}% of needs`}
+            </span>
           </div>
         </div>
 
@@ -296,19 +313,21 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
 
           <div className="my-2">
             <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-50 font-mono tracking-tight">
-              {formatCur(summary.lifetimeTaxesPaid)}
+              {isBlankCanvas ? '$0' : formatCur(summary.lifetimeTaxesPaid)}
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
               <span>Avg Tax in Ret.:</span>
               <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-                {(summary.averageEffectiveTaxInRetirement * 100).toFixed(1)}%
+                {isBlankCanvas ? '0.0%' : `${(summary.averageEffectiveTaxInRetirement * 100).toFixed(1)}%`}
               </span>
             </div>
           </div>
 
           <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2 flex items-center justify-between text-[10.5px] text-slate-500 dark:text-slate-400">
             <span>Strategy:</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-tight">{inputs.drawdownStrategy.replace('_', ' ')}</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-tight">
+              {isBlankCanvas ? 'No income modeled' : inputs.drawdownStrategy.replace('_', ' ')}
+            </span>
           </div>
         </div>
 

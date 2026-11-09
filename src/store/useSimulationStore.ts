@@ -9,7 +9,7 @@ import {
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
 import { WhatIfSettings } from '../types/whatIf';
-import { DEFAULT_INPUTS } from '../utils/presets';
+import { DEFAULT_INPUTS, BLANK_CANVAS_INPUTS } from '../utils/presets';
 import { DEFAULT_WHAT_IF_SETTINGS } from '../utils/whatIfCalculator';
 import {
   runRetirementSimulation,
@@ -19,6 +19,8 @@ import {
 } from '../utils/simulator';
 import { triggerConfetti } from '../utils/confettiHelper';
 import { SimulationSnapshot } from '../types/history';
+
+export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
 
 export interface SimulationState {
   // Primary state
@@ -30,6 +32,11 @@ export interface SimulationState {
   pulse: SavingsPulseResult;
   isCalculating: boolean;
   isRecalculatingLedger: boolean;
+
+  // View & Sidebar Navigation State
+  activeView: AppView;
+  isSidebarCollapsed: boolean;
+  isMobileSidebarOpen: boolean;
 
   // Stress test
   isStressTestActive: boolean;
@@ -48,6 +55,7 @@ export interface SimulationState {
   isSnapshotCompareModalOpen: boolean;
   selectedCompareSnapshotIds: string[];
   isAIPersonaModalOpen: boolean;
+  isWealthGuideModalOpen: boolean;
 
   // Section Collapse State
   collapsedSections: Record<string, boolean>;
@@ -61,6 +69,11 @@ export interface SimulationState {
   activePreviewSnapshotId: string | null;
 
   // Actions
+  setActiveView: (view: AppView) => void;
+  setIsSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebarCollapsed: () => void;
+  setIsMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
   setTheme: (theme: 'light' | 'dark') => void;
   toggleTheme: () => void;
   setInputs: (inputs: RetirementInputs | ((prev: RetirementInputs) => RetirementInputs)) => void;
@@ -71,6 +84,7 @@ export interface SimulationState {
   setActivePresetId: (id: string) => void;
   selectPreset: (preset: ScenarioPreset) => void;
   resetToDefault: () => void;
+  resetToBlankCanvas: () => void;
   applyRetirementAge: (age: number) => void;
   applyProvince: (province: CanadianProvince) => void;
   applyMonthlyBoost: (additionalMonthly: number) => void;
@@ -87,6 +101,7 @@ export interface SimulationState {
   setSelectedCompareSnapshotIds: (ids: string[]) => void;
   openSnapshotCompare: (snapshotIds?: string[]) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
+  setIsWealthGuideModalOpen: (open: boolean) => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
@@ -112,6 +127,40 @@ export function computeOptimisticSummary(
   inputs: RetirementInputs,
   baseSummary: SimulationSummary
 ): SimulationSummary {
+  const isCouple = inputs.maritalStatus === 'married' && Boolean(inputs.spouse);
+  const spouse = inputs.spouse;
+  const isBlankCanvas = (
+    (inputs.currentAnnualIncome || 0) === 0 &&
+    (inputs.targetRetirementSpendingToday || 0) === 0 &&
+    (inputs.rrspBalance || 0) === 0 &&
+    (inputs.tfsaBalance || 0) === 0 &&
+    (inputs.nonRegBalance || 0) === 0 &&
+    (inputs.fhsaBalance || 0) === 0 &&
+    (!isCouple || (((spouse?.annualIncome || 0) === 0) && ((spouse?.rrspBalance || 0) === 0)))
+  );
+
+  if (isBlankCanvas) {
+    const totalYearsInRetirement = Math.max(1, inputs.lifeExpectancy - inputs.retirementAge);
+    return {
+      ...baseSummary,
+      isFullyFunded: false,
+      readinessScore: 0,
+      yearsFunded: 0,
+      totalYearsInRetirement,
+      netWorthAtRetirement: 0,
+      netWorthAtLifeExpectancy: 0,
+      peakNetWorth: 0,
+      peakNetWorthAge: inputs.retirementAge,
+      lifetimeEmploymentIncome: 0,
+      lifetimeCppReceived: 0,
+      lifetimeOasReceived: 0,
+      lifetimeTaxesPaid: 0,
+      lifetimeInvestmentGrowth: 0,
+      averageAnnualRetirementSpendNominal: 0,
+      averageEffectiveTaxInRetirement: 0
+    };
+  }
+
   const fastRes = fastSimulateEndNetWorth(inputs);
   const totalYearsInRetirement = Math.max(1, inputs.lifeExpectancy - inputs.retirementAge);
   const yearsFunded = fastRes.isFullyFunded
@@ -327,6 +376,16 @@ const getInitialTheme = (): 'light' | 'dark' => {
   return 'light';
 };
 
+// Sidebar collapsed preference detection
+const getInitialSidebarCollapsed = (): boolean => {
+  if (typeof window !== 'undefined') {
+    try {
+      return localStorage.getItem('strata-sidebar-collapsed') === 'true';
+    } catch (_) {}
+  }
+  return false;
+};
+
 const loadSavedHistory = (): SimulationSnapshot[] => {
   if (typeof window !== 'undefined') {
     try {
@@ -342,13 +401,18 @@ const loadSavedHistory = (): SimulationSnapshot[] => {
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
   inputs: DEFAULT_INPUTS,
-  activePresetId: 'canadian_average',
+  activePresetId: 'blank',
   yearlyResults: initialSim.yearlyResults,
   summary: initialSim.summary,
   optimisticSummary: initialSim.summary,
   pulse: initialPulse,
   isCalculating: false,
   isRecalculatingLedger: false,
+
+  // Navigation & Sidebar
+  activeView: 'dashboard',
+  isSidebarCollapsed: getInitialSidebarCollapsed(),
+  isMobileSidebarOpen: false,
 
   isStressTestActive: false,
   stressTiming: 'at_retirement',
@@ -365,7 +429,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isSnapshotCompareModalOpen: false,
   selectedCompareSnapshotIds: [],
   isAIPersonaModalOpen: false,
+  isWealthGuideModalOpen: false,
   collapsedSections: {
+    personaSelection: false,
     aiPersona: false,
     planning: false,
     retirementAgeSimulator: false,
@@ -384,6 +450,44 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   history: loadSavedHistory(),
   isHistoryPanelOpen: false,
   activePreviewSnapshotId: null,
+
+  // View & Sidebar Actions
+  setActiveView: (view) => {
+    set({
+      activeView: view,
+      isMobileSidebarOpen: false
+    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  },
+
+  setIsSidebarCollapsed: (collapsed) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata-sidebar-collapsed', String(collapsed));
+      } catch (_) {}
+    }
+    set({ isSidebarCollapsed: collapsed });
+  },
+
+  toggleSidebarCollapsed: () => {
+    const next = !get().isSidebarCollapsed;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata-sidebar-collapsed', String(next));
+      } catch (_) {}
+    }
+    set({ isSidebarCollapsed: next });
+  },
+
+  setIsMobileSidebarOpen: (open) => {
+    set({ isMobileSidebarOpen: open });
+  },
+
+  toggleMobileSidebar: () => {
+    set((state) => ({ isMobileSidebarOpen: !state.isMobileSidebarOpen }));
+  },
 
   setTheme: (theme) => {
     if (typeof window !== 'undefined') {
@@ -457,14 +561,42 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   resetToDefault: () => {
-    const optimisticSummary = computeOptimisticSummary(DEFAULT_INPUTS, get().summary);
+    get().resetToBlankCanvas();
+  },
+
+  resetToBlankCanvas: () => {
+    // 1. Wipe simulation snapshots history from persistent storage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('strata_simulation_history');
+      } catch (_) {}
+    }
+
+    // 2. Compute pristine blank outputs
+    const blankSim = runRetirementSimulation(BLANK_CANVAS_INPUTS);
+    const blankPulse = calculateSavingsPulse(BLANK_CANVAS_INPUTS, blankSim.summary);
+
+    // 3. Clear scheduled worker calculations
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+      debounceTimer = null;
+    }
+
     set({
-      inputs: DEFAULT_INPUTS,
-      activePresetId: 'canadian_average',
-      optimisticSummary,
-      isRecalculatingLedger: true
+      inputs: BLANK_CANVAS_INPUTS,
+      activePresetId: 'blank',
+      history: [],
+      selectedCompareSnapshotIds: [],
+      activePreviewSnapshotId: null,
+      whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
+      isStressTestActive: false,
+      summary: blankSim.summary,
+      optimisticSummary: blankSim.summary,
+      yearlyResults: blankSim.yearlyResults,
+      pulse: blankPulse,
+      isRecalculatingLedger: false,
+      isCalculating: false
     });
-    scheduleHeavyCalculation(get, set);
   },
 
   applyRetirementAge: (age) => {
@@ -638,6 +770,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({ isAIPersonaModalOpen: open });
   },
 
+  setIsWealthGuideModalOpen: (open) => {
+    set({ isWealthGuideModalOpen: open });
+  },
+
   toggleSectionCollapse: (sectionId) => {
     set((state) => ({
       collapsedSections: {
@@ -658,14 +794,20 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   toggleCollapseAll: () => {
     set((state) => {
-      const keys = Object.keys(state.collapsedSections);
-      // Check if any registered section is currently expanded (i.e. not collapsed)
-      const hasAnyExpanded = keys.some((k) => !state.collapsedSections[k]);
-      // If at least one section is expanded, collapse all (set all to true)
-      // Otherwise if all are already collapsed, expand all (set all to false)
+      const activeView = state.activeView;
+      const viewSectionsMap: Record<AppView, string[]> = {
+        inputs: ['personaSelection', 'planning'],
+        dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
+        estate: ['estate'],
+        expat: ['expat']
+      };
+      const relevantKeys = viewSectionsMap[activeView] || Object.keys(state.collapsedSections);
+      // Check if any visible section on this view is currently expanded (i.e. not collapsed)
+      const hasAnyExpanded = relevantKeys.some((k) => !state.collapsedSections[k]);
+      // If at least one section is expanded, collapse all; otherwise expand all
       const nextCollapsedState = hasAnyExpanded;
-      const next: Record<string, boolean> = {};
-      for (const k of keys) {
+      const next: Record<string, boolean> = { ...state.collapsedSections };
+      for (const k of Object.keys(state.collapsedSections)) {
         next[k] = nextCollapsedState;
       }
       return { collapsedSections: next };
