@@ -21,6 +21,7 @@ import { triggerConfetti } from '../utils/confettiHelper';
 import { SimulationSnapshot } from '../types/history';
 
 export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
+export type DashboardTab = 'ledger' | 'dashboard' | 'stresstest' | 'whatif';
 
 export interface SimulationState {
   // Primary state
@@ -35,6 +36,7 @@ export interface SimulationState {
 
   // View & Sidebar Navigation State
   activeView: AppView;
+  activeDashboardTab: DashboardTab;
   isSidebarCollapsed: boolean;
   isMobileSidebarOpen: boolean;
 
@@ -70,6 +72,7 @@ export interface SimulationState {
 
   // Actions
   setActiveView: (view: AppView) => void;
+  setActiveDashboardTab: (tab: DashboardTab) => void;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   setIsMobileSidebarOpen: (open: boolean) => void;
@@ -411,6 +414,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   // Navigation & Sidebar
   activeView: 'dashboard',
+  activeDashboardTab: 'dashboard',
   isSidebarCollapsed: getInitialSidebarCollapsed(),
   isMobileSidebarOpen: false,
 
@@ -457,6 +461,13 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       activeView: view,
       isMobileSidebarOpen: false
     });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  },
+
+  setActiveDashboardTab: (tab) => {
+    set({ activeDashboardTab: tab });
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }

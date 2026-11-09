@@ -1,31 +1,22 @@
 import React, { Suspense } from 'react';
 import { Sidebar } from './components/Navigation/Sidebar';
 import { Header } from './components/Header';
-import { HeroRetirementSlider } from './components/HeroRetirementSlider';
-import { RetirementScorecard } from './components/RetirementScorecard';
-import { SavingsPulse } from './components/SavingsPulse';
-import { NetWorthChart } from './components/Charts/NetWorthChart';
-import { IncomeStreamChart } from './components/Charts/IncomeStreamChart';
-import { MarginalTaxBracketChart } from './components/Charts/MarginalTaxBracketChart';
+import { DashboardTabBar } from './components/Navigation/DashboardTabBar';
+import { LedgerTabContent } from './components/Tabs/LedgerTabContent';
+import { MainDashboardTabContent } from './components/Tabs/MainDashboardTabContent';
+import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
+import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
 import { InputPanel } from './components/InputPanel';
 import { PersonaSelectionPanel } from './components/PersonaSelectionPanel';
-import { MilestoneTable } from './components/MilestoneTable';
 import { ExpatRetirementModule } from './components/ExpatRetirementModule';
-import { RrspBreakEvenModule } from './components/RrspBreakEvenModule';
-import { StressTestHealthCard } from './components/StressTestHealthCard';
 import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
 import { useSimulationStore } from './store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { 
-  Layers, 
-  Wallet, 
-  Percent, 
   Sun, 
   Moon, 
-  ChevronsDown, 
-  ChevronsUp, 
-  ChevronDown, 
-  ChevronUp,
+  ChevronsDown,
+  ChevronsUp,
   SlidersHorizontal,
   ArrowRight,
   RotateCcw,
@@ -58,18 +49,6 @@ const CanadianWealthGuideModal = React.lazy(() =>
 );
 
 export default function App() {
-  const currentAge = useSimulationStore((state) => state.inputs.currentAge);
-  const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
-  const province = useSimulationStore((state) => state.inputs.province);
-  const isCouple = useSimulationStore((state) => state.inputs.maritalStatus === 'married');
-  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
-  const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
-  const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
-  const stressTiming = useSimulationStore((state) => state.stressTiming);
-  const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const stressSimulation = useSimulationStore(useShallow((state) => state.stressSimulation));
-  const activeChartTab = useSimulationStore((state) => state.activeChartTab);
-  const setActiveChartTab = useSimulationStore((state) => state.setActiveChartTab);
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
   const isSnapshotCompareModalOpen = useSimulationStore((state) => state.isSnapshotCompareModalOpen);
   const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
@@ -82,6 +61,7 @@ export default function App() {
 
   // Navigation & View state
   const activeView = useSimulationStore((state) => state.activeView);
+  const activeDashboardTab = useSimulationStore((state) => state.activeDashboardTab);
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const isSidebarCollapsed = useSimulationStore((state) => state.isSidebarCollapsed);
 
@@ -125,185 +105,38 @@ export default function App() {
           {/* SECTION 1: DASHBOARD & RESULTS (HOMEPAGE)                 */}
           {/* ========================================================= */}
           {activeView === 'dashboard' && (
-            <>
-              {/* Fast Jump Bar to Profile Inputs */}
-              <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-500/20 rounded-2xl p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 flex-wrap text-slate-700 dark:text-slate-300">
-                  <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    Active Plan:
-                  </span>
-                  {isBlankCanvas ? (
-                    <span className="font-semibold text-amber-600 dark:text-amber-400">
-                      Blank Canvas ($0 balances) • No preloaded data
-                    </span>
-                  ) : (
-                    <>
-                      <span>Age {currentAge} → Retire at <strong>Age {retirementAge}</strong></span>
-                      <span>•</span>
-                      <span>Province: <strong>{province}</strong></span>
-                      <span>•</span>
-                      <span>Household: <strong>{isCouple ? 'Married Couple' : 'Individual'}</strong></span>
-                    </>
-                  )}
+            <div className="flex flex-col gap-6">
+              {/* Horizontal Dashboard Navigation Bar */}
+              <DashboardTabBar />
+
+              {/* Tab 1: Main Dashboard (KPIs until savings pulse + dedicated portlets) */}
+              {activeDashboardTab === 'dashboard' && (
+                <div role="tabpanel" id="dashboard-tabpanel-dashboard" aria-labelledby="dashboard-tab-dashboard">
+                  <MainDashboardTabContent />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setActiveView('inputs')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700/60 font-semibold shadow-xs hover:bg-emerald-50 dark:hover:bg-slate-750 transition cursor-pointer text-xs shrink-0 self-start sm:self-auto"
-                >
-                  <span>Edit Profile & Plan Inputs</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                </button>
-              </div>
+              )}
 
-              {/* Financial KPI Scorecard (Positioned at top for instant visibility) */}
-              <RetirementScorecard />
-
-              {/* Hero Interactive Retirement Age Simulator */}
-              <HeroRetirementSlider />
-
-              {/* Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
-              <SavingsPulse />
-
-              {/* Actionable Stress Test & Plan Resilience Scorecard */}
-              <StressTestHealthCard />
-
-              {/* Visual Charts Container with Tabs */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex rounded-xl bg-slate-200/60 dark:bg-slate-800/60 p-1 text-xs font-semibold border border-slate-200 dark:border-slate-700/80">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isChartsCollapsed) toggleSectionCollapse('charts');
-                        setActiveChartTab('networth');
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                        activeChartTab === 'networth'
-                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Net Worth Trajectory</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isChartsCollapsed) toggleSectionCollapse('charts');
-                        setActiveChartTab('cashflow');
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                        activeChartTab === 'cashflow'
-                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <Wallet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Post-Retirement Cash Flows</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isChartsCollapsed) toggleSectionCollapse('charts');
-                        setActiveChartTab('taxbracket');
-                      }}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition ${
-                        activeChartTab === 'taxbracket'
-                          ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <Percent className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Marginal Tax Brackets</span>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">
-                      Hover over points to inspect Canadian account details
-                    </span>
-
-                    {/* Charts Collapse / Expand Button */}
-                    <button
-                      type="button"
-                      onClick={() => toggleSectionCollapse('charts')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-2xs transition cursor-pointer"
-                      title={isChartsCollapsed ? 'Expand Interactive Charts' : 'Collapse Interactive Charts'}
-                    >
-                      {isChartsCollapsed ? (
-                        <>
-                          <ChevronDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Expand Charts</span>
-                        </>
-                      ) : (
-                        <>
-                          <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="hidden sm:inline">Collapse</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
+              {/* Tab 2: Annual Simulation Ledger & Milestone Schedule (with RRSP/RRIF break-even below it) */}
+              {activeDashboardTab === 'ledger' && (
+                <div role="tabpanel" id="dashboard-tabpanel-ledger" aria-labelledby="dashboard-tab-ledger">
+                  <LedgerTabContent />
                 </div>
+              )}
 
-                {isChartsCollapsed ? (
-                  <div 
-                    onClick={() => toggleSectionCollapse('charts')}
-                    className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap items-center justify-between gap-2.5 transition cursor-pointer hover:border-emerald-500/40 shadow-xs"
-                  >
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                        Visual Interactive Charts:
-                      </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
-                        Retirement Net Worth: <strong className="text-emerald-600 dark:text-emerald-400">${Math.round(yearlyResults.find(r => r.age === retirementAge)?.totalNetWorth || 0).toLocaleString()}</strong>
-                      </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
-                        Mode: <strong className="text-slate-900 dark:text-white">{activeChartTab === 'networth' ? 'Net Worth Trajectory' : activeChartTab === 'cashflow' ? 'Post-Retirement Cash Flows' : 'Marginal Tax Brackets'}</strong>
-                      </span>
-                    </div>
-                    <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 ml-auto">
-                      <span>Show Interactive Charts</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </div>
-                  </div>
-                ) : (
-                  activeChartTab === 'networth' ? (
-                    <NetWorthChart
-                      yearlyResults={yearlyResults}
-                      stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
-                      retirementAge={retirementAge}
-                      isStressTestActive={isStressTestActive}
-                      onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
-                      stressTiming={stressTiming}
-                      onChangeStressTiming={setStressTiming}
-                    />
-                  ) : activeChartTab === 'cashflow' ? (
-                    <IncomeStreamChart
-                      yearlyResults={yearlyResults}
-                      retirementAge={retirementAge}
-                    />
-                  ) : (
-                    <MarginalTaxBracketChart
-                      yearlyResults={yearlyResults}
-                      retirementAge={retirementAge}
-                      province={province}
-                      isCouple={isCouple}
-                    />
-                  )
-                )}
-              </div>
+              {/* Tab 3: Plan Stress Test & Economic Resilience */}
+              {activeDashboardTab === 'stresstest' && (
+                <div role="tabpanel" id="dashboard-tabpanel-stresstest" aria-labelledby="dashboard-tab-stresstest">
+                  <StressTestTabContent />
+                </div>
+              )}
 
-              {/* Annual Simulation Ledger Table */}
-              <MilestoneTable />
-
-              {/* RRSP/RRIF Break-Even Withdrawal Analysis Module & Summary Card */}
-              <RrspBreakEvenModule />
-            </>
+              {/* Tab 4: What-If Analysis */}
+              {activeDashboardTab === 'whatif' && (
+                <div role="tabpanel" id="dashboard-tabpanel-whatif" aria-labelledby="dashboard-tab-whatif">
+                  <WhatIfTabContent />
+                </div>
+              )}
+            </div>
           )}
 
           {/* ========================================================= */}
