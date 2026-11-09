@@ -41,7 +41,7 @@ export const PersonaSelectionPanel: React.FC = () => {
   const selectedPreset = PRESETS.find(p => p.id === selectedPresetId) || PRESETS[0];
   const inp = selectedPreset.inputs;
 
-  const isBlankCanvas = activePresetId === 'blank' || (
+  const isBlankCanvas = (
     currentInputs.currentAnnualIncome === 0 &&
     currentInputs.rrspBalance === 0 &&
     currentInputs.tfsaBalance === 0 &&

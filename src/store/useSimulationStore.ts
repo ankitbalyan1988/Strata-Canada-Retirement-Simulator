@@ -533,6 +533,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
     set({
       inputs: nextInputs,
+      activePresetId: get().activePresetId === 'blank' ? 'custom' : get().activePresetId,
       optimisticSummary,
       isRecalculatingLedger: true
     });
@@ -550,6 +551,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
     set({
       inputs: nextInputs,
+      activePresetId: get().activePresetId === 'blank' ? 'custom' : get().activePresetId,
       optimisticSummary,
       isRecalculatingLedger: true
     });

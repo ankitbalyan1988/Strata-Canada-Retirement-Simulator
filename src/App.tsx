@@ -70,7 +70,7 @@ export default function App() {
   );
 
   const inputs = useSimulationStore((state) => state.inputs);
-  const isBlankCanvas = activePresetId === 'blank' || (
+  const isBlankCanvas = (
     inputs.currentAnnualIncome === 0 &&
     inputs.rrspBalance === 0 &&
     inputs.tfsaBalance === 0 &&

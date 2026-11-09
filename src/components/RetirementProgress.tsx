@@ -58,7 +58,6 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
   const storeOptimisticSummary = useSimulationStore(useShallow((state) => state.optimisticSummary));
   const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
   const storePulse = useSimulationStore(useShallow((state) => state.pulse));
-  const activePresetId = useSimulationStore((state) => state.activePresetId);
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const isSectionCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.progress));
@@ -97,7 +96,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
   const spouseLiquid = isCouple && spouse ? (spouse.rrspBalance || 0) + (spouse.tfsaBalance || 0) + (spouse.fhsaBalance || 0) + (spouse.nonRegBalance || 0) : 0;
   const totalCurrentLiquidPortfolio = primaryLiquid + spouseLiquid;
 
-  const isBlankCanvas = activePresetId === 'blank' || (
+  const isBlankCanvas = (
     (inputs.currentAnnualIncome || 0) === 0 &&
     (inputs.targetRetirementSpendingToday || 0) === 0 &&
     totalCurrentLiquidPortfolio === 0
