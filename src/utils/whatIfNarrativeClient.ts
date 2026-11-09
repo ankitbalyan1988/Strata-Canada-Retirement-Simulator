@@ -103,5 +103,8 @@ export async function fetchWhatIfNarrative({
   }
 
   const data = await response.json();
-  return data.narrative;
+  return {
+    ...data.narrative,
+    source: data.source || data.narrative?.source
+  };
 }

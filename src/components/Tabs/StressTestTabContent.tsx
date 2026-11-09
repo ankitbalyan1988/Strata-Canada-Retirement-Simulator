@@ -83,6 +83,8 @@ export const StressTestTabContent: React.FC = () => {
           onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
           stressTiming={stressTiming}
           onChangeStressTiming={setStressTiming}
+          showStressTestToggle={true}
+          showWhatIfToggle={true}
         />
       </div>
     </div>

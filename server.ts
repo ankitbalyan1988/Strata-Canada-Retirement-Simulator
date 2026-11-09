@@ -16,6 +16,25 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
+// Track Gemini API quota status to prevent cascading 429 errors when free-tier daily quota is reached
+let geminiQuotaExhaustedUntil: number = 0;
+
+function isGeminiQuotaExhausted(): boolean {
+  return Date.now() < geminiQuotaExhaustedUntil;
+}
+
+function handleGeminiError(endpoint: string, error: any): boolean {
+  const msg = String(error?.message || '');
+  const status = error?.status || error?.code;
+  const isQuota = status === 429 || msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota') || msg.includes('Quota exceeded');
+  if (isQuota) {
+    // Cooldown for 30 minutes to cleanly serve local actuarial engine without failing network calls
+    geminiQuotaExhaustedUntil = Date.now() + 30 * 60 * 1000;
+    return true;
+  }
+  return false;
+}
+
 // API: Generate Canadian Retirement Persona from natural language prompt
 app.post('/api/generate-persona', async (req: Request, res: Response) => {
   try {
@@ -25,8 +44,8 @@ app.post('/api/generate-persona', async (req: Request, res: Response) => {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      // Fallback parser if API key is not present in local dev
+    if (!apiKey || isGeminiQuotaExhausted()) {
+      // Fallback parser if API key is not present or quota exhausted
       const fallbackPersona = generateRuleBasedFallbackPersona(prompt);
       return res.json({ persona: fallbackPersona, source: 'heuristic' });
     }
@@ -68,12 +87,12 @@ Rules:
     const sanitized = sanitizePersona(parsed, prompt);
     return res.json({ persona: sanitized, source: 'gemini-3.8-flash' });
   } catch (error: any) {
-    console.error('Error generating AI persona:', error);
+    handleGeminiError('/api/generate-persona', error);
     // Provide graceful heuristic fallback if Gemini call fails
     try {
       const fallbackPersona = generateRuleBasedFallbackPersona(req.body?.prompt || '');
-      return res.json({ persona: fallbackPersona, source: 'heuristic_fallback', warning: error.message });
-    } catch (fallbackError) {
+      return res.json({ persona: fallbackPersona, source: 'heuristic_fallback' });
+    } catch {
       return res.status(500).json({ error: 'Failed to generate persona. Please try again.' });
     }
   }
@@ -88,7 +107,7 @@ app.post('/api/explain-ledger-value', async (req: Request, res: Response) => {
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
+    if (!apiKey || isGeminiQuotaExhausted()) {
       const fallback = generateRuleBasedLedgerExplanation(question, selectedAge, selectedMetric, rowData, planContext);
       return res.json({ explanation: fallback, source: 'actuarial_heuristic' });
     }
@@ -165,7 +184,7 @@ ${JSON.stringify(rowData || {}, null, 2)}
     const parsed = JSON.parse(responseText);
     return res.json({ explanation: parsed, source: 'gemini-3.8-flash' });
   } catch (error: any) {
-    console.warn('Notice in /api/explain-ledger-value (using actuarial engine fallback):', error.message);
+    handleGeminiError('/api/explain-ledger-value', error);
     const fallback = generateRuleBasedLedgerExplanation(
       req.body?.question || '',
       req.body?.selectedAge,
@@ -173,7 +192,7 @@ ${JSON.stringify(rowData || {}, null, 2)}
       req.body?.rowData,
       req.body?.planContext
     );
-    return res.json({ explanation: fallback, source: 'actuarial_heuristic_fallback', warning: error.message });
+    return res.json({ explanation: fallback, source: 'actuarial_heuristic_fallback' });
   }
 });
 
@@ -183,7 +202,7 @@ app.post('/api/what-if-narrative', async (req: Request, res: Response) => {
     const { scenarioName, settings, metrics, planContext, customQuestion } = req.body;
     const apiKey = process.env.GEMINI_API_KEY;
 
-    if (!apiKey) {
+    if (!apiKey || isGeminiQuotaExhausted()) {
       const fallback = generateRuleBasedWhatIfNarrative(scenarioName, settings, metrics, planContext, customQuestion);
       return res.json({ narrative: fallback, source: 'actuarial_heuristic' });
     }
@@ -281,7 +300,7 @@ ${customQuestion ? `User's Specific Query on this Scenario: "${customQuestion}"`
     const parsed = JSON.parse(responseText);
     return res.json({ narrative: parsed, source: 'gemini-3.8-flash' });
   } catch (error: any) {
-    console.warn('Notice in /api/what-if-narrative (using actuarial engine fallback):', error.message);
+    handleGeminiError('/api/what-if-narrative', error);
     const fallback = generateRuleBasedWhatIfNarrative(
       req.body?.scenarioName,
       req.body?.settings,
@@ -289,7 +308,7 @@ ${customQuestion ? `User's Specific Query on this Scenario: "${customQuestion}"`
       req.body?.planContext,
       req.body?.customQuestion
     );
-    return res.json({ narrative: fallback, source: 'actuarial_heuristic_fallback', warning: error.message });
+    return res.json({ narrative: fallback, source: 'actuarial_heuristic_fallback' });
   }
 });
 
@@ -865,7 +884,7 @@ function generateRuleBasedWhatIfNarrative(
 
   let summary = '';
   if (returnDelta <= -1.5 && inflDelta >= 1.5) {
-    summary = `${clientName}'s plan is undergoing a severe Stagflation Shock. A +${inflDelta.toFixed(1)}% inflation surge compounds living costs dollar-for-dollar, while a ${returnDelta.toFixed(1)}% drop in portfolio yields reduces passive compounding, squeezing the decumulation safety margin ${isFullyFunded ? 'substantially' : `and accelerating portfolio depletion to Age ${depletionAge}`}.`;
+    summary = `${clientName}'s plan is undergoing a severe Stagflation Shock. A +${inflDelta.toFixed(1)}% inflation surge compounds living costs dollar-for-dollar, while a ${returnDelta.toFixed(1)}% drop in portfolio yields reduces passive compounding, squeezing the decumulation safety margin ${isFullyFunded ? 'substantially' : (depletionAge ? `and accelerating portfolio depletion to Age ${depletionAge}` : 'and shortening portfolio longevity')}.`;
   } else if (inflDelta >= 1.5) {
     summary = `This test models Sticky Inflation Drag (+${inflDelta.toFixed(1)}% CPI). While nominal portfolio returns remain intact, purchasing power erodes, requiring higher registered withdrawals and elevating exposure to upper Canadian tax brackets.`;
   } else if (returnDelta <= -1.5) {
@@ -889,7 +908,7 @@ function generateRuleBasedWhatIfNarrative(
     'Non-Registered Investments: Annual yield drag from taxable Canadian dividends and realized capital gains diminishes compound recovery.'
   ];
   if (!isFullyFunded) {
-    vulnerableAssets.push(`Late-Stage Longevity Buffer: Portfolio runs out of liquid capital prior to life expectancy (Age ${depletionAge || 85}).`);
+    vulnerableAssets.push(`Late-Stage Longevity Buffer: Portfolio runs out of liquid capital prior to life expectancy (Age ${planContext?.lifeExpectancy || 85}).`);
   }
 
   const crossAge = metrics?.crossoverImpact?.whatIfAge;

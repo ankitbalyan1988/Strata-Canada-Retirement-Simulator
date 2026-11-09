@@ -2,14 +2,16 @@ import {
   RetirementInputs,
   SimulationSummary,
   StressScenarioOutcome,
-  StressTestHealthResult
+  StressTestHealthResult,
+  YearSimulationResult
 } from '../types/retirement';
 import { fastSimulateEndNetWorth } from './engine/fastSimulator';
+import { runRetirementSimulation } from './simulator';
 
 /**
  * Historical benchmark stress configurations modeling real Canadian market events
  */
-interface ScenarioDefinition {
+export interface ScenarioDefinition {
   id: string;
   name: string;
   description: string;
@@ -20,7 +22,7 @@ interface ScenarioDefinition {
   };
 }
 
-const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
+export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
   {
     id: 'gfc_2008',
     name: '2008 Global Financial Crisis',
@@ -122,6 +124,148 @@ const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
   }
 ];
 
+export interface ScenarioSimulationDetails {
+  scenarioDef: ScenarioDefinition;
+  scenarioOutcome: StressScenarioOutcome;
+  yearlyResults: YearSimulationResult[];
+  summary: SimulationSummary;
+  shockAge: number;
+  shockDropPercent: number;
+  terminalNetWorth: number;
+  terminalNetWorthDelta: number;
+  isSolvent: boolean;
+  depletionAge: number | null;
+  yearsFunded: number;
+  totalYearsInRetirement: number;
+  totalPensionsReceived: number;
+  totalLivingExpenses: number;
+  totalInvestmentGrowth: number;
+  totalTaxesPaid: number;
+  mathBreakdown: {
+    label: string;
+    value: string;
+    detail: string;
+  }[];
+}
+
+/**
+ * Runs full simulation ledger for a selected historical stress scenario
+ */
+export function runStressScenarioSimulation(
+  inputs: RetirementInputs,
+  scenarioId: string
+): ScenarioSimulationDetails {
+  const scenarioDef = HISTORICAL_SCENARIOS.find((s) => s.id === scenarioId) || HISTORICAL_SCENARIOS[0];
+  const { inputs: scenInputs, stressTest } = scenarioDef.applyInputs(inputs);
+  const { yearlyResults, summary } = runRetirementSimulation(scenInputs, stressTest);
+
+  const baseSim = fastSimulateEndNetWorth(inputs);
+  const baseTerminalNetWorth = Math.round(baseSim.netWorthAtLifeExpectancy);
+  const terminalNetWorth = Math.round(summary.netWorthAtLifeExpectancy);
+  const terminalNetWorthDelta = terminalNetWorth - baseTerminalNetWorth;
+
+  const totalYearsInRetirement = Math.max(1, scenInputs.lifeExpectancy - scenInputs.retirementAge);
+  const isSolvent = summary.isFullyFunded;
+  const depletionAge = summary.portfolioDepletionAge;
+  const yearsFunded = summary.yearsFunded;
+
+  const shockAge = stressTest?.timing === 'immediate'
+    ? scenInputs.currentAge
+    : scenInputs.retirementAge;
+  const shockDropPercent = stressTest?.dropPercent || 0;
+
+  // Aggregate cash flow sums across retirement years
+  let totalPensionsReceived = 0;
+  let totalLivingExpenses = 0;
+  let totalInvestmentGrowth = 0;
+  let totalTaxesPaid = 0;
+
+  yearlyResults.forEach((yr) => {
+    if (yr.isRetired) {
+      totalPensionsReceived += (yr.cppIncome + yr.oasNetIncome);
+      totalLivingExpenses += yr.targetSpendingNominal;
+      totalInvestmentGrowth += yr.totalInvestmentGrowth;
+      totalTaxesPaid += yr.totalTaxPaid;
+    }
+  });
+
+  const mathBreakdown = [
+    {
+      label: 'Market Shock Drawdown',
+      value: shockDropPercent > 0 ? `-${shockDropPercent}% at Age ${shockAge}` : 'Longevity + Years',
+      detail: stressTest?.timing === 'immediate'
+        ? `Applied immediately to current portfolio balances at Age ${scenInputs.currentAge}`
+        : shockDropPercent > 0
+        ? `Applied at Age ${scenInputs.retirementAge} precisely as living decumulation begins`
+        : `Simulates spending through Age ${scenInputs.lifeExpectancy}`
+    },
+    {
+      label: 'Portfolio at Retirement',
+      value: `$${Math.round(summary.netWorthAtRetirement).toLocaleString()}`,
+      detail: `Capital available at start of decumulation phase`
+    },
+    {
+      label: 'Cumulative Decumulation Spend',
+      value: `$${Math.round(totalLivingExpenses).toLocaleString()}`,
+      detail: `Total living expense obligations adjusted for inflation (${scenInputs.inflationRate}%/yr)`
+    },
+    {
+      label: 'Government Pensions (CPP/OAS)',
+      value: `$${Math.round(totalPensionsReceived).toLocaleString()}`,
+      detail: `Inflation-indexed guaranteed income reducing required portfolio withdrawals`
+    },
+    {
+      label: 'Net Portfolio Growth in Shock',
+      value: `$${Math.round(totalInvestmentGrowth).toLocaleString()}`,
+      detail: `Total investment compounding under stressed return assumptions`
+    },
+    {
+      label: 'Terminal Wealth @ Age ' + scenInputs.lifeExpectancy,
+      value: `$${terminalNetWorth.toLocaleString()}`,
+      detail: isSolvent
+        ? `Surplus capital remaining after fully funding ${totalYearsInRetirement} years of retirement`
+        : depletionAge
+        ? `Portfolio exhausted at Age ${depletionAge} (${depletionAge - scenInputs.retirementAge} of ${totalYearsInRetirement} years funded)`
+        : `Under-funded plan without sufficient initial capital`
+    }
+  ];
+
+  const scenarioOutcome: StressScenarioOutcome = {
+    id: scenarioDef.id,
+    name: scenarioDef.name,
+    description: scenarioDef.description,
+    severity: scenarioDef.severity,
+    isSolvent,
+    depletionAge,
+    terminalNetWorth,
+    terminalNetWorthDelta,
+    lowestLiquidFloor: Math.max(0, isSolvent ? terminalNetWorth * 0.4 : 0),
+    recoveryYears: scenarioDef.id === 'gfc_2008' ? 4 : scenarioDef.id === 'stagflation_1973' ? 5 : 2,
+    yearsFunded,
+    totalYearsInRetirement
+  };
+
+  return {
+    scenarioDef,
+    scenarioOutcome,
+    yearlyResults,
+    summary,
+    shockAge,
+    shockDropPercent,
+    terminalNetWorth,
+    terminalNetWorthDelta,
+    isSolvent,
+    depletionAge,
+    yearsFunded,
+    totalYearsInRetirement,
+    totalPensionsReceived: Math.round(totalPensionsReceived),
+    totalLivingExpenses: Math.round(totalLivingExpenses),
+    totalInvestmentGrowth: Math.round(totalInvestmentGrowth),
+    totalTaxesPaid: Math.round(totalTaxesPaid),
+    mathBreakdown
+  };
+}
+
 /**
  * Calculates actionable stress test health metrics and resilience score
  */
@@ -129,6 +273,15 @@ export function calculateStressTestHealth(
   inputs: RetirementInputs,
   summary: SimulationSummary
 ): StressTestHealthResult {
+  const isBlankCanvas = (
+    (inputs.currentAnnualIncome || 0) === 0 &&
+    (inputs.targetRetirementSpendingToday || 0) === 0 &&
+    (inputs.rrspBalance || 0) === 0 &&
+    (inputs.tfsaBalance || 0) === 0 &&
+    (inputs.nonRegBalance || 0) === 0 &&
+    (inputs.fhsaBalance || 0) === 0
+  );
+
   const baseSim = fastSimulateEndNetWorth(inputs);
   const totalYearsInRetirement = Math.max(1, inputs.lifeExpectancy - inputs.retirementAge);
   const baseTerminalNetWorth = Math.round(baseSim.netWorthAtLifeExpectancy);
@@ -142,7 +295,7 @@ export function calculateStressTestHealth(
       ? scenYearsInRetire
       : (scenSim.depletionAge !== null
           ? Math.max(0, scenSim.depletionAge - scenInputs.retirementAge)
-          : 0);
+          : (isBlankCanvas ? 0 : 0));
     const terminalNetWorth = Math.round(scenSim.netWorthAtLifeExpectancy);
 
     return {

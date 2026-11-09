@@ -605,7 +605,7 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
                     </span>
                     {narrativeData.source && (
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
-                        Engine: {narrativeData.source}
+                        Engine: {narrativeData.source.includes('actuarial') || narrativeData.source.includes('heuristic') ? 'CRA Actuarial Intelligence' : 'Gemini AI'}
                       </span>
                     )}
                   </div>

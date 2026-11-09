@@ -24,11 +24,6 @@ export const WhatIfTabContent: React.FC = () => {
   const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
   const setWhatIfSettings = useSimulationStore((state) => state.setWhatIfSettings);
   const resetWhatIfSettings = useSimulationStore((state) => state.resetWhatIfSettings);
-  const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
-  const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
-  const stressTiming = useSimulationStore((state) => state.stressTiming);
-  const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const stressSimulation = useSimulationStore((state) => state.stressSimulation);
   const retirementAge = inputs.retirementAge;
 
   // Ensure what-if is active when user is in this tab
@@ -239,12 +234,10 @@ export const WhatIfTabContent: React.FC = () => {
         </div>
         <NetWorthChart
           yearlyResults={yearlyResults}
-          stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
           retirementAge={retirementAge}
-          isStressTestActive={isStressTestActive}
-          onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
-          stressTiming={stressTiming}
-          onChangeStressTiming={setStressTiming}
+          showStressTestToggle={false}
+          showWhatIfToggle={false}
+          showWhatIfOverlayLine={true}
         />
       </div>
     </div>

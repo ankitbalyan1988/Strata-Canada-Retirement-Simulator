@@ -23,11 +23,6 @@ export const MainDashboardTabContent: React.FC = () => {
   const province = useSimulationStore((state) => state.inputs.province);
   const isCouple = useSimulationStore((state) => state.inputs.maritalStatus === 'married');
   const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
-  const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
-  const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
-  const stressTiming = useSimulationStore((state) => state.stressTiming);
-  const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const stressSimulation = useSimulationStore(useShallow((state) => state.stressSimulation));
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const activePresetId = useSimulationStore((state) => state.activePresetId);
   const inputs = useSimulationStore((state) => state.inputs);
@@ -100,12 +95,10 @@ export const MainDashboardTabContent: React.FC = () => {
       <div className="flex flex-col gap-2">
         <NetWorthChart
           yearlyResults={yearlyResults}
-          stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
           retirementAge={retirementAge}
-          isStressTestActive={isStressTestActive}
-          onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
-          stressTiming={stressTiming}
-          onChangeStressTiming={setStressTiming}
+          showStressTestToggle={false}
+          showWhatIfToggle={false}
+          showWhatIfOverlayLine={false}
         />
       </div>
 

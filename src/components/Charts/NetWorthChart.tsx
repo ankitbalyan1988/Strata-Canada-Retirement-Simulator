@@ -17,24 +17,30 @@ import { useShallow } from 'zustand/react/shallow';
 import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
 import { WhatIfSensitivityPanel } from './WhatIfSensitivityPanel';
 
-interface NetWorthChartProps {
+export interface NetWorthChartProps {
   yearlyResults: YearSimulationResult[];
   stressYearlyResults?: YearSimulationResult[];
   retirementAge: number;
-  isStressTestActive: boolean;
-  onToggleStressTest: () => void;
-  stressTiming: 'at_retirement' | 'immediate';
-  onChangeStressTiming: (timing: 'at_retirement' | 'immediate') => void;
+  isStressTestActive?: boolean;
+  onToggleStressTest?: () => void;
+  stressTiming?: 'at_retirement' | 'immediate';
+  onChangeStressTiming?: (timing: 'at_retirement' | 'immediate') => void;
+  showStressTestToggle?: boolean;
+  showWhatIfToggle?: boolean;
+  showWhatIfOverlayLine?: boolean;
 }
 
 export const NetWorthChart: React.FC<NetWorthChartProps> = ({
   yearlyResults,
   stressYearlyResults,
   retirementAge,
-  isStressTestActive,
-  onToggleStressTest,
-  stressTiming,
-  onChangeStressTiming
+  isStressTestActive = false,
+  onToggleStressTest = () => {},
+  stressTiming = 'at_retirement',
+  onChangeStressTiming = () => {},
+  showStressTestToggle = false,
+  showWhatIfToggle = false,
+  showWhatIfOverlayLine = false
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [visibleAccounts, setVisibleAccounts] = useState({
@@ -76,11 +82,11 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
     const maxNetWorth = Math.max(
       100000,
       ...yearlyResults.map((y) => y.totalNetWorth),
-      ...(stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : []),
-      ...(whatIfYearlyResults ? whatIfYearlyResults.map((y) => y.totalNetWorth) : [])
+      ...(showStressTestToggle && stressYearlyResults ? stressYearlyResults.map((y) => y.totalNetWorth) : []),
+      ...((showWhatIfToggle || showWhatIfOverlayLine) && whatIfYearlyResults ? whatIfYearlyResults.map((y) => y.totalNetWorth) : [])
     );
     return Math.ceil((maxNetWorth * 1.1) / 100000) * 100000;
-  }, [yearlyResults, stressYearlyResults, whatIfYearlyResults]);
+  }, [yearlyResults, stressYearlyResults, whatIfYearlyResults, showStressTestToggle, showWhatIfToggle, showWhatIfOverlayLine]);
 
   const minAge = yearlyResults[0].age;
   const maxAge = yearlyResults[yearlyResults.length - 1].age;
@@ -231,69 +237,73 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
         <div className="flex items-center flex-wrap gap-2.5">
           
           {/* MARKET STRESS TEST TOGGLE */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 shadow-xs border border-slate-200 dark:border-slate-700/80 text-xs">
-            <button
-              type="button"
-              onClick={onToggleStressTest}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
-                isStressTestActive
-                  ? 'bg-amber-500 text-slate-950 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <TrendingDown className="w-3.5 h-3.5" />
-              <span>Stress Test (-10%)</span>
-              <span className={`w-2 h-2 rounded-full ${isStressTestActive ? 'bg-amber-950 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`}></span>
-            </button>
+          {showStressTestToggle && (
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 shadow-xs border border-slate-200 dark:border-slate-700/80 text-xs">
+              <button
+                type="button"
+                onClick={onToggleStressTest}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold transition ${
+                  isStressTestActive
+                    ? 'bg-amber-500 text-slate-950 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <TrendingDown className="w-3.5 h-3.5" />
+                <span>Stress Test (-10%)</span>
+                <span className={`w-2 h-2 rounded-full ${isStressTestActive ? 'bg-amber-950 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`}></span>
+              </button>
 
-            {isStressTestActive && (
-              <div className="flex items-center gap-1 pl-1 pr-1 text-[10px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => onChangeStressTiming('at_retirement')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    stressTiming === 'at_retirement'
-                      ? 'bg-amber-400/25 text-amber-600 dark:text-amber-300 border border-amber-400/40'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                  title="Simulate Sequence-of-Returns crash in the retirement milestone year"
-                >
-                  At Retire
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChangeStressTiming('immediate')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    stressTiming === 'immediate'
-                      ? 'bg-amber-400/25 text-amber-600 dark:text-amber-300 border border-amber-400/40'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  }`}
-                  title="Simulate immediate 10% market crash today"
-                >
-                  Today
-                </button>
-              </div>
-            )}
-          </div>
+              {isStressTestActive && (
+                <div className="flex items-center gap-1 pl-1 pr-1 text-[10px] font-semibold">
+                  <button
+                    type="button"
+                    onClick={() => onChangeStressTiming('at_retirement')}
+                    className={`px-2 py-0.5 rounded transition ${
+                      stressTiming === 'at_retirement'
+                        ? 'bg-amber-400/25 text-amber-600 dark:text-amber-300 border border-amber-400/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                    title="Simulate Sequence-of-Returns crash in the retirement milestone year"
+                  >
+                    At Retire
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChangeStressTiming('immediate')}
+                    className={`px-2 py-0.5 rounded transition ${
+                      stressTiming === 'immediate'
+                        ? 'bg-amber-400/25 text-amber-600 dark:text-amber-300 border border-amber-400/40'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                    title="Simulate immediate 10% market crash today"
+                  >
+                    Today
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* WHAT-IF SENSITIVITY TOGGLE */}
-          <button
-            type="button"
-            onClick={() => setIsWhatIfActive((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs border shadow-xs ${
-              whatIfSettings.isActive
-                ? 'bg-purple-600 text-white border-purple-500 shadow-purple-900/30 ring-2 ring-purple-400/30'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-700/80'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5 text-purple-500 dark:text-purple-300" />
-            <span>What-If Analysis</span>
-            <span className={`w-2 h-2 rounded-full ${whatIfSettings.isActive ? 'bg-purple-200 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`}></span>
-          </button>
+          {showWhatIfToggle && (
+            <button
+              type="button"
+              onClick={() => setIsWhatIfActive((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold transition text-xs border shadow-xs ${
+                whatIfSettings.isActive
+                  ? 'bg-purple-600 text-white border-purple-500 shadow-purple-900/30 ring-2 ring-purple-400/30'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border-slate-200 dark:border-slate-700/80'
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5 text-purple-500 dark:text-purple-300" />
+              <span>What-If Analysis</span>
+              <span className={`w-2 h-2 rounded-full ${whatIfSettings.isActive ? 'bg-purple-200 animate-pulse' : 'bg-slate-400 dark:bg-slate-600'}`}></span>
+            </button>
+          )}
 
           {/* Account Filter Pills */}
           <div className="flex items-center flex-wrap gap-1.5 text-xs">
-            {whatIfSettings.isActive && (
+            {(showWhatIfToggle || showWhatIfOverlayLine) && whatIfSettings.isActive && (
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-purple-300 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 font-semibold text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-purple-600"></span>
                 What-If Line
@@ -370,7 +380,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
       </div>
 
       {/* WHAT-IF SENSITIVITY INTERACTIVE PANEL */}
-      {whatIfSettings.isActive && whatIfResult && (
+      {showWhatIfToggle && whatIfSettings.isActive && whatIfResult && (
         <WhatIfSensitivityPanel
           whatIfResult={whatIfResult}
           onApplyPreset={(presetSettings) => {
@@ -390,7 +400,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
       )}
 
       {/* Stress Test Live Impact Alert Banner */}
-      {isStressTestActive && (
+      {showStressTestToggle && isStressTestActive && (
         <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition animate-in fade-in duration-200 ${
           passesStressTest
             ? 'bg-amber-50/80 border-amber-300 text-amber-950'
@@ -771,7 +781,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
           )}
 
           {/* MARKET STRESS TEST VISUALIZATION */}
-          {isStressTestActive && stressYearlyResults && (
+          {showStressTestToggle && isStressTestActive && stressYearlyResults && (
             <g pointerEvents="none">
               {/* Shaded Impact Band between baseline and stress curve */}
               {stressBandPath && (
@@ -829,7 +839,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
           )}
 
           {/* WHAT-IF SENSITIVITY VISUALIZATION */}
-          {whatIfSettings.isActive && whatIfYearlyResults && whatIfResult && (
+          {(showWhatIfToggle || showWhatIfOverlayLine) && whatIfSettings.isActive && whatIfYearlyResults && whatIfResult && (
             <g pointerEvents="none">
               {/* Shaded Impact Band between baseline and What-If curve */}
               {whatIfBandPath && (
@@ -995,7 +1005,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 strokeWidth="2"
               />
 
-              {isStressTestActive && hoveredStressData && (
+              {showStressTestToggle && isStressTestActive && hoveredStressData && (
                 <circle
                   cx={getX(hoveredStressData.age)}
                   cy={getY(hoveredStressData.totalNetWorth)}
@@ -1006,7 +1016,7 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
                 />
               )}
 
-              {whatIfSettings.isActive && hoveredWhatIfData && (
+              {(showWhatIfToggle || showWhatIfOverlayLine) && whatIfSettings.isActive && hoveredWhatIfData && (
                 <circle
                   cx={getX(hoveredWhatIfData.age)}
                   cy={getY(hoveredWhatIfData.totalNetWorth)}
@@ -1043,8 +1053,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               </span>
             </div>
 
-            {/* If Stress Test is active, display side-by-side comparison in tooltip */}
-            {isStressTestActive && hoveredStressData && (
+            {/* If Stress Test is active and enabled for chart, display side-by-side comparison in tooltip */}
+            {showStressTestToggle && isStressTestActive && hoveredStressData && (
               <div className="mb-2 p-1.5 rounded-lg bg-amber-950/60 border border-amber-800/50 flex flex-col gap-0.5 font-mono text-[11px]">
                 <div className="flex justify-between text-amber-300">
                   <span className="flex items-center gap-1 font-sans">
@@ -1063,8 +1073,8 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
               </div>
             )}
 
-            {/* If What-If is active, display side-by-side comparison in tooltip */}
-            {whatIfSettings.isActive && hoveredWhatIfData && (
+            {/* If What-If is active and enabled for chart, display side-by-side comparison in tooltip */}
+            {(showWhatIfToggle || showWhatIfOverlayLine) && whatIfSettings.isActive && hoveredWhatIfData && (
               <div className="mb-2 p-1.5 rounded-lg bg-purple-950/70 border border-purple-700/60 flex flex-col gap-0.5 font-mono text-[11px]">
                 <div className="flex justify-between text-purple-300">
                   <span className="flex items-center gap-1 font-sans font-bold">

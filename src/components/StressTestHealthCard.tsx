@@ -1,7 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useSimulationStore } from '../store/useSimulationStore';
-import { calculateStressTestHealth } from '../utils/stressTestHealthCalculator';
+import {
+  calculateStressTestHealth,
+  runStressScenarioSimulation
+} from '../utils/stressTestHealthCalculator';
 import { StressScenarioOutcome } from '../types/retirement';
+import { StressScenarioLedger } from './StressScenarioLedger';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -16,7 +20,8 @@ import {
   DollarSign,
   Calendar,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Table
 } from 'lucide-react';
 
 export function StressTestHealthCard() {
@@ -37,10 +42,16 @@ export function StressTestHealthCard() {
 
   // Selected scenario for detail view
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(health.worstCaseScenario.id);
+  const [isLedgerExpanded, setIsLedgerExpanded] = useState<boolean>(true);
 
   const activeScenario: StressScenarioOutcome = useMemo(() => {
     return health.scenarios.find((s) => s.id === selectedScenarioId) || health.worstCaseScenario;
   }, [health, selectedScenarioId]);
+
+  // Compute full annual simulation ledger for selected scenario
+  const scenarioDetails = useMemo(() => {
+    return runStressScenarioSimulation(inputs, activeScenario.id);
+  }, [inputs, activeScenario.id]);
 
   // Health color styling
   const ratingTheme = {
@@ -141,18 +152,22 @@ export function StressTestHealthCard() {
               Worst-Case Impact: <strong className="text-rose-600 dark:text-rose-400">-{health.worstCaseDropPercent}% Terminal Capital</strong>
             </span>
             <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-slate-700 dark:text-slate-300">
-              Solvency: <strong className={health.worstCaseScenario.isSolvent ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
-                {health.worstCaseScenario.isSolvent ? '100% Solvent' : `Depletes @ Age ${health.worstCaseDepletionAge}`}
-              </strong>
-            </span>
-          </div>
+                Solvency: <strong className={health.worstCaseScenario.isSolvent ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                  {health.worstCaseScenario.isSolvent
+                    ? '100% Solvent'
+                    : (health.worstCaseDepletionAge !== null && health.worstCaseDepletionAge !== undefined
+                        ? `Depletes @ Age ${health.worstCaseDepletionAge}`
+                        : 'Depleted')}
+                </strong>
+              </span>
+            </div>
 
-          <div className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 ml-auto">
-            <span>Inspect Health Details</span>
-            <ChevronDown className="w-3.5 h-3.5" />
+            <div className="text-xs font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1 ml-auto">
+              <span>Inspect Health Details</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Expanded Content Body */}
       {!isCollapsed && (
@@ -231,7 +246,11 @@ export function StressTestHealthCard() {
                 <div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Solvency Status:</span>
                   <span className={`font-bold ${health.worstCaseScenario.isSolvent ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                    {health.worstCaseScenario.isSolvent ? '100% Solvent' : `Depletes Age ${health.worstCaseDepletionAge}`}
+                    {health.worstCaseScenario.isSolvent
+                      ? '100% Solvent'
+                      : (health.worstCaseDepletionAge !== null && health.worstCaseDepletionAge !== undefined
+                          ? `Depletes Age ${health.worstCaseDepletionAge}`
+                          : 'Depleted')}
                   </span>
                 </div>
               </div>
@@ -336,7 +355,11 @@ export function StressTestHealthCard() {
                     }`} />
                     <span>{scen.name}</span>
                     <span className="text-[10px] text-slate-400 font-mono">
-                      {scen.isSolvent ? 'Solvent' : `Depleted @ ${scen.depletionAge}`}
+                      {scen.isSolvent
+                        ? 'Solvent'
+                        : (scen.depletionAge !== null && scen.depletionAge !== undefined
+                            ? `Depleted @ ${scen.depletionAge}`
+                            : 'Depleted')}
                     </span>
                   </button>
                 );
@@ -384,6 +407,53 @@ export function StressTestHealthCard() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            {/* Scenario Simulation Ledger & Math Verification Breakdown */}
+            <div className="flex flex-col gap-2 pt-3 border-t border-slate-200/80 dark:border-slate-700/80">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <Table className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                      <span>{activeScenario.name} — Simulation Ledger</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        {scenarioDetails.yearlyResults.length} Years Modeled
+                      </span>
+                    </h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Step-by-step mathematical calculations showing annual compounding, living withdrawals, and statutory CRA taxes
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsLedgerExpanded((prev) => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs self-start sm:self-auto"
+                >
+                  {isLedgerExpanded ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Hide Scenario Ledger</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Show Scenario Ledger & Math</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {isLedgerExpanded && (
+                <StressScenarioLedger
+                  scenarioDetails={scenarioDetails}
+                  inputs={inputs}
+                />
+              )}
             </div>
           </div>
 
