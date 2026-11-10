@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   Plane,
   RotateCcw,
-  BookOpen
+  BookOpen,
+  Users
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../../store/useSimulationStore';
 import { PROVINCIAL_BRACKETS } from '../../utils/canadianTax';
@@ -338,17 +339,17 @@ export const Sidebar: React.FC = () => {
               )}
             </button>
 
-            {/* AI Persona Prompt Modal */}
+            {/* Standard or AI Personas Modal */}
             <button
               type="button"
               onClick={() => setIsAIPersonaModalOpen(true)}
-              title={isSidebarCollapsed ? 'AI Persona Generator' : undefined}
+              title={isSidebarCollapsed ? 'Standard or AI Personas' : undefined}
               className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition cursor-pointer ${
                 isSidebarCollapsed ? 'justify-center px-0' : ''
               }`}
             >
-              <Wand2 className="w-4 h-4 text-amber-500 shrink-0" />
-              {!isSidebarCollapsed && <span>AI Persona Generator</span>}
+              <Users className="w-4 h-4 text-amber-500 shrink-0" />
+              {!isSidebarCollapsed && <span>Standard or AI Personas</span>}
             </button>
 
             {/* Canadian Retirement Rules & Wealth Guide */}
@@ -365,7 +366,7 @@ export const Sidebar: React.FC = () => {
                 <div className="flex-1 flex items-center justify-between">
                   <span>Rules & Wealth Guide</span>
                   <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50">
-                    5 CRA
+                    7 CRA
                   </span>
                 </div>
               )}

@@ -13,7 +13,13 @@ import {
   ExternalLink,
   ChevronsUpDown,
   CheckCircle2,
-  Info
+  Info,
+  HeartHandshake,
+  Globe,
+  Home,
+  Plane,
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 
@@ -36,7 +42,9 @@ export const CanadianWealthGuideModal: React.FC<CanadianWealthGuideModalProps> =
     1: true,
     2: true,
     3: true,
-    4: true
+    4: true,
+    5: true,
+    6: true
   });
 
   // Handle escape key
@@ -250,6 +258,132 @@ export const CanadianWealthGuideModal: React.FC<CanadianWealthGuideModalProps> =
           </div>
         </div>
       )
+    },
+    {
+      id: 5,
+      category: 'estate',
+      title: 'CRA Estate Planning: Deemed Disposition at Death & Primary Home Rules',
+      badge: 'Section 70(5) ITA',
+      badgeColor: 'purple',
+      icon: <HeartHandshake className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+      summary: 'Canada has no formal inheritance tax, but deems all assets sold at fair market value at death. RRSP/RRIFs collapse at top marginal tax rates unless transferred to a surviving spouse.',
+      content: (
+        <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p>
+            Unlike the US or UK, Canada has <strong>no formal inheritance or estate tax</strong>. Instead, under <strong>Section 70(5) of the Income Tax Act</strong>, the Canada Revenue Agency enforces a <strong>Deemed Disposition at Death</strong>: you are deemed to have sold all capital property at fair market value (FMV) immediately prior to death.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40">
+              <span className="text-[10px] font-bold uppercase text-purple-700 dark:text-purple-300 block">The RRSP / RRIF Tax Trap</span>
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                Without a surviving spouse, the <strong>entire remaining balance of your RRSP/RRIF is fully collapsed</strong> into ordinary income on your final terminal tax return. This typically pushes the final bracket to <strong>53.53% in Ontario / 54% in Quebec / 48–50% in BC and Alberta</strong>.
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 block">Spousal Rollover Relief (Sec. 70(6))</span>
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                If transferred to a legal spouse or common-law partner, RRSP/RRIF balances and capital property roll over <strong>100% tax-deferred</strong>. Tax recognition is delayed until the second spouse passes away or withdraws funds.
+              </p>
+            </div>
+          </div>
+
+          {/* HOME OWNERSHIP IMPLICATIONS ON ESTATE PLANNING */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-300/80 dark:border-amber-700/50 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+              <Home className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Home Ownership Implications on Estate Planning:</span>
+            </div>
+            <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+              <li>
+                <strong>Principal Residence Exemption (PRE) at Death:</strong> Under Section 40(2)(b), your primary residence is <strong>100% exempt from deemed disposition capital gains tax</strong>. Even if the home appreciated from $300,000 to $1,500,000, the estate pays <strong>$0 in capital gains tax</strong> on the primary home.
+              </li>
+              <li>
+                <strong>Joint Tenancy with Right of Survivorship (JTWROS):</strong> Holding primary home title jointly with a spouse (outside Quebec) transfers ownership directly by operation of law. The home <strong>bypasses the will and probate court entirely</strong>, saving thousands in provincial probate fees (e.g., 1.5% in Ontario on estate values over $50k) and preventing public disclosure.
+              </li>
+              <li>
+                <strong>Secondary Real Estate & Cottages:</strong> Secondary residences, family cabins, and rental properties do <strong>NOT</strong> qualify for full PRE. Accrued gains from purchase to death are 50% to 66.7% taxable on the terminal return, often triggering a surprise tax bill that forces heirs to sell the property unless covered by estate liquidity or life insurance.
+              </li>
+              <li>
+                <strong>Stepped-Up Cost Base for Beneficiaries:</strong> Beneficiaries (such as adult children) receive the inherited home with a cost base stepped up to the fair market value at date of death. If they don't reside in it as their own principal home, any appreciation from that date forward is taxable upon eventual sale.
+              </li>
+            </ul>
+          </div>
+
+          <div className="p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40 text-xs text-purple-900 dark:text-purple-200 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-semibold text-purple-800 dark:text-purple-300">Estate Planning Strategy:</strong> Running strategic RRSP meltdowns and systematically compounding tax-free wealth inside TFSAs leaves heirs with maximum after-tax legacy capital, avoiding terminal bracket cliffs.
+            </div>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 6,
+      category: 'exit_tax',
+      title: 'CRA Departure Tax: Emigrating from Canada & Non-Resident Real Estate',
+      badge: 'Section 128.1 ITA',
+      badgeColor: 'cyan',
+      icon: <Globe className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />,
+      summary: 'Severing Canadian tax residency triggers a deemed disposition on worldwide taxable assets, but Canadian real property is explicitly exempt from departure tax on exit day.',
+      content: (
+        <div className="space-y-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+          <p>
+            When a Canadian relocates abroad and severs residential ties, under <strong>Section 128.1 of the Income Tax Act</strong>, the CRA treats you as having disposed of all worldwide capital property at fair market value on your departure date (the <strong>Departure Tax / Exit Tax</strong>), reported on <strong>CRA Forms T1161 and T1243</strong>.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200/60 dark:border-cyan-800/40">
+              <span className="text-[10px] font-bold uppercase text-cyan-700 dark:text-cyan-300 block">Deemed Sale of Non-Reg Accounts</span>
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                Unrealized capital gains on non-registered stocks, ETFs, corporate shares, and mutual funds are taxed in your departure year, even if you never sold a single share.
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+              <span className="text-[10px] font-bold uppercase text-slate-600 dark:text-slate-400 block">Registered Accounts Treatment</span>
+              <p className="text-xs text-slate-700 dark:text-slate-300 mt-1">
+                RRSPs and RRIFs are <strong>exempt from departure tax</strong> on departure day. However, future distributions to non-residents face <strong>CRA Part XIII 25% non-resident withholding tax</strong> (often reduced to 15% under bilateral treaties like US-Canada for periodic payments). TFSAs lose foreign tax-free status in most jurisdictions.
+              </p>
+            </div>
+          </div>
+
+          {/* HOME OWNERSHIP IMPLICATIONS ON EXIT TAX */}
+          <div className="p-3.5 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-300/80 dark:border-blue-700/50 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-950 dark:text-blue-100">
+              <Home className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>Home Ownership Implications on Leaving Canada:</span>
+            </div>
+            <ul className="list-disc pl-5 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+              <li>
+                <strong>Canadian Real Estate Departure Tax Exemption:</strong> Under Section 128.1(1)(b), <strong>Canadian real property (including your home) is EXPLICITLY EXEMPT from departure tax</strong>. You do NOT pay deemed disposition exit taxes on your Canadian real estate when you board the plane.
+              </li>
+              <li>
+                <strong>The "Primary Residential Tie" Trap:</strong> Keeping a Canadian home available for personal use (vacant, furnished, or occupied by a dependent) is considered a primary tie to Canada. The CRA may refuse to grant non-resident tax status, continuing to tax your worldwide income! To sever ties, the property must be rented to an arm's-length tenant under a formal, bona fide long-term lease.
+              </li>
+              <li>
+                <strong>Part XIII 25% Gross Rental Withholding & Section 216 Election:</strong> If renting out your Canadian home while living abroad, the tenant or property manager must withhold <strong>25% of gross rent</strong> each month for the CRA. Filing <strong>Form NR6</strong> allows you to elect under <strong>Section 216</strong> to pay 25% on <em>net</em> rental income instead (deducting mortgage interest, property taxes, maintenance, and condo fees).
+              </li>
+              <li>
+                <strong>Section 116 Certificate of Compliance upon Future Sale:</strong> When a non-resident eventually sells Canadian real estate, the purchaser must withhold <strong>25% of the gross selling price</strong> until the CRA issues a Section 116 Certificate of Compliance confirming capital gains taxes have been paid.
+              </li>
+              <li>
+                <strong>Loss of Principal Residence Exemption for Expat Years:</strong> The PRE formula `(1 + years resident) / total years owned` only shelters gains during your Canadian tax residency years. Any appreciation accrued while living abroad as a non-resident is fully taxable in Canada upon sale.
+              </li>
+              <li>
+                <strong>Clean Pre-Departure Sale Strategy:</strong> Selling your home <em>before</em> severing Canadian tax residency allows 100% tax-free capital gains under the PRE, avoids Section 116 non-resident holdbacks, and provides clean liquid capital to deploy into your foreign destination.
+              </li>
+            </ul>
+          </div>
+
+          <div className="p-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 border border-cyan-200/60 dark:border-cyan-800/40 text-xs text-cyan-900 dark:text-cyan-200 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-semibold text-cyan-800 dark:text-cyan-300">Expat Module Integration:</strong> Strata's dedicated Expat Planning Module models departure tax schedules, Part XIII withholding treaties across 12 countries, and pre-departure home sale liquidation strategies.
+            </div>
+          </div>
+        </div>
+      )
     }
   ];
 
@@ -302,14 +436,14 @@ export const CanadianWealthGuideModal: React.FC<CanadianWealthGuideModalProps> =
                     Canadian Retirement Rules & Wealth Guide
                   </h2>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                    5 CRA Strategies
+                    7 CRA Strategies
                   </span>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                     CRA 2025/2026
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Essential CRA tax legislation, decumulation order mechanics, and wealth preservation strategies for Canadian retirees.
+                  Essential CRA tax legislation, decumulation order mechanics, estate deemed disposition, and emigration departure tax rules for Canadian professionals.
                 </p>
               </div>
             </div>
@@ -329,11 +463,13 @@ export const CanadianWealthGuideModal: React.FC<CanadianWealthGuideModalProps> =
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/80 flex-wrap">
             <div className="flex items-center gap-1.5 flex-wrap">
               {[
-                { id: 'all', label: 'All Rules (5)' },
+                { id: 'all', label: 'All Rules (7)' },
                 { id: 'rrsp', label: 'RRSP / RRIF' },
                 { id: 'tfsa', label: 'TFSA Power' },
                 { id: 'cpp_oas', label: 'CPP & OAS' },
-                { id: 'couples', label: 'Couples Splitting' }
+                { id: 'couples', label: 'Couples Splitting' },
+                { id: 'estate', label: 'Estate & Death' },
+                { id: 'exit_tax', label: 'Exit & Departure Tax' }
               ].map((tab) => {
                 const isActive = activeCategory === tab.id;
                 return (

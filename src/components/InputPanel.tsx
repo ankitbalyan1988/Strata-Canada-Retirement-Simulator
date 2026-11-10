@@ -80,7 +80,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   const inputs = props.inputs ?? storeInputs;
   const onChange = props.onChange ?? storeSetInputs;
   const isMarried = inputs.maritalStatus === 'married';
-  const [activeTab, setActiveTab] = useState<'personal' | 'expenses' | 'accounts' | 'debts' | 'realestate' | 'spouse' | 'pensions' | 'market' | 'strategy' | 'expat'>('personal');
+  const activeTab = useSimulationStore((state) => state.activeInputTab);
+  const setActiveTab = useSimulationStore((state) => state.setActiveInputTab);
   const isExpanded = !isPlanningCollapsed;
   const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
     if (typeof expanded === 'function') {
@@ -427,173 +428,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         </div>
       )}
 
-      {/* Expanded Tabs & Content */}
+      {/* Expanded Content */}
       {isExpanded && (
-        <>
-          {/* Tabs Header */}
-          <div className="flex border-b border-slate-200 dark:border-slate-700/80 overflow-x-auto bg-slate-50/60 dark:bg-slate-800/40 p-1.5 gap-1 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setActiveTab('personal')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'personal'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Primary Profile</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('expenses')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'expenses'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Living Expenses</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('accounts')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'accounts'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <PiggyBank className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Primary Accounts</span>
-            </button>
-
-            {/* Debts & Loans Tab - Only appears if user has debts or wants to model future debts */}
-            {hasDebts && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('debts')}
-                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                  activeTab === 'debts'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-rose-500" />
-                <span>Debts & Loans</span>
-                {inputs.debts && inputs.debts.length > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-50 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold border border-rose-200 dark:border-rose-500/30">
-                    {inputs.debts.length}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* Real Estate & Home Ownership Tab - Only appears if user owns a home or rents and plans future purchase */}
-            {showRealEstateSection && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('realestate')}
-                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                  activeTab === 'realestate'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Home className="w-4 h-4 text-amber-500" />
-                <span>{housingStatus === 'rent' ? 'Future Home Purchase' : 'Real Estate & Home'}</span>
-                {housingStatus === 'rent' ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 font-bold">
-                    Buy @ {inputs.realEstate?.futurePurchaseAge || inputs.currentAge + 3}
-                  </span>
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                )}
-              </button>
-            )}
-
-            {/* Spouse Tab - ONLY visible when married */}
-            {isMarried && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('spouse')}
-                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                  activeTab === 'spouse'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Spouse Details & Accounts</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('pensions')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'pensions'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Landmark className="w-4 h-4 text-purple-500" />
-              <span>CPP & OAS Pensions</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('market')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'market'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <TrendingUp className="w-4 h-4 text-amber-500" />
-              <span>Returns & Inflation</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('strategy')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                activeTab === 'strategy'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <ArrowRightLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Drawdown Strategy</span>
-            </button>
-
-            {/* Expat & Relocation Tab - Only appears if user indicated plan to exit Canada */}
-            {planExpatExit && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('expat')}
-                className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 shrink-0 ${
-                  activeTab === 'expat'
-                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700/80 font-bold'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Globe className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                <span>Expat & Relocation</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-500/20 font-bold flex items-center gap-1">
-                  <span>{EXPAT_DESTINATIONS.find(d => d.id === inputs.expat?.destinationCountryId)?.flag || '✈️'}</span>
-                  <span>{inputs.expat?.emigrationAge ? `@ ${inputs.expat.emigrationAge}` : 'Active'}</span>
-                </span>
-              </button>
-            )}
-          </div>
-
-      {/* Tab Contents */}
-      <div className="p-5 sm:p-6">
+        <div className="p-5 sm:p-6">
         
         {/* TAB 1: PERSONAL & HOUSEHOLD BUDGET */}
         {activeTab === 'personal' && (
@@ -4817,7 +4654,6 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
         )}
 
           </div>
-        </>
       )}
     </div>
   );

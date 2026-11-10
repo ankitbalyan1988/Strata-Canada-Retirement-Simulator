@@ -22,6 +22,17 @@ import { SimulationSnapshot } from '../types/history';
 
 export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
 export type DashboardTab = 'ledger' | 'dashboard' | 'stresstest' | 'whatif';
+export type InputTab = 
+  | 'personal'
+  | 'expenses'
+  | 'accounts'
+  | 'debts'
+  | 'realestate'
+  | 'spouse'
+  | 'pensions'
+  | 'market'
+  | 'strategy'
+  | 'expat';
 
 export interface SimulationState {
   // Primary state
@@ -37,6 +48,7 @@ export interface SimulationState {
   // View & Sidebar Navigation State
   activeView: AppView;
   activeDashboardTab: DashboardTab;
+  activeInputTab: InputTab;
   isSidebarCollapsed: boolean;
   isMobileSidebarOpen: boolean;
 
@@ -73,6 +85,7 @@ export interface SimulationState {
   // Actions
   setActiveView: (view: AppView) => void;
   setActiveDashboardTab: (tab: DashboardTab) => void;
+  setActiveInputTab: (tab: InputTab) => void;
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   setIsMobileSidebarOpen: (open: boolean) => void;
@@ -415,6 +428,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   // Navigation & Sidebar
   activeView: 'dashboard',
   activeDashboardTab: 'dashboard',
+  activeInputTab: 'personal',
   isSidebarCollapsed: getInitialSidebarCollapsed(),
   isMobileSidebarOpen: false,
 
@@ -471,6 +485,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  },
+
+  setActiveInputTab: (tab) => {
+    set({ activeInputTab: tab });
   },
 
   setIsSidebarCollapsed: (collapsed) => {
@@ -809,7 +827,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set((state) => {
       const activeView = state.activeView;
       const viewSectionsMap: Record<AppView, string[]> = {
-        inputs: ['personaSelection', 'planning'],
+        inputs: ['planning'],
         dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
         estate: ['estate'],
         expat: ['expat']

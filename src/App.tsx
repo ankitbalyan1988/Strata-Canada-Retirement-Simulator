@@ -2,16 +2,17 @@ import React, { Suspense } from 'react';
 import { Sidebar } from './components/Navigation/Sidebar';
 import { Header } from './components/Header';
 import { DashboardTabBar } from './components/Navigation/DashboardTabBar';
+import { InputTabBar } from './components/Navigation/InputTabBar';
 import { LedgerTabContent } from './components/Tabs/LedgerTabContent';
 import { MainDashboardTabContent } from './components/Tabs/MainDashboardTabContent';
 import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
 import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
 import { InputPanel } from './components/InputPanel';
-import { PersonaSelectionPanel } from './components/PersonaSelectionPanel';
 import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
 import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
 import { useSimulationStore } from './store/useSimulationStore';
 import { 
+  Users,
   Sun, 
   Moon, 
   ChevronsDown, 
@@ -54,6 +55,7 @@ export default function App() {
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
   const isSnapshotCompareModalOpen = useSimulationStore((state) => state.isSnapshotCompareModalOpen);
   const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
+  const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const isWealthGuideModalOpen = useSimulationStore((state) => state.isWealthGuideModalOpen);
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
@@ -71,7 +73,7 @@ export default function App() {
 
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const areAllInputsCollapsed = useSimulationStore((state) => 
-    Boolean(state.collapsedSections.personaSelection) && Boolean(state.collapsedSections.planning)
+    Boolean(state.collapsedSections.planning)
   );
 
   return (
@@ -134,62 +136,9 @@ export default function App() {
           {/* SECTION 2: PROFILE & PLAN INPUTS                          */}
           {/* ========================================================= */}
           {activeView === 'inputs' && (
-            <div className="flex flex-col gap-6">
-              {/* Inputs Section Banner */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
-                        <SlidersHorizontal className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                          Profile & Plan Configuration Console
-                        </h2>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Modify income, expenses, accounts, waterfall priorities, pensions, and growth rates. All calculations update live across your dashboard.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2.5 self-start md:self-auto flex-wrap">
-                    <button
-                      type="button"
-                      onClick={toggleCollapseAll}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-                      title={areAllInputsCollapsed ? "Expand all sections on this page" : "Collapse all sections on this page"}
-                    >
-                      {areAllInputsCollapsed ? <ChevronsDown className="w-3.5 h-3.5" /> : <ChevronsUp className="w-3.5 h-3.5" />}
-                      <span>{areAllInputsCollapsed ? 'Expand All' : 'Collapse All'}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={resetToBlankCanvas}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition cursor-pointer"
-                      title="Clear all entered data and return to blank canvas ($0)"
-                    >
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      <span>Clean Canvas ($0)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveView('dashboard')}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition cursor-pointer"
-                      title="Return to Dashboard to inspect results"
-                    >
-                      <span>View Live Dashboard Results</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Persona Selection & AI Profile Generator Module */}
-              <PersonaSelectionPanel />
+            <div className="flex flex-col gap-5 sm:gap-6">
+              {/* Horizontal Navigation: Profile & Plan Input Tabs Bar */}
+              <InputTabBar />
 
               {/* Complete Household Planning Structure Input Panel */}
               <InputPanel />

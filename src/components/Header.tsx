@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Menu,
   SlidersHorizontal,
@@ -6,20 +6,26 @@ import {
   Landmark,
   LayoutDashboard,
   ChevronsDown,
-  ChevronsUp
+  ChevronsUp,
+  RotateCcw,
+  ArrowRight
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
   const activeView = useSimulationStore((state) => state.activeView);
+  const setActiveView = useSimulationStore((state) => state.setActiveView);
+  const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
   const toggleMobileSidebar = useSimulationStore((state) => state.toggleMobileSidebar);
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
+
+  const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
 
   // Granular atomic boolean selector: only re-renders when the collapsed state boolean actually flips
   const areAllSectionsCollapsed = useSimulationStore((state) => {
     const viewSectionsMap: Record<AppView, string[]> = {
-      inputs: ['personaSelection', 'planning'],
+      inputs: ['planning'],
       dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
       estate: ['estate'],
       expat: ['expat']
@@ -96,8 +102,45 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Expand/Collapse All Sections Toggle (persists on all pages) */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          {/* Right: Top-of-UI Global Action Controls */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
+            {/* Clean Canvas ($0) Button */}
+            {!isConfirmingClear ? (
+              <button
+                type="button"
+                onClick={() => setIsConfirmingClear(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800/60 transition cursor-pointer shadow-2xs"
+                title="Clear all entered data and return to blank canvas ($0)"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Clean Canvas ($0)</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/70 p-1 rounded-xl border border-rose-300 dark:border-rose-800 text-xs">
+                <span className="text-[11px] font-semibold text-rose-700 dark:text-rose-300 px-1.5">
+                  Wipe to $0?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetToBlankCanvas();
+                    setIsConfirmingClear(false);
+                  }}
+                  className="px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsConfirmingClear(false)}
+                  className="px-1.5 py-0.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+
+            {/* Expand/Collapse All Sections Toggle */}
             <button
               type="button"
               onClick={toggleCollapseAll}
@@ -117,6 +160,19 @@ export const Header: React.FC = () => {
                 </>
               )}
             </button>
+
+            {/* View Live Dashboard Results Button */}
+            {activeView !== 'dashboard' && (
+              <button
+                type="button"
+                onClick={() => setActiveView('dashboard')}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs transition cursor-pointer shrink-0"
+                title="Return to Dashboard to inspect results"
+              >
+                <span>View Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
         </div>
