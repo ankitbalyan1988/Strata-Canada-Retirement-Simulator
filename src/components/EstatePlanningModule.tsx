@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { EstateMilestoneLedger } from './EstateMilestoneLedger';
 
 export interface EstatePlanningModuleProps {
@@ -56,9 +57,9 @@ export interface EstatePlanningModuleProps {
 }
 
 export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props) => {
-  const storeInputs = useSimulationStore((state) => state.inputs);
-  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
-  const storeSummary = useSimulationStore((state) => state.summary);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
+  const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const storeSummary = useSimulationStore(useShallow((state) => state.summary));
 
   const retirementInputs = props.retirementInputs ?? storeInputs;
   const yearlyResults = props.yearlyResults ?? storeYearlyResults;

@@ -34,6 +34,7 @@ import {
   Flame
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface LedgerAiExplanation {
   summary: string;
@@ -53,12 +54,12 @@ export interface MilestoneTableProps {
   isRecalculatingLedger?: boolean;
 }
 
-export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
-  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
+const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
+  const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
   const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
   const storeProvince = useSimulationStore((state) => state.inputs.province);
-  const storeInputs = useSimulationStore((state) => state.inputs);
-  const storeSummary = useSimulationStore((state) => state.summary);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
+  const storeSummary = useSimulationStore(useShallow((state) => state.summary));
   const storeIsRecalculatingLedger = useSimulationStore((state) => state.isRecalculatingLedger);
   const isTableCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.ledger));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
@@ -1831,3 +1832,5 @@ export const MilestoneTable: React.FC<MilestoneTableProps> = (props) => {
     </div>
   );
 };
+
+export const MilestoneTable = React.memo(MilestoneTableComponent);

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { PRESETS } from '../utils/presets';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ScenarioPreset } from '../types/retirement';
 
 export const PersonaSelectionPanel: React.FC = () => {
@@ -25,7 +26,7 @@ export const PersonaSelectionPanel: React.FC = () => {
   const selectPreset = useSimulationStore((state) => state.selectPreset);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
-  const currentInputs = useSimulationStore((state) => state.inputs);
+  const currentInputs = useSimulationStore(useShallow((state) => state.inputs));
 
   const isPersonaCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.personaSelection));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
@@ -140,7 +141,7 @@ export const PersonaSelectionPanel: React.FC = () => {
           <button
             type="button"
             onClick={() => toggleSectionCollapse('personaSelection')}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
             title={isPersonaCollapsed ? 'Expand Persona & Starting Scenarios section' : 'Collapse Persona & Starting Scenarios section'}
             aria-expanded={!isPersonaCollapsed}
           >

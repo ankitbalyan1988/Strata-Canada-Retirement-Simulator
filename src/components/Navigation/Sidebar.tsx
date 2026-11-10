@@ -40,7 +40,8 @@ export const Sidebar: React.FC = () => {
   const applyProvince = useSimulationStore((state) => state.applyProvince);
   const currentAge = useSimulationStore((state) => state.inputs.currentAge);
   const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
-  const optimisticSummary = useSimulationStore((state) => state.optimisticSummary);
+  const readinessScore = useSimulationStore((state) => state.optimisticSummary.readinessScore);
+  const netWorthAtRetirement = useSimulationStore((state) => state.optimisticSummary.netWorthAtRetirement);
   const historyCount = useSimulationStore((state) => state.history.length);
   const toggleHistoryPanel = useSimulationStore((state) => state.toggleHistoryPanel);
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
@@ -260,13 +261,13 @@ export const Sidebar: React.FC = () => {
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Plan Health</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                  {optimisticSummary.readinessScore}% Funded
+                  {readinessScore}% Funded
                 </span>
               </div>
               <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
                 <span className="text-slate-500 dark:text-slate-400">Nest Egg @ {retirementAge}:</span>
                 <span className="font-bold text-slate-900 dark:text-white">
-                  ${((optimisticSummary.netWorthAtRetirement || 0) / 1_000_000).toFixed(2)}M
+                  ${((netWorthAtRetirement || 0) / 1_000_000).toFixed(2)}M
                 </span>
               </div>
             </div>

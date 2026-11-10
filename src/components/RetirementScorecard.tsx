@@ -26,7 +26,7 @@ export interface RetirementScorecardProps {
   yearlyResults?: YearSimulationResult[];
 }
 
-export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) => {
+const RetirementScorecardComponent: React.FC<RetirementScorecardProps> = (props) => {
   const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
   const storeOptimisticSummary = useSimulationStore(useShallow((state) => state.optimisticSummary));
   const storeSummary = useSimulationStore(useShallow((state) => state.summary));
@@ -482,3 +482,5 @@ export const RetirementScorecard: React.FC<RetirementScorecardProps> = (props) =
     </div>
   );
 };
+
+export const RetirementScorecard = React.memo(RetirementScorecardComponent);

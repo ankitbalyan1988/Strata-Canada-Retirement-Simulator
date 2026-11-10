@@ -3,6 +3,7 @@ import { X, CheckCircle2, AlertTriangle, ArrowRight, Sparkles } from 'lucide-rea
 import { RetirementInputs } from '../types/retirement';
 import { runRetirementSimulation } from '../utils/simulator';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface ScenarioComparisonModalProps {
   isOpen?: boolean;
@@ -11,10 +12,10 @@ export interface ScenarioComparisonModalProps {
   onApplyRetirementAge?: (age: number) => void;
 }
 
-export const ScenarioComparisonModal: React.FC<ScenarioComparisonModalProps> = (props) => {
+const ScenarioComparisonModalComponent: React.FC<ScenarioComparisonModalProps> = (props) => {
   const storeIsOpen = useSimulationStore((state) => state.isCompareModalOpen);
   const storeSetIsOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
-  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
   const storeApplyRetirementAge = useSimulationStore((state) => state.applyRetirementAge);
 
   const isOpen = props.isOpen ?? storeIsOpen;
@@ -210,3 +211,5 @@ export const ScenarioComparisonModal: React.FC<ScenarioComparisonModalProps> = (
     </div>
   );
 };
+
+export const ScenarioComparisonModal = React.memo(ScenarioComparisonModalComponent);

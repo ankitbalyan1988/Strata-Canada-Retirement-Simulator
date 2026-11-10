@@ -52,7 +52,7 @@ function describeArc(x: number, y: number, radius: number, startAngle: number, e
   ].join(' ');
 }
 
-export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => {
+const RetirementProgressComponent: React.FC<RetirementProgressProps> = (props) => {
   const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
   const storeSummary = useSimulationStore(useShallow((state) => state.summary));
   const storeOptimisticSummary = useSimulationStore(useShallow((state) => state.optimisticSummary));
@@ -388,7 +388,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
         <div className="p-5 flex flex-col lg:flex-row items-center gap-6 animate-in fade-in duration-200">
           
           {/* LEFT: Circular Speedometer Gauge */}
-          <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-[310px] bg-slate-50/70 dark:bg-slate-850/40 rounded-2xl p-4 border border-slate-200/60 dark:border-slate-800/80">
+          <div className="flex flex-col items-center justify-center shrink-0 w-full lg:w-[310px] bg-slate-50/70 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-200/60 dark:border-slate-700/60">
             <div className="relative w-[280px] h-[200px] flex items-center justify-center">
               <svg
                 viewBox="0 0 280 215"
@@ -417,7 +417,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
                   d={backgroundArc}
                   fill="none"
                   stroke="currentColor"
-                  className="text-slate-200 dark:text-slate-750"
+                  className="text-slate-200 dark:text-slate-700/80"
                   strokeWidth="14"
                   strokeLinecap="round"
                 />
@@ -521,7 +521,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
               
               {/* Stat 1: Current Portfolio */}
-              <div className="bg-slate-50/80 dark:bg-slate-850/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-750 flex flex-col justify-between">
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between shadow-xs transition-colors">
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold uppercase tracking-wider text-[10.5px]">Portfolio Today</span>
                   <Wallet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -537,7 +537,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
               </div>
 
               {/* Stat 2: Target at Retirement */}
-              <div className="bg-slate-50/80 dark:bg-slate-850/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-750 flex flex-col justify-between">
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between shadow-xs transition-colors">
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold uppercase tracking-wider text-[10.5px]">Target Nest Egg (A{retirementAge})</span>
                   <Target className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
@@ -553,7 +553,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
               </div>
 
               {/* Stat 3: Longevity Horizon */}
-              <div className="bg-slate-50/80 dark:bg-slate-850/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-750 flex flex-col justify-between">
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between shadow-xs transition-colors">
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold uppercase tracking-wider text-[10.5px]">Longevity Solvency</span>
                   <Clock className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
@@ -575,7 +575,7 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
               </div>
 
               {/* Stat 4: Monthly Inflow Pacing */}
-              <div className="bg-slate-50/80 dark:bg-slate-850/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-750 flex flex-col justify-between">
+              <div className="bg-slate-50/80 dark:bg-slate-800/60 rounded-xl p-3.5 border border-slate-200/60 dark:border-slate-700/60 flex flex-col justify-between shadow-xs transition-colors">
                 <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span className="font-semibold uppercase tracking-wider text-[10.5px]">Monthly Savings Pace</span>
                   <PiggyBank className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
@@ -584,10 +584,10 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
                   <span className="font-mono font-extrabold text-xl sm:text-2xl text-slate-900 dark:text-slate-50 tracking-tight">
                     {formatCur(pulse.currentMonthlySavings)}
                   </span>
-                  <span className="text-xs text-slate-400">/mo</span>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">/mo</span>
                 </div>
                 <div className="text-[10.5px] font-mono flex items-center justify-between">
-                  <span className="text-slate-500">Req: {formatCur(pulse.requiredMonthlySavings)}/mo</span>
+                  <span className="text-slate-500 dark:text-slate-400">Req: {formatCur(pulse.requiredMonthlySavings)}/mo</span>
                   <span className={pulse.monthlyGap <= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-amber-600 dark:text-amber-400 font-bold'}>
                     {pulse.monthlyGap <= 0 ? 'On Track' : `-${formatCur(pulse.monthlyGap)}`}
                   </span>
@@ -677,3 +677,5 @@ export const RetirementProgress: React.FC<RetirementProgressProps> = (props) => 
     </div>
   );
 };
+
+export const RetirementProgress = React.memo(RetirementProgressComponent);

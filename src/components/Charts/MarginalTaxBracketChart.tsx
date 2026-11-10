@@ -24,7 +24,7 @@ interface MarginalTaxBracketChartProps {
   isCouple?: boolean;
 }
 
-export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = ({
+const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> = ({
   yearlyResults,
   retirementAge,
   province = 'ON',
@@ -1009,3 +1009,5 @@ export const MarginalTaxBracketChart: React.FC<MarginalTaxBracketChartProps> = (
     </div>
   );
 };
+
+export const MarginalTaxBracketChart = React.memo(MarginalTaxBracketChartComponent);

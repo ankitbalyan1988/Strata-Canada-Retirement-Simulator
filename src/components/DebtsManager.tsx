@@ -34,6 +34,7 @@ import {
 } from '../utils/debtCalculator';
 import { CurrencyInput } from './CurrencyInput';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface DebtsManagerProps {
   debts?: DebtItem[];
@@ -63,9 +64,9 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
   onUpdateStrategy,
   onChange
 }) => {
-  const storeDebts = useSimulationStore((state) => state.inputs.debts);
+  const storeDebts = useSimulationStore(useShallow((state) => state.inputs.debts));
   const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
-  const storeDebtStrategy = useSimulationStore((state) => state.inputs.debtStrategy);
+  const storeDebtStrategy = useSimulationStore(useShallow((state) => state.inputs.debtStrategy));
   const storeUpdateField = useSimulationStore((state) => state.updateField);
 
   const debts = propDebts ?? storeDebts ?? [];

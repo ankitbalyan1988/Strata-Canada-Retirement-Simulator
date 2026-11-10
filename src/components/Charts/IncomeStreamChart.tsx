@@ -7,7 +7,7 @@ interface IncomeStreamChartProps {
   retirementAge: number;
 }
 
-export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
+const IncomeStreamChartComponent: React.FC<IncomeStreamChartProps> = ({
   yearlyResults,
   retirementAge
 }) => {
@@ -425,3 +425,5 @@ export const IncomeStreamChart: React.FC<IncomeStreamChartProps> = ({
     </div>
   );
 };
+
+export const IncomeStreamChart = React.memo(IncomeStreamChartComponent);

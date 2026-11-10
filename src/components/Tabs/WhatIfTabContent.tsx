@@ -1,5 +1,6 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useCallback } from 'react';
 import { useSimulationStore } from '../../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
 import { WhatIfSensitivityPanel } from '../Charts/WhatIfSensitivityPanel';
 import { NetWorthChart } from '../Charts/NetWorthChart';
@@ -18,10 +19,10 @@ import {
 } from 'lucide-react';
 
 export const WhatIfTabContent: React.FC = () => {
-  const inputs = useSimulationStore((state) => state.inputs);
-  const summary = useSimulationStore((state) => state.summary);
-  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
-  const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
+  const summary = useSimulationStore(useShallow((state) => state.summary));
+  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const whatIfSettings = useSimulationStore(useShallow((state) => state.whatIfSettings));
   const setWhatIfSettings = useSimulationStore((state) => state.setWhatIfSettings);
   const resetWhatIfSettings = useSimulationStore((state) => state.resetWhatIfSettings);
   const retirementAge = inputs.retirementAge;
@@ -37,6 +38,20 @@ export const WhatIfTabContent: React.FC = () => {
   const whatIfResult = useMemo(() => {
     return calculateWhatIfSimulation(inputs, whatIfSettings, summary, yearlyResults);
   }, [inputs, whatIfSettings, summary, yearlyResults]);
+
+  const handleApplyPreset = useCallback((presetSettings: { returnDelta: number; appreciationDelta: number; inflationDelta: number }) => {
+    setWhatIfSettings((prev) => ({
+      ...prev,
+      ...presetSettings
+    }));
+  }, [setWhatIfSettings]);
+
+  const handleUpdateDelta = useCallback((field: 'returnDelta' | 'appreciationDelta' | 'inflationDelta', value: number) => {
+    setWhatIfSettings((prev) => ({
+      ...prev,
+      [field]: value
+    }));
+  }, [setWhatIfSettings]);
 
   const hasModifications =
     whatIfSettings.returnDelta !== 0 ||
@@ -210,18 +225,8 @@ export const WhatIfTabContent: React.FC = () => {
       {whatIfResult && (
         <WhatIfSensitivityPanel
           whatIfResult={whatIfResult}
-          onApplyPreset={(presetSettings) => {
-            setWhatIfSettings((prev) => ({
-              ...prev,
-              ...presetSettings
-            }));
-          }}
-          onUpdateDelta={(field, value) => {
-            setWhatIfSettings((prev) => ({
-              ...prev,
-              [field]: value
-            }));
-          }}
+          onApplyPreset={handleApplyPreset}
+          onUpdateDelta={handleUpdateDelta}
           onReset={resetWhatIfSettings}
         />
       )}

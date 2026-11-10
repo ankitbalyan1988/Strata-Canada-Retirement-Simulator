@@ -30,7 +30,7 @@ export interface NetWorthChartProps {
   showWhatIfOverlayLine?: boolean;
 }
 
-export const NetWorthChart: React.FC<NetWorthChartProps> = ({
+const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
   yearlyResults,
   stressYearlyResults,
   retirementAge,
@@ -1209,3 +1209,5 @@ export const NetWorthChart: React.FC<NetWorthChartProps> = ({
     </div>
   );
 };
+
+export const NetWorthChart = React.memo(NetWorthChartComponent);

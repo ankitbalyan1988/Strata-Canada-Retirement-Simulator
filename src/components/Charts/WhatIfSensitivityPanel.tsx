@@ -27,6 +27,7 @@ import {
   X
 } from 'lucide-react';
 import { useSimulationStore } from '../../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import {
   calculateWhatIfSimulation,
   generateSensitivityMatrix,
@@ -41,16 +42,16 @@ interface WhatIfSensitivityPanelProps {
   onReset: () => void;
 }
 
-export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
+const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = ({
   whatIfResult,
   onApplyPreset,
   onUpdateDelta,
   onReset
 }) => {
-  const inputs = useSimulationStore((state) => state.inputs);
-  const summary = useSimulationStore((state) => state.summary);
-  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
-  const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
+  const summary = useSimulationStore(useShallow((state) => state.summary));
+  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const whatIfSettings = useSimulationStore(useShallow((state) => state.whatIfSettings));
 
   const handleUpdateDelta = (field: 'returnDelta' | 'appreciationDelta' | 'inflationDelta', value: number) => {
     startTransition(() => {
@@ -924,3 +925,5 @@ export const WhatIfSensitivityPanel: React.FC<WhatIfSensitivityPanelProps> = ({
     </div>
   );
 };
+
+export const WhatIfSensitivityPanel = React.memo(WhatIfSensitivityPanelComponent);

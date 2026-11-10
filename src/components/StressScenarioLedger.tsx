@@ -26,7 +26,7 @@ interface StressScenarioLedgerProps {
   inputs: RetirementInputs;
 }
 
-export const StressScenarioLedger: React.FC<StressScenarioLedgerProps> = ({
+const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = ({
   scenarioDetails,
   inputs
 }) => {
@@ -697,3 +697,5 @@ export const StressScenarioLedger: React.FC<StressScenarioLedgerProps> = ({
     </div>
   );
 };
+
+export const StressScenarioLedger = React.memo(StressScenarioLedgerComponent);

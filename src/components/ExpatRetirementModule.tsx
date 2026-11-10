@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ExpatMilestoneLedger } from './ExpatMilestoneLedger';
 
 export interface ExpatRetirementModuleProps {
@@ -52,9 +53,9 @@ export interface ExpatRetirementModuleProps {
 }
 
 export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (props) => {
-  const storeInputs = useSimulationStore((state) => state.inputs);
-  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
-  const storeSummary = useSimulationStore((state) => state.summary);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
+  const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const storeSummary = useSimulationStore(useShallow((state) => state.summary));
   const storeUpdateExpatInputs = useSimulationStore((state) => state.updateExpatInputs);
 
   const retirementInputs = props.retirementInputs ?? storeInputs;

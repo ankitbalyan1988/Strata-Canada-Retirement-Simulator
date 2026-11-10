@@ -14,6 +14,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import {
   calculateRrspBreakEvenAnalysis,
   MeltdownTargetStrategy,
@@ -21,7 +22,7 @@ import {
 } from '../utils/rrspBreakEvenCalculator';
 
 export const RrspBreakEvenModule: React.FC = () => {
-  const inputs = useSimulationStore((state) => state.inputs);
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
   const updateField = useSimulationStore((state) => state.updateField);
   const setInputs = useSimulationStore((state) => state.setInputs);
   const storeIsCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.breakEven));

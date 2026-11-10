@@ -62,6 +62,7 @@ import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 import { DebtsManager } from './DebtsManager';
 import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface InputPanelProps {
   inputs?: RetirementInputs;
@@ -69,7 +70,7 @@ export interface InputPanelProps {
 }
 
 export const InputPanel: React.FC<InputPanelProps> = (props) => {
-  const storeInputs = useSimulationStore((state) => state.inputs);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
   const storeSetInputs = useSimulationStore((state) => state.setInputs);
   const isPlanningCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.planning));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);

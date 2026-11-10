@@ -17,6 +17,7 @@ import {
 import { RetirementInputs, SimulationSummary } from '../types/retirement';
 import { calculateSavingsPulse, SavingsPulseResult } from '../utils/simulator';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export interface SavingsPulseProps {
   inputs?: RetirementInputs;
@@ -26,9 +27,9 @@ export interface SavingsPulseProps {
 }
 
 export const SavingsPulse: React.FC<SavingsPulseProps> = (props) => {
-  const storeInputs = useSimulationStore((state) => state.inputs);
-  const storeSummary = useSimulationStore((state) => state.summary);
-  const storePulse = useSimulationStore((state) => state.pulse);
+  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
+  const storeSummary = useSimulationStore(useShallow((state) => state.summary));
+  const storePulse = useSimulationStore(useShallow((state) => state.pulse));
   const storeApplyMonthlyBoost = useSimulationStore((state) => state.applyMonthlyBoost);
   const isCalculating = useSimulationStore((state) => state.isCalculating);
 

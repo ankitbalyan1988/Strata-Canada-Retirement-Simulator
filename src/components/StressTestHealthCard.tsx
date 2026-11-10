@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import {
   calculateStressTestHealth,
   runStressScenarioSimulation
@@ -25,15 +26,13 @@ import {
 } from 'lucide-react';
 
 export function StressTestHealthCard() {
-  const inputs = useSimulationStore((state) => state.inputs);
-  const summary = useSimulationStore((state) => state.summary);
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
+  const summary = useSimulationStore(useShallow((state) => state.summary));
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
   const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
   const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const collapsedSections = useSimulationStore((state) => state.collapsedSections);
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.stressTest));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
-
-  const isCollapsed = Boolean(collapsedSections.stressTest);
 
   // Compute stress test health analysis
   const health = useMemo(() => {

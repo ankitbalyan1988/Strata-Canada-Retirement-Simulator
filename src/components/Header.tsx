@@ -9,27 +9,24 @@ import {
   ChevronsUp
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
-import { useShallow } from 'zustand/react/shallow';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
   const activeView = useSimulationStore((state) => state.activeView);
   const toggleMobileSidebar = useSimulationStore((state) => state.toggleMobileSidebar);
-
-  // Section collapse state for global expand/collapse toggle
-  const collapsedSections = useSimulationStore(useShallow((state) => state.collapsedSections));
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
 
-  const areAllSectionsCollapsed = React.useMemo(() => {
+  // Granular atomic boolean selector: only re-renders when the collapsed state boolean actually flips
+  const areAllSectionsCollapsed = useSimulationStore((state) => {
     const viewSectionsMap: Record<AppView, string[]> = {
       inputs: ['personaSelection', 'planning'],
       dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
       estate: ['estate'],
       expat: ['expat']
     };
-    const relevantKeys = viewSectionsMap[activeView] || Object.keys(collapsedSections);
-    return relevantKeys.length > 0 && relevantKeys.every((k) => Boolean(collapsedSections[k]));
-  }, [collapsedSections, activeView]);
+    const relevantKeys = viewSectionsMap[state.activeView] || Object.keys(state.collapsedSections);
+    return relevantKeys.length > 0 && relevantKeys.every((k) => Boolean(state.collapsedSections[k]));
+  });
 
   const viewTitles: Record<AppView, { title: string; subtitle: string; icon: React.ComponentType<{ className?: string }> }> = {
     dashboard: {

@@ -8,32 +8,34 @@ import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
 import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
 import { InputPanel } from './components/InputPanel';
 import { PersonaSelectionPanel } from './components/PersonaSelectionPanel';
-import { ExpatRetirementModule } from './components/ExpatRetirementModule';
 import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
+import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
 import { useSimulationStore } from './store/useSimulationStore';
-import { useShallow } from 'zustand/react/shallow';
 import { 
   Sun, 
   Moon, 
-  ChevronsDown,
-  ChevronsUp,
-  SlidersHorizontal,
-  ArrowRight,
-  RotateCcw,
-  Landmark,
-  Globe,
-  CheckCircle2,
-  Sparkles,
-  MapPin,
-  Calendar,
-  ChevronRight,
-  TrendingUp,
-  ShieldCheck
+  ChevronsDown, 
+  ChevronsUp, 
+  SlidersHorizontal, 
+  ArrowRight, 
+  RotateCcw, 
+  Landmark, 
+  Globe, 
+  CheckCircle2, 
+  Sparkles, 
+  MapPin, 
+  Calendar, 
+  ChevronRight, 
+  TrendingUp, 
+  ShieldCheck 
 } from 'lucide-react';
 
-// Dynamic lazy-loaded modules and modals to optimize critical rendering path
+// Dynamic route-level code-split modules and modals to optimize critical rendering path
 const EstatePlanningModule = React.lazy(() =>
   import('./components/EstatePlanningModule').then((m) => ({ default: m.EstatePlanningModule }))
+);
+const ExpatRetirementModule = React.lazy(() =>
+  import('./components/ExpatRetirementModule').then((m) => ({ default: m.ExpatRetirementModule }))
 );
 const ScenarioComparisonModal = React.lazy(() =>
   import('./components/ScenarioComparisonModal').then((m) => ({ default: m.ScenarioComparisonModal }))
@@ -55,9 +57,7 @@ export default function App() {
   const isWealthGuideModalOpen = useSimulationStore((state) => state.isWealthGuideModalOpen);
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
-  const resetToDefault = useSimulationStore((state) => state.resetToDefault);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
-  const activePresetId = useSimulationStore((state) => state.activePresetId);
 
   // Navigation & View state
   const activeView = useSimulationStore((state) => state.activeView);
@@ -69,19 +69,10 @@ export default function App() {
     state.inputs.planExpatExit ?? Boolean(state.inputs.expat?.planToEmigrate)
   );
 
-  const inputs = useSimulationStore((state) => state.inputs);
-  const isBlankCanvas = (
-    inputs.currentAnnualIncome === 0 &&
-    inputs.rrspBalance === 0 &&
-    inputs.tfsaBalance === 0 &&
-    inputs.nonRegBalance === 0
-  );
-
-  const collapsedSections = useSimulationStore(useShallow((state) => state.collapsedSections));
-  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
-  const isChartsCollapsed = Boolean(collapsedSections.charts);
-  const areAllInputsCollapsed = Boolean(collapsedSections.personaSelection) && Boolean(collapsedSections.planning);
+  const areAllInputsCollapsed = useSimulationStore((state) => 
+    Boolean(state.collapsedSections.personaSelection) && Boolean(state.collapsedSections.planning)
+  );
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-[#0B0F17] text-slate-900 dark:text-slate-50 flex font-['Plus_Jakarta_Sans'] selection:bg-emerald-500 selection:text-white transition-colors duration-200">
@@ -100,10 +91,10 @@ export default function App() {
 
         {/* Dynamic Section Views */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
-          
-          {/* ========================================================= */}
-          {/* SECTION 1: DASHBOARD & RESULTS (HOMEPAGE)                 */}
-          {/* ========================================================= */}
+          <Suspense fallback={<ModuleLoadingFallback />}>
+            {/* ========================================================= */}
+            {/* SECTION 1: DASHBOARD & RESULTS (HOMEPAGE)                 */}
+            {/* ========================================================= */}
           {activeView === 'dashboard' && (
             <div className="flex flex-col gap-6">
               {/* Horizontal Dashboard Navigation Bar */}
@@ -280,9 +271,12 @@ export default function App() {
               {/* Canadian Estate Planning & Pending Reserves Liquidation Module */}
               <Suspense
                 fallback={
-                  <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-700/80 shadow-xs animate-pulse min-h-[160px] flex items-center justify-center text-slate-400 text-sm">
-                    Loading Canadian Estate Planning Module...
-                  </div>
+                  <ModuleLoadingFallback
+                    moduleName="Canadian Estate Planning & Deemed Disposition"
+                    subtitle="Compiling deemed disposition at death (CRA Sec. 70(5)), provincial probate schedules, and terminal tax liabilities..."
+                    icon="estate"
+                    themeColor="purple"
+                  />
                 }
               >
                 <EstatePlanningModule />
@@ -342,9 +336,21 @@ export default function App() {
               </div>
 
               {/* Expat Retirement & Cross-Border Emigration Module */}
-              <ExpatRetirementModule />
+              <Suspense
+                fallback={
+                  <ModuleLoadingFallback
+                    moduleName="Canadian Expat & Non-Resident Retirement Planning"
+                    subtitle="Compiling cross-border emigration, deemed departure tax (CRA Sec. 128.1), and bilateral treaty schedules..."
+                    icon="expat"
+                    themeColor="amber"
+                  />
+                }
+              >
+                <ExpatRetirementModule />
+              </Suspense>
             </div>
           )}
+          </Suspense>
 
           {/* CRA & Statistics Canada National Benchmark Section (Positioned at bottom of main page) */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 px-5 text-xs text-slate-600 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs transition-colors mt-2">

@@ -1,18 +1,26 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useSimulationStore } from '../../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { StressTestHealthCard } from '../StressTestHealthCard';
 import { NetWorthChart } from '../Charts/NetWorthChart';
 import { ShieldAlert, ShieldCheck, Activity, TrendingDown, Info } from 'lucide-react';
 
 export const StressTestTabContent: React.FC = () => {
-  const inputs = useSimulationStore((state) => state.inputs);
-  const yearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
   const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
   const stressTiming = useSimulationStore((state) => state.stressTiming);
   const setStressTiming = useSimulationStore((state) => state.setStressTiming);
-  const stressSimulation = useSimulationStore((state) => state.stressSimulation);
-  const retirementAge = inputs.retirementAge;
+  const stressSimulation = useSimulationStore(useShallow((state) => state.stressSimulation));
+
+  const handleToggleStressTest = useCallback(() => {
+    setIsStressTestActive((prev) => !prev);
+  }, [setIsStressTestActive]);
+
+  const memoizedStressYearlyResults = useMemo(() => {
+    return isStressTestActive ? stressSimulation?.yearlyResults : undefined;
+  }, [isStressTestActive, stressSimulation?.yearlyResults]);
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
@@ -46,7 +54,7 @@ export const StressTestTabContent: React.FC = () => {
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setIsStressTestActive((prev) => !prev)}
+              onClick={handleToggleStressTest}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer ${
                 isStressTestActive
                   ? 'bg-rose-600 text-white hover:bg-rose-700 shadow-rose-900/20'
@@ -77,10 +85,10 @@ export const StressTestTabContent: React.FC = () => {
 
         <NetWorthChart
           yearlyResults={yearlyResults}
-          stressYearlyResults={isStressTestActive ? stressSimulation?.yearlyResults : undefined}
+          stressYearlyResults={memoizedStressYearlyResults}
           retirementAge={retirementAge}
           isStressTestActive={isStressTestActive}
-          onToggleStressTest={() => setIsStressTestActive((prev) => !prev)}
+          onToggleStressTest={handleToggleStressTest}
           stressTiming={stressTiming}
           onChangeStressTiming={setStressTiming}
           showStressTestToggle={true}
