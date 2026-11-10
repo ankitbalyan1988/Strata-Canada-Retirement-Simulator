@@ -22,7 +22,19 @@ export const DEFAULT_REAL_ESTATE_INPUTS: RealEstateInputs = {
   fundWithTfsa: true,
   fundWithNonReg: true,
   downPaymentPercentPreset: 20,
-  rentOverridden: false
+  rentOverridden: false,
+  propertyType: 'freehold',
+  isFirstTimeHomeBuyer: true,
+  cityOrMunicipality: 'other_ontario',
+  annualPropertyTaxRatePercent: 0.522, // ~0.522% yields ~$326/mo for $750k matching Realtor.ca
+  monthlyPropertyTaxOverride: undefined,
+  condoSquareFootage: 700,
+  condoFeePerSqFt: 0.55,
+  monthlyCondoFee: undefined,
+  legalAndClosingFees: 2100, // Matching Realtor.ca: $2,100
+  homeInspectionCost: 0, // Matching Realtor.ca: $0
+  otherClosingCosts: 1500, // Matching Realtor.ca: $1,500
+  taxOnMortgageInsurance: 0
 };
 
 export const DEFAULT_MONTHLY_EXPENSES: MonthlyExpenseEstimates = {

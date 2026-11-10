@@ -1416,6 +1416,17 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
                         </span>
                       )}
 
+                      {/* Milestone Badge 4C: Home Purchase Milestone */}
+                      {row.isHomePurchasedThisYear && (
+                        <span 
+                          title={`Home Purchase Milestone: Deployed $${(row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0)).toLocaleString()} total cash at closing ($${(row.downPaymentPaidThisYear || 0).toLocaleString()} down payment + $${(row.totalClosingCostsPaidThisYear || row.landTransferTaxPaidThisYear || 0).toLocaleString()} closing costs: LTT, legal fees, inspection, adjustments)`}
+                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs"
+                        >
+                          <Home className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                          <span>Buy Home (-${Math.round(((row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0))) / 1000)}k)</span>
+                        </span>
+                      )}
+
                       {/* Milestone Badge 5: Peak Wealth */}
                       {row.isPeakWealthMilestone && (
                         <span 
@@ -1554,10 +1565,26 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
                         handleCellClick('Home Equity', row.realEstateShare, row.age);
                       }
                     }}
-                    title={row.realEstateShare > 0 ? `Click to ask AI how Home Equity (${formatCur(row.realEstateShare)}) was calculated at Age ${row.age}` : undefined}
+                    title={
+                      row.isHomePurchasedThisYear
+                        ? `Home purchased at Age ${row.age}: Value ${formatCur(row.homeValue || 0)}, Mortgage ${formatCur(row.remainingMortgage || 0)}, Down payment ${formatCur(row.downPaymentPaidThisYear || 0)}, Total closing costs ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`
+                        : row.realEstateShare > 0
+                        ? `Click to ask AI how Home Equity (${formatCur(row.realEstateShare)}) was calculated at Age ${row.age}`
+                        : undefined
+                    }
                     className={`py-2.5 px-3 text-right text-orange-600 dark:text-orange-400 font-medium select-none ${row.realEstateShare > 0 ? 'cursor-pointer hover:bg-orange-50/80 dark:hover:bg-orange-950/40 hover:underline transition-colors' : ''}`}
                   >
-                    {row.realEstateShare > 0 ? formatCur(row.realEstateShare) : row.homeSoldThisYear ? 'Sold' : '-'}
+                    <div>
+                      {row.realEstateShare > 0 ? formatCur(row.realEstateShare) : row.homeSoldThisYear ? 'Sold' : '-'}
+                    </div>
+                    {row.isHomePurchasedThisYear && (
+                      <div 
+                        title={`Down payment: ${formatCur(row.downPaymentPaidThisYear || 0)} + Closing costs: ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`}
+                        className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5"
+                      >
+                        bought
+                      </div>
+                    )}
                   </td>
 
                   {/* Total Net Worth */}
@@ -1769,8 +1796,19 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
                   </td>
 
                   {/* Living Target (Expenses) */}
-                  <td className="py-2.5 px-3 text-right text-slate-500 dark:text-slate-400 font-mono">
-                    {formatCur(row.targetSpendingNominal)}
+                  <td 
+                    title={`Living target expenses: ${formatCur(row.targetSpendingNominal)}${row.totalHousingCostsThisYear ? ` (includes housing: ${formatCur(row.totalHousingCostsThisYear || 0)}/yr)` : ''}`}
+                    className="py-2.5 px-3 text-right text-slate-500 dark:text-slate-400 font-mono"
+                  >
+                    <div>{formatCur(row.targetSpendingNominal)}</div>
+                    {Boolean(row.totalHousingCostsThisYear && row.totalHousingCostsThisYear > 0) && (
+                      <div 
+                        title={`Housing costs this year: ${formatCur(row.totalHousingCostsThisYear || 0)}${row.propertyTaxPaidThisYear ? ` (Property Tax: ${formatCur(row.propertyTaxPaidThisYear || 0)})` : ''}${row.condoFeesPaidThisYear ? ` (Condo Fees: ${formatCur(row.condoFeesPaidThisYear || 0)})` : ''}`}
+                        className="text-[9px] font-sans font-normal text-slate-400 dark:text-slate-500 leading-tight mt-0.5"
+                      >
+                        housing {formatCur(row.totalHousingCostsThisYear || 0)}
+                      </div>
+                    )}
                   </td>
 
                   {/* Milestone Notes & Strategy Highlights */}

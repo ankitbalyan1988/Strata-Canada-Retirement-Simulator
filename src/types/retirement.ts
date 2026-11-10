@@ -105,6 +105,8 @@ export interface MonthlyExpenseEstimates {
   otherExpenses: number; // insurance, healthcare, miscellaneous catch-all
   postRetirementAdjustmentPercent: number; // slider: e.g. -50% to +50% change post-retirement
   autoSyncMortgage?: boolean; // whether rentOrMortgage is auto-filled from real estate mortgage
+  propertyTax?: number; // optional monthly property tax
+  condoFees?: number; // optional monthly condo/strata fees
 }
 
 export interface SpouseInputs {
@@ -143,6 +145,7 @@ export interface SpouseInputs {
 }
 
 export type RealEstatePurchaseType = 'current' | 'future';
+export type PropertyType = 'freehold' | 'condo';
 
 export interface RealEstateInputs {
   ownsHome: boolean;
@@ -169,6 +172,27 @@ export interface RealEstateInputs {
   fundWithNonReg?: boolean; // Use Non-Registered / Taxable savings
   downPaymentPercentPreset?: 5 | 10 | 15 | 20 | 'custom'; // Selected down payment % preset or custom
   rentOverridden?: boolean; // True if user manually entered a custom rent in real estate tab
+
+  // Realtor.ca Ownership & Closing Cost Modeling
+  propertyType?: PropertyType; // 'freehold' | 'condo' (defaults to 'freehold')
+  isFirstTimeHomeBuyer?: boolean; // Eligible for First-Time Home Buyer LTT rebate (defaults to true for future purchase)
+  cityOrMunicipality?: string; // e.g. 'toronto' | 'other_ontario' | 'vancouver' | 'other' (determines municipal LTT)
+  customLandTransferTax?: number; // Optional user override for land transfer tax
+  
+  // Ongoing Property Tax
+  annualPropertyTaxRatePercent?: number; // % of property value per year (default ~0.522% = ~$326/mo on $750k)
+  monthlyPropertyTaxOverride?: number; // Optional explicit $/month
+
+  // Ongoing Condo / Strata Fees
+  condoSquareFootage?: number; // e.g. 700 sq ft (if condo)
+  condoFeePerSqFt?: number; // e.g. $0.55 / sq ft
+  monthlyCondoFee?: number; // Monthly condo/strata fee (defaults to calculated e.g. 700 * $0.55 = $385/mo)
+
+  // Realtor.ca Estimated Cash Needed to Buy Closing Costs
+  legalAndClosingFees?: number; // Legal & closing disbursements (default $2,100)
+  homeInspectionCost?: number; // Home inspection fee (default $0 or custom)
+  otherClosingCosts?: number; // Title insurance, appraisal, municipal adjustments (default $1,500)
+  taxOnMortgageInsurance?: number; // Provincial tax on mortgage insurance (if down payment < 20%)
 }
 
 export type NonRegAccountCategory = 'savings' | 'investment' | 'gic';
@@ -315,6 +339,16 @@ export interface YearSimulationResult {
   isHomePurchasedThisYear?: boolean;
   downPaymentPaidThisYear?: number;
   housingStatus?: 'renting' | 'mortgage' | 'mortgage_free';
+  landTransferTaxPaidThisYear?: number;
+  totalClosingCostsPaidThisYear?: number;
+  totalCashNeededToBuyPaidThisYear?: number;
+  legalFeesPaidThisYear?: number;
+  inspectionPaidThisYear?: number;
+  otherClosingPaidThisYear?: number;
+  taxOnMortgageInsurancePaidThisYear?: number;
+  propertyTaxPaidThisYear?: number;
+  condoFeesPaidThisYear?: number;
+  totalHousingCostsThisYear?: number;
 
   // Fixed-Term Debts & Liabilities
   remainingDebt: number;

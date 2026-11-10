@@ -403,26 +403,16 @@ export function runRetirementSimulation(
         const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
         currentLivingExpensesNominal += annualMortgage * inflationFactor;
       }
+      if (housingResult.housingStatus === 'mortgage_free' || housingResult.housingStatus === 'mortgage') {
+        const ongoingOwnershipAnnual = housingParams.otherOwnershipCostsMonthly * 12;
+        currentLivingExpensesNominal += ongoingOwnershipAnnual * inflationFactor;
+      }
       // If lingering consumer/fixed debts exist in retirement, payments augment required living expenses
       if (debtResult.totalAnnualPayment > 0) {
         currentLivingExpensesNominal += debtResult.totalAnnualPayment;
       }
     } else {
-      if (housingParams.isFuturePurchase) {
-        if (age < housingParams.futurePurchaseAge) {
-          currentLivingExpensesNominal = (housingParams.currentRentMonthly + housingParams.nonHousingMonthly) * 12 * inflationFactor;
-        } else if (housingResult.remainingMortgage > 0) {
-          currentLivingExpensesNominal = (housingState.futureActualMonthlyPmt + housingParams.nonHousingMonthly) * 12 * inflationFactor;
-        } else {
-          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
-        }
-      } else {
-        if (housingResult.remainingMortgage <= 0 && housingParams.ownsHome) {
-          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
-        } else {
-          currentLivingExpensesNominal = housingParams.initialAnnualExpenses * inflationFactor;
-        }
-      }
+      currentLivingExpensesNominal = (housingResult.yearHousingCost + housingParams.nonHousingMonthly * 12) * inflationFactor;
     }
     const targetSpendingNominal = Math.round(currentLivingExpensesNominal);
 
@@ -749,7 +739,17 @@ export function runRetirementSimulation(
       homeSaleProceeds: Math.round(housingResult.homeSaleProceeds),
       isHomePurchasedThisYear: housingResult.isHomePurchasedThisYear,
       downPaymentPaidThisYear: Math.round(housingResult.downPaymentPaidThisYear),
+      totalClosingCostsPaidThisYear: Math.round(housingResult.totalClosingCostsPaidThisYear),
+      totalCashNeededToBuyPaidThisYear: Math.round(housingResult.totalCashNeededToBuyPaidThisYear),
+      legalFeesPaidThisYear: Math.round(housingResult.legalFeesPaidThisYear),
+      inspectionPaidThisYear: Math.round(housingResult.inspectionPaidThisYear),
+      otherClosingPaidThisYear: Math.round(housingResult.otherClosingPaidThisYear),
+      taxOnMortgageInsurancePaidThisYear: Math.round(housingResult.taxOnMortgageInsurancePaidThisYear),
       housingStatus: housingResult.housingStatus,
+      landTransferTaxPaidThisYear: Math.round(housingResult.landTransferTaxPaidThisYear),
+      propertyTaxPaidThisYear: Math.round(housingResult.propertyTaxPaidThisYear),
+      condoFeesPaidThisYear: Math.round(housingResult.condoFeesPaidThisYear),
+      totalHousingCostsThisYear: Math.round(housingResult.yearHousingCost),
       remainingDebt: debtResult.totalRemainingBalance,
       debtPayment: debtResult.totalAnnualPayment,
       debtPrincipalPaid: debtResult.totalPrincipalPaid,

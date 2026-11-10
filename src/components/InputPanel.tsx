@@ -61,6 +61,7 @@ import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 import { DebtsManager } from './DebtsManager';
 import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
+import { RealtorHomeCostCard } from './RealtorHomeCostCard';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -2230,6 +2231,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
                   </div>
 
+                  {/* Realtor.ca Monthly Cost Projection & Land Transfer Tax Card */}
+                  <RealtorHomeCostCard
+                    realEstate={re}
+                    province={inputs.province}
+                    isFuturePurchase={true}
+                    futurePurchaseAge={futurePurchaseAge}
+                    futurePurchaseYear={futurePurchaseYear}
+                    currentRentMonthly={currentRent}
+                    onUpdate={updateRealEstate}
+                  />
+
                   {/* 2-Column Inputs Grid for Future Home Purchase */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
@@ -2779,6 +2791,17 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 block">Added to Net Worth</span>
                     </div>
                   </div>
+
+                  {/* Realtor.ca Monthly Cost Breakdown & Ongoing Ownership Card */}
+                  <RealtorHomeCostCard
+                    realEstate={re}
+                    province={inputs.province}
+                    isFuturePurchase={false}
+                    futurePurchaseAge={inputs.currentAge}
+                    futurePurchaseYear={currentCalendarYear}
+                    currentRentMonthly={0}
+                    onUpdate={updateRealEstate}
+                  />
 
                   {/* 2-Column Inputs Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

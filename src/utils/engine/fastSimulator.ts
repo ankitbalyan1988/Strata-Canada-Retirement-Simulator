@@ -239,25 +239,15 @@ export function fastSimulateEndNetWorth(
         const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
         currentLivingExpensesNominal += annualMortgage * inflationFactor;
       }
+      if (housingResult.housingStatus === 'mortgage_free' || housingResult.housingStatus === 'mortgage') {
+        const ongoingOwnershipAnnual = housingParams.otherOwnershipCostsMonthly * 12;
+        currentLivingExpensesNominal += ongoingOwnershipAnnual * inflationFactor;
+      }
       if (debtResult.totalAnnualPayment > 0) {
         currentLivingExpensesNominal += debtResult.totalAnnualPayment;
       }
     } else {
-      if (housingParams.isFuturePurchase) {
-        if (age < housingParams.futurePurchaseAge) {
-          currentLivingExpensesNominal = (housingParams.currentRentMonthly + housingParams.nonHousingMonthly) * 12 * inflationFactor;
-        } else if (housingResult.remainingMortgage > 0) {
-          currentLivingExpensesNominal = (housingState.futureActualMonthlyPmt + housingParams.nonHousingMonthly) * 12 * inflationFactor;
-        } else {
-          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
-        }
-      } else {
-        if (housingResult.remainingMortgage <= 0 && housingParams.ownsHome) {
-          currentLivingExpensesNominal = housingParams.nonHousingMonthly * 12 * inflationFactor;
-        } else {
-          currentLivingExpensesNominal = housingParams.initialAnnualExpenses * inflationFactor;
-        }
-      }
+      currentLivingExpensesNominal = (housingResult.yearHousingCost + housingParams.nonHousingMonthly * 12) * inflationFactor;
     }
     const targetSpendingNominal = Math.round(currentLivingExpensesNominal);
 

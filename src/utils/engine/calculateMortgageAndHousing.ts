@@ -1,4 +1,5 @@
-import { RetirementInputs } from '../../types/retirement';
+import { RetirementInputs, PropertyType } from '../../types/retirement';
+import { calculateRealtorMonthlyProjection, calculateEstimatedCashNeededToBuy } from '../canadianRealEstate';
 
 export interface MortgageAndHousingParams {
   ownsHome: boolean;
@@ -32,6 +33,23 @@ export interface MortgageAndHousingParams {
   currentRentMonthly: number;
   nonHousingMonthly: number;
   initialAnnualExpenses: number;
+
+  // Realtor.ca Ownership & Closing Cost Fields
+  propertyType: PropertyType;
+  isFirstTimeHomeBuyer: boolean;
+  cityOrMunicipality: string;
+  oneTimeLandTransferTax: number;
+  monthlyPropertyTax: number;
+  monthlyCondoFee: number;
+  otherOwnershipCostsMonthly: number; // property tax + condo fees
+
+  // Realtor.ca Estimated Cash Needed to Buy Closing Costs
+  legalAndClosingFees: number;
+  homeInspectionCost: number;
+  otherClosingCosts: number;
+  taxOnMortgageInsurance: number;
+  totalClosingCosts: number;
+  totalCashNeededToBuy: number;
 }
 
 export interface HousingYearState {
@@ -77,8 +95,18 @@ export interface HousingYearResult {
   homeSaleProceeds: number;
   isHomePurchasedThisYear: boolean;
   downPaymentPaidThisYear: number;
+  totalClosingCostsPaidThisYear: number;
+  totalCashNeededToBuyPaidThisYear: number;
+  legalFeesPaidThisYear: number;
+  inspectionPaidThisYear: number;
+  otherClosingPaidThisYear: number;
+  taxOnMortgageInsurancePaidThisYear: number;
   yearFhsaWithdrawalOrTransfer: number;
   housingStatus: 'renting' | 'mortgage' | 'mortgage_free';
+  landTransferTaxPaidThisYear: number;
+  propertyTaxPaidThisYear: number;
+  condoFeesPaidThisYear: number;
+  yearHousingCost: number;
   notes: string[];
 }
 
@@ -155,9 +183,40 @@ export function initializeMortgageAndHousingParams(
     ? re.currentRent
     : (me?.rentOrMortgage ?? re?.currentRent ?? 2200);
   const nonHousingMonthly = (me?.utilities || 0) + (me?.creditCard || 0) + (me?.otherExpenses || 0);
+
+  // Realtor.ca Ownership & Closing Cost Projection
+  const realtorProjection = calculateRealtorMonthlyProjection(re, inputs.province, isFuturePurchase);
+  const propertyType = realtorProjection.propertyType;
+  const isFirstTimeHomeBuyer = realtorProjection.isFirstTimeHomeBuyer;
+  const cityOrMunicipality = re?.cityOrMunicipality ?? (inputs.province === 'ON' ? 'other_ontario' : 'other');
+  const oneTimeLandTransferTax = realtorProjection.oneTimeLandTransferTax;
+  const monthlyPropertyTax = realtorProjection.propertyTaxMonthly;
+  const monthlyCondoFee = realtorProjection.condoFeeMonthly;
+  const otherOwnershipCostsMonthly = realtorProjection.otherOwnershipCostsMonthly;
+
+  // Closing Costs breakdown for future purchase (or baseline)
+  const cashNeededCalc = calculateEstimatedCashNeededToBuy(
+    re,
+    inputs.province,
+    isFuturePurchase,
+    nominalPurchasePrice,
+    targetFutureDownPayment
+  );
+  const legalAndClosingFees = cashNeededCalc.legalAndClosingFees;
+  const homeInspectionCost = cashNeededCalc.homeInspectionCost;
+  const otherClosingCosts = cashNeededCalc.otherClosingCosts;
+  const taxOnMortgageInsurance = cashNeededCalc.taxOnMortgageInsurance;
+  const totalClosingCosts = cashNeededCalc.totalClosingCosts;
+  const totalCashNeededToBuy = cashNeededCalc.totalCashNeededToBuy;
+
+  // Effective baseline monthly housing expense (rent for renters, mortgage + property tax + condo fee for current owners)
+  const effectiveMonthlyHousing = (ownsHome && !isFuturePurchase)
+    ? monthlyMortgagePmt + otherOwnershipCostsMonthly
+    : currentRentMonthly;
+
   const initialMonthlyExpenses = me
-    ? (me.rentOrMortgage || 0) + nonHousingMonthly
-    : Math.round((inputs.targetRetirementSpendingToday / 12) * 1.25);
+    ? (me.rentOrMortgage !== undefined && !me.autoSyncMortgage ? me.rentOrMortgage : effectiveMonthlyHousing) + nonHousingMonthly
+    : effectiveMonthlyHousing + nonHousingMonthly;
   const initialAnnualExpenses = initialMonthlyExpenses * 12;
 
   return {
@@ -191,7 +250,20 @@ export function initializeMortgageAndHousingParams(
     calcMonthlyPmtForLoan,
     currentRentMonthly,
     nonHousingMonthly,
-    initialAnnualExpenses
+    initialAnnualExpenses,
+    propertyType,
+    isFirstTimeHomeBuyer,
+    cityOrMunicipality,
+    oneTimeLandTransferTax,
+    monthlyPropertyTax,
+    monthlyCondoFee,
+    otherOwnershipCostsMonthly,
+    legalAndClosingFees,
+    homeInspectionCost,
+    otherClosingCosts,
+    taxOnMortgageInsurance,
+    totalClosingCosts,
+    totalCashNeededToBuy
   };
 }
 
@@ -216,11 +288,22 @@ export function calculateMortgageAndHousingForYear(
   let homeSaleProceeds = 0;
   let isHomePurchasedThisYear = false;
   let downPaymentPaidThisYear = 0;
+  let totalClosingCostsPaidThisYear = 0;
+  let totalCashNeededToBuyPaidThisYear = 0;
+  let legalFeesPaidThisYear = 0;
+  let inspectionPaidThisYear = 0;
+  let otherClosingPaidThisYear = 0;
+  let taxOnMortgageInsurancePaidThisYear = 0;
   let yearFhsaWithdrawalOrTransfer = 0;
   let housingStatus: 'renting' | 'mortgage' | 'mortgage_free' = params.ownsHome ? 'mortgage' : 'renting';
+  let landTransferTaxPaidThisYear = 0;
+  let propertyTaxPaidThisYear = 0;
+  let condoFeesPaidThisYear = 0;
+  let yearHousingCost = 0;
 
   if (!params.ownsHome) {
     housingStatus = 'renting';
+    yearHousingCost = params.currentRentMonthly * 12;
   } else if (!params.isFuturePurchase) {
     // CURRENT HOMEOWNER (Purchased in past)
     if (!state.homeSold) {
@@ -229,6 +312,7 @@ export function calculateMortgageAndHousingForYear(
       if (params.initialMortgagePrincipal <= 0 || elapsedMonths >= params.totalMortgageMonths) {
         remainingMortgage = 0;
         housingStatus = 'mortgage_free';
+        yearHousingCost = params.otherOwnershipCostsMonthly * 12;
       } else {
         remainingMortgage = Math.max(
           0,
@@ -236,7 +320,11 @@ export function calculateMortgageAndHousingForYear(
             params.monthlyMortgagePmt * ((Math.pow(1 + params.monthlyRate, elapsedMonths) - 1) / (params.monthlyRate || 1))
         );
         housingStatus = 'mortgage';
+        yearHousingCost = (params.monthlyMortgagePmt + params.otherOwnershipCostsMonthly) * 12;
       }
+
+      propertyTaxPaidThisYear = params.monthlyPropertyTax * 12;
+      condoFeesPaidThisYear = params.monthlyCondoFee * 12;
 
       yearHomeValue = params.currentHomeMarketVal * Math.pow(1 + params.appreciationRate, yearIndex);
       yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
@@ -276,11 +364,15 @@ export function calculateMortgageAndHousingForYear(
           ).toLocaleString()} deposited into Taxable Non-Reg Account (100% Tax-Free under CRA Principal Residence Exemption).`
         );
       }
+    } else {
+      housingStatus = 'renting';
+      yearHousingCost = params.currentRentMonthly * 12;
     }
   } else {
     // FUTURE HOME PURCHASE
     if (age < params.futurePurchaseAge) {
       housingStatus = 'renting';
+      yearHousingCost = params.currentRentMonthly * 12;
       if (yearIndex === 0) {
         notes.push(
           `🏢 Currently Renting: Paying $${Math.round(params.currentRentMonthly).toLocaleString()}/month while saving toward planned home purchase at Age ${params.futurePurchaseAge} (Year ${params.futurePurchaseYear}).`
@@ -291,53 +383,55 @@ export function calculateMortgageAndHousingForYear(
       isHomePurchasedThisYear = true;
       housingStatus = 'mortgage';
 
-      let downPaymentNeeded = params.targetFutureDownPayment;
-      state.totalDownPaymentFunded = 0;
+      const downPaymentTarget = params.targetFutureDownPayment;
+      const closingCostsNeeded = params.totalClosingCosts;
+      let totalCashNeeded = downPaymentTarget + closingCostsNeeded;
+      let totalCashDrawn = 0;
 
       // 1. Primary FHSA
-      if (params.fundWithFhsa && balances.pFhsa > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.pFhsa, downPaymentNeeded);
+      if (params.fundWithFhsa && balances.pFhsa > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.pFhsa, totalCashNeeded);
         balances.pFhsa -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
         state.pFhsaActive = false;
         yearFhsaWithdrawalOrTransfer += used;
-        notes.push(`🏠 Age ${age}: First Home Savings Account (FHSA) fully deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
+        notes.push(`🏠 Age ${age}: First Home Savings Account (FHSA) fully deployed tax-free ($${Math.round(used).toLocaleString()}) for home down payment and closing costs.`);
       }
 
       // 2. Spouse FHSA
-      if (params.fundWithFhsa && isCouple && balances.sFhsa > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.sFhsa, downPaymentNeeded);
+      if (params.fundWithFhsa && isCouple && balances.sFhsa > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.sFhsa, totalCashNeeded);
         balances.sFhsa -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
         state.sFhsaActive = false;
         yearFhsaWithdrawalOrTransfer += used;
-        notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase down payment.`);
+        notes.push(`🏠 Spouse Age ${spouseAge}: Spouse FHSA deployed tax-free ($${Math.round(used).toLocaleString()}) for qualifying home purchase & closing.`);
       }
 
       // 3. RRSP HBP
-      if (params.fundWithHbp && balances.pRrsp > 0 && downPaymentNeeded > 0) {
-        const hbp = Math.min(60000, balances.pRrsp, downPaymentNeeded);
+      if (params.fundWithHbp && balances.pRrsp > 0 && totalCashNeeded > 0) {
+        const hbp = Math.min(60000, balances.pRrsp, totalCashNeeded);
         balances.pRrsp -= hbp;
-        downPaymentNeeded -= hbp;
-        state.totalDownPaymentFunded += hbp;
-        notes.push(`🍁 Age ${age}: CRA Home Buyers' Plan (HBP) tax-free RRSP withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
+        totalCashNeeded -= hbp;
+        totalCashDrawn += hbp;
+        notes.push(`🍁 Age ${age}: CRA Home Buyers' Plan (HBP) tax-free RRSP withdrawal of $${Math.round(hbp).toLocaleString()} applied to purchase.`);
       }
-      if (params.fundWithHbp && isCouple && balances.sRrsp > 0 && downPaymentNeeded > 0) {
-        const hbp = Math.min(60000, balances.sRrsp, downPaymentNeeded);
+      if (params.fundWithHbp && isCouple && balances.sRrsp > 0 && totalCashNeeded > 0) {
+        const hbp = Math.min(60000, balances.sRrsp, totalCashNeeded);
         balances.sRrsp -= hbp;
-        downPaymentNeeded -= hbp;
-        state.totalDownPaymentFunded += hbp;
-        notes.push(`🍁 Spouse Age ${spouseAge}: Spouse CRA Home Buyers' Plan (HBP) withdrawal of $${Math.round(hbp).toLocaleString()} applied to down payment.`);
+        totalCashNeeded -= hbp;
+        totalCashDrawn += hbp;
+        notes.push(`🍁 Spouse Age ${spouseAge}: Spouse CRA Home Buyers' Plan (HBP) withdrawal of $${Math.round(hbp).toLocaleString()} applied to purchase.`);
       }
 
       // 4. Non-Registered taxable savings
-      if (params.fundWithNonReg && balances.pNonReg > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.pNonReg, downPaymentNeeded);
+      if (params.fundWithNonReg && balances.pNonReg > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.pNonReg, totalCashNeeded);
         balances.pNonReg -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
         if (balances.customAccountsState.length > 0) {
           let rem = used;
           for (const acc of balances.customAccountsState) {
@@ -347,32 +441,43 @@ export function calculateMortgageAndHousingForYear(
             if (rem <= 0) break;
           }
         }
-        notes.push(`💵 Age ${age}: Deployed $${Math.round(used).toLocaleString()} from Non-Registered taxable savings for down payment.`);
+        notes.push(`💵 Age ${age}: Deployed $${Math.round(used).toLocaleString()} from Non-Registered taxable savings for home purchase.`);
       }
-      if (params.fundWithNonReg && isCouple && balances.sNonReg > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.sNonReg, downPaymentNeeded);
+      if (params.fundWithNonReg && isCouple && balances.sNonReg > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.sNonReg, totalCashNeeded);
         balances.sNonReg -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
       }
 
       // 5. TFSA
-      if (params.fundWithTfsa && balances.pTfsa > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.pTfsa, downPaymentNeeded);
+      if (params.fundWithTfsa && balances.pTfsa > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.pTfsa, totalCashNeeded);
         balances.pTfsa -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
-        notes.push(`🛡️ Age ${age}: Deployed $${Math.round(used).toLocaleString()} from TFSA tax-free for down payment.`);
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
+        notes.push(`🛡️ Age ${age}: Deployed $${Math.round(used).toLocaleString()} from TFSA tax-free for home purchase.`);
       }
-      if (params.fundWithTfsa && isCouple && balances.sTfsa > 0 && downPaymentNeeded > 0) {
-        const used = Math.min(balances.sTfsa, downPaymentNeeded);
+      if (params.fundWithTfsa && isCouple && balances.sTfsa > 0 && totalCashNeeded > 0) {
+        const used = Math.min(balances.sTfsa, totalCashNeeded);
         balances.sTfsa -= used;
-        downPaymentNeeded -= used;
-        state.totalDownPaymentFunded += used;
+        totalCashNeeded -= used;
+        totalCashDrawn += used;
       }
 
-      downPaymentPaidThisYear = state.totalDownPaymentFunded;
-      state.futureActualLoanPrincipal = Math.max(0, params.nominalPurchasePrice - state.totalDownPaymentFunded);
+      const closingFunded = Math.min(closingCostsNeeded, totalCashDrawn);
+      const downPaymentFunded = Math.max(0, totalCashDrawn - closingFunded);
+      state.totalDownPaymentFunded = downPaymentFunded;
+      downPaymentPaidThisYear = downPaymentFunded;
+      totalClosingCostsPaidThisYear = closingFunded;
+      totalCashNeededToBuyPaidThisYear = totalCashDrawn;
+      landTransferTaxPaidThisYear = Math.min(params.oneTimeLandTransferTax, closingFunded);
+      legalFeesPaidThisYear = params.legalAndClosingFees;
+      inspectionPaidThisYear = params.homeInspectionCost;
+      otherClosingPaidThisYear = params.otherClosingCosts;
+      taxOnMortgageInsurancePaidThisYear = params.taxOnMortgageInsurance;
+
+      state.futureActualLoanPrincipal = Math.max(0, params.nominalPurchasePrice - downPaymentFunded);
       state.futureActualMonthlyPmt = params.calcMonthlyPmtForLoan(state.futureActualLoanPrincipal);
 
       remainingMortgage = state.futureActualLoanPrincipal;
@@ -380,8 +485,12 @@ export function calculateMortgageAndHousingForYear(
       yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
       userRealEstateShare = yearHomeEquity * params.ownershipShare;
 
+      propertyTaxPaidThisYear = params.monthlyPropertyTax * 12;
+      condoFeesPaidThisYear = params.monthlyCondoFee * 12;
+      yearHousingCost = (state.futureActualMonthlyPmt + params.otherOwnershipCostsMonthly) * 12;
+
       notes.push(
-        `🏡 Age ${age}: Purchased primary residence for $${Math.round(params.nominalPurchasePrice).toLocaleString()}! Down payment of $${Math.round(state.totalDownPaymentFunded).toLocaleString()} funded from savings. Originated ${params.mortgageTermYears}-yr mortgage of $${Math.round(state.futureActualLoanPrincipal).toLocaleString()} ($${Math.round(state.futureActualMonthlyPmt).toLocaleString()}/month).`
+        `🏡 Age ${age}: Purchased primary residence for $${Math.round(params.nominalPurchasePrice).toLocaleString()}! Deployed $${Math.round(totalCashDrawn).toLocaleString()} total cash at closing ($${Math.round(downPaymentFunded).toLocaleString()} down payment + $${Math.round(closingFunded).toLocaleString()} closing costs: $${Math.round(landTransferTaxPaidThisYear).toLocaleString()} Land Transfer Tax, $${Math.round(params.legalAndClosingFees).toLocaleString()} legal fees, $${Math.round(params.otherClosingCosts).toLocaleString()} other closing${params.taxOnMortgageInsurance > 0 ? `, $${Math.round(params.taxOnMortgageInsurance).toLocaleString()} tax on mortgage insurance` : ''}${params.homeInspectionCost > 0 ? `, $${Math.round(params.homeInspectionCost).toLocaleString()} inspection` : ''}). Originated ${params.mortgageTermYears}-yr mortgage of $${Math.round(state.futureActualLoanPrincipal).toLocaleString()} ($${Math.round(state.futureActualMonthlyPmt).toLocaleString()}/month). Ongoing: $${params.monthlyPropertyTax}/mo property taxes${params.monthlyCondoFee > 0 ? ` + $${params.monthlyCondoFee}/mo condo fees` : ''}.`
       );
     } else if (state.futurePurchaseExecuted && !state.homeSold) {
       // Post-purchase years
@@ -389,6 +498,7 @@ export function calculateMortgageAndHousingForYear(
       if (state.futureActualLoanPrincipal <= 0 || elapsedMonths >= params.totalMortgageMonths) {
         remainingMortgage = 0;
         housingStatus = 'mortgage_free';
+        yearHousingCost = params.otherOwnershipCostsMonthly * 12;
       } else {
         remainingMortgage = Math.max(
           0,
@@ -396,7 +506,11 @@ export function calculateMortgageAndHousingForYear(
             state.futureActualMonthlyPmt * ((Math.pow(1 + params.monthlyRate, elapsedMonths) - 1) / (params.monthlyRate || 1))
         );
         housingStatus = 'mortgage';
+        yearHousingCost = (state.futureActualMonthlyPmt + params.otherOwnershipCostsMonthly) * 12;
       }
+
+      propertyTaxPaidThisYear = params.monthlyPropertyTax * 12;
+      condoFeesPaidThisYear = params.monthlyCondoFee * 12;
 
       yearHomeValue = params.nominalPurchasePrice * Math.pow(1 + params.appreciationRate, age - params.futurePurchaseAge);
       yearHomeEquity = Math.max(0, yearHomeValue - remainingMortgage);
@@ -448,8 +562,18 @@ export function calculateMortgageAndHousingForYear(
     homeSaleProceeds,
     isHomePurchasedThisYear,
     downPaymentPaidThisYear,
+    totalClosingCostsPaidThisYear,
+    totalCashNeededToBuyPaidThisYear,
+    legalFeesPaidThisYear,
+    inspectionPaidThisYear,
+    otherClosingPaidThisYear,
+    taxOnMortgageInsurancePaidThisYear,
     yearFhsaWithdrawalOrTransfer,
     housingStatus,
+    landTransferTaxPaidThisYear,
+    propertyTaxPaidThisYear,
+    condoFeesPaidThisYear,
+    yearHousingCost,
     notes
   };
 }
