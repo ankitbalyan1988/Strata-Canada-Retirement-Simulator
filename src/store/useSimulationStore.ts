@@ -82,6 +82,7 @@ export interface SimulationState {
   history: SimulationSnapshot[];
   isHistoryPanelOpen: boolean;
   activePreviewSnapshotId: string | null;
+  activeSnapshotId: string | null;
 
   // Actions
   setActiveView: (view: AppView) => void;
@@ -129,6 +130,7 @@ export interface SimulationState {
   setIsHistoryPanelOpen: (open: boolean) => void;
   toggleHistoryPanel: () => void;
   setActivePreviewSnapshotId: (id: string | null) => void;
+  setActiveSnapshotId: (id: string | null) => void;
   saveSnapshot: (label?: string, notes?: string, source?: SimulationSnapshot['source']) => SimulationSnapshot;
   restoreSnapshot: (snapshotId: string) => void;
   deleteSnapshot: (snapshotId: string) => void;
@@ -476,6 +478,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   history: loadSavedHistory(),
   isHistoryPanelOpen: false,
   activePreviewSnapshotId: null,
+  activeSnapshotId: null,
 
   // View & Sidebar Actions
   setActiveView: (view) => {
@@ -627,6 +630,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       history: [],
       selectedCompareSnapshotIds: [],
       activePreviewSnapshotId: null,
+      activeSnapshotId: null,
       whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
       isStressTestActive: false,
       stressTiming: 'at_retirement',
@@ -876,6 +880,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setIsHistoryPanelOpen: (open) => set({ isHistoryPanelOpen: open }),
   toggleHistoryPanel: () => set((state) => ({ isHistoryPanelOpen: !state.isHistoryPanelOpen })),
   setActivePreviewSnapshotId: (id) => set({ activePreviewSnapshotId: id }),
+  setActiveSnapshotId: (id) => set({ activeSnapshotId: id }),
 
   saveSnapshot: (customLabel, notes, source = 'manual') => {
     const state = get();
@@ -920,7 +925,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       } catch (_) {}
     }
 
-    set({ history: nextHistory });
+    set({ history: nextHistory, activeSnapshotId: snapshot.id });
     return snapshot;
   },
 
@@ -934,6 +939,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({
       inputs: restoredInputs,
       optimisticSummary,
+      activeSnapshotId: snapshotId,
       activePreviewSnapshotId: null,
       isRecalculatingLedger: true
     });
@@ -949,7 +955,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     }
     set((state) => ({
       history: nextHistory,
-      activePreviewSnapshotId: state.activePreviewSnapshotId === snapshotId ? null : state.activePreviewSnapshotId
+      activePreviewSnapshotId: state.activePreviewSnapshotId === snapshotId ? null : state.activePreviewSnapshotId,
+      activeSnapshotId: state.activeSnapshotId === snapshotId ? null : state.activeSnapshotId
     }));
   },
 
@@ -959,7 +966,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         localStorage.removeItem('strata_simulation_history');
       } catch (_) {}
     }
-    set({ history: [], activePreviewSnapshotId: null });
+    set({ history: [], activePreviewSnapshotId: null, activeSnapshotId: null });
   },
 
   renameSnapshot: (snapshotId, label, notes) => {

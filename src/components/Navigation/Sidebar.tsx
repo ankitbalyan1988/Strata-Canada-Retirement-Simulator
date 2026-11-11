@@ -34,6 +34,7 @@ import {
   ArrowRightLeft
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab, InputTab } from '../../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { PROVINCIAL_BRACKETS } from '../../utils/canadianTax';
 import { CanadianProvince } from '../../types/retirement';
 
@@ -61,7 +62,10 @@ export const Sidebar: React.FC = () => {
   const retirementAge = inputs.retirementAge;
   const readinessScore = useSimulationStore((state) => state.optimisticSummary.readinessScore);
   const netWorthAtRetirement = useSimulationStore((state) => state.optimisticSummary.netWorthAtRetirement);
-  const historyCount = useSimulationStore((state) => state.history.length);
+  const history = useSimulationStore(useShallow((state) => state.history));
+  const activeSnapshotId = useSimulationStore((state) => state.activeSnapshotId);
+  const restoreSnapshot = useSimulationStore((state) => state.restoreSnapshot);
+  const historyCount = history.length;
   const toggleHistoryPanel = useSimulationStore((state) => state.toggleHistoryPanel);
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
   const setIsSnapshotCompareModalOpen = useSimulationStore((state) => state.setIsSnapshotCompareModalOpen);
@@ -594,6 +598,37 @@ export const Sidebar: React.FC = () => {
                 </div>
               )}
             </button>
+
+            {/* Quick Scenario Switcher when multiple scenarios exist */}
+            {historyCount > 1 && !isSidebarCollapsed && (
+              <div className="px-1 py-1">
+                <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                    <span className="flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-emerald-500" />
+                      <span>Switch Scenario:</span>
+                    </span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{historyCount}</span>
+                  </div>
+                  <select
+                    value={activeSnapshotId || ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        restoreSnapshot(e.target.value);
+                      }
+                    }}
+                    className="w-full text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 truncate cursor-pointer"
+                  >
+                    <option value="" disabled>Select scenario...</option>
+                    {history.map((snap) => (
+                      <option key={snap.id} value={snap.id}>
+                        {snap.label} (Age {snap.metrics.retirementAge})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Standard or AI Personas Modal */}
             <button

@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
+import { TopScenarioSwitcher } from './TopScenarioSwitcher';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
@@ -19,6 +20,7 @@ export const Header: React.FC = () => {
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
   const toggleMobileSidebar = useSimulationStore((state) => state.toggleMobileSidebar);
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
+  const hasMultipleScenarios = useSimulationStore((state) => state.history.length > 1);
 
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
 
@@ -104,6 +106,9 @@ export const Header: React.FC = () => {
 
           {/* Right: Top-of-UI Global Action Controls */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
+            {/* Scenario Switcher Dropdown (only visible when multiple scenarios exist) */}
+            {hasMultipleScenarios && <TopScenarioSwitcher />}
+
             {/* Clean Canvas ($0) Button */}
             {!isConfirmingClear ? (
               <button
