@@ -62,6 +62,7 @@ import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 import { DebtsManager } from './DebtsManager';
 import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
 import { RealtorHomeCostCard } from './RealtorHomeCostCard';
+import { TaxRuleTooltip } from './TaxRuleTooltip';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -491,8 +492,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Timeline Assumptions</h5>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700 dark:text-slate-300">Current Age:</span>
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      Current Age:
+                      <TaxRuleTooltip ruleId="current_age" size="xs" />
+                    </span>
                     <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.currentAge} years old</span>
                   </div>
                   <input
@@ -507,8 +511,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700 dark:text-slate-300">Life Expectancy:</span>
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      Life Expectancy:
+                      <TaxRuleTooltip ruleId="life_expectancy" size="xs" />
+                    </span>
                     <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.lifeExpectancy} years old</span>
                   </div>
                   <input
@@ -532,9 +539,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </h5>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Your Annual Employment Income
-                  </label>
+                  <div className="flex items-center gap-1 mb-1">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Your Annual Employment Income
+                    </label>
+                    <TaxRuleTooltip ruleId="employment_income" size="xs" />
+                  </div>
                   <CurrencyInput
                     value={inputs.currentAnnualIncome}
                     onChange={(val) => updateField('currentAnnualIncome', val)}
@@ -546,7 +556,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   {/* Wage Trend Slider (supports negative wage decrease / deflation as well as positive growth) */}
                   <div className="mt-3 p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium text-slate-600 dark:text-slate-300">Annual Wage Trajectory:</span>
+                      <span className="font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1">
+                        Annual Wage Trajectory:
+                        <TaxRuleTooltip ruleId="wage_trajectory" size="xs" />
+                      </span>
                       <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
                         inputs.incomeGrowthRate > 0
                           ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
@@ -1251,6 +1264,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-50">RRSP</span>
+                    <TaxRuleTooltip ruleId="rrsp_annual" />
                   </div>
                   <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-500/20 px-2 py-0.5 rounded">
                     Tax-Deductible
@@ -1259,7 +1273,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Current Balance</label>
+                      <TaxRuleTooltip ruleId="rrsp_balance" size="xs" />
+                    </div>
                     <CurrencyInput
                       value={inputs.rrspBalance}
                       onChange={(val) => updateField('rrspBalance', val)}
@@ -1270,7 +1287,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Annual Contributions Target</label>
+                      <TaxRuleTooltip ruleId="rrsp_annual" size="xs" />
+                    </div>
                     <CurrencyInput
                       value={inputs.rrspAnnualContribution}
                       onChange={(val) => updateField('rrspAnnualContribution', val)}
@@ -1309,6 +1329,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       />
                       <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 flex-wrap">
                         <span>🏢 Employer Contribution Match</span>
+                        <TaxRuleTooltip ruleId="employer_match" size="xs" />
                         {inputs.employerMatch?.enabled && (
                           <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/90 dark:bg-blue-500/20 px-1.5 py-0.5 rounded">
                             +${calculateEmployerRrspMatch(inputs.currentAnnualIncome, inputs.rrspAnnualContribution, inputs.employerMatch).toLocaleString()}/yr
@@ -1494,6 +1515,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-50">TFSA</span>
+                    <TaxRuleTooltip ruleId="tfsa_annual" />
                   </div>
                   <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-500/20 px-2 py-0.5 rounded">
                     100% Tax-Free
@@ -1502,7 +1524,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Current Balance</label>
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Current Balance</label>
+                      <TaxRuleTooltip ruleId="tfsa_balance" size="xs" />
+                    </div>
                     <CurrencyInput
                       value={inputs.tfsaBalance}
                       onChange={(val) => updateField('tfsaBalance', val)}
@@ -1513,7 +1538,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block mb-1">Annual Contributions Target</label>
+                    <div className="flex items-center gap-1 mb-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Annual Contributions Target</label>
+                      <TaxRuleTooltip ruleId="tfsa_annual" size="xs" />
+                    </div>
                     <CurrencyInput
                       value={inputs.tfsaAnnualContribution}
                       onChange={(val) => updateField('tfsaAnnualContribution', val)}
@@ -1548,6 +1576,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-50">FHSA (First Home Savings Account)</span>
+                    <TaxRuleTooltip ruleId="fhsa_annual" />
                   </div>
                   <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-500/20 px-2 py-0.5 rounded">
                     Deductible + Tax-Free
@@ -1566,8 +1595,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         {/* Column 1: Current Balance */}
                         <div className="flex flex-col justify-end">
                           <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
-                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
                               Current Balance
+                              <TaxRuleTooltip ruleId="fhsa_balance" size="xs" />
                             </label>
                           </div>
                           <CurrencyInput
@@ -1584,8 +1614,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         <div className="flex flex-col justify-end">
                           <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
                             <div className="flex items-baseline justify-between gap-1">
-                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
                                 Remaining Room
+                                <TaxRuleTooltip ruleId="fhsa_room" size="xs" />
                               </label>
                               <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">
                                 Max $40k
@@ -1610,8 +1641,9 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         <div className="flex flex-col justify-end">
                           <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
                             <div className="flex items-baseline justify-between gap-1">
-                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">
+                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
                                 Annual Contributions Target
+                                <TaxRuleTooltip ruleId="fhsa_annual" size="xs" />
                               </label>
                               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0">
                                 Max $8k/yr
@@ -2278,7 +2310,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                             />
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <strong className="font-bold text-[11.5px]">FHSA (First Home Savings Account)</strong>
+                                <span className="font-bold text-[11.5px] flex items-center gap-1">
+                                  FHSA (First Home Savings Account)
+                                  <TaxRuleTooltip ruleId="fhsa_balance" size="xs" />
+                                </span>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
                                   fundWithFhsa ? 'bg-blue-200/80 dark:bg-blue-500/30 text-blue-900 dark:text-blue-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
@@ -2312,7 +2347,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                             />
                             <div className="flex-1">
                               <div className="flex items-center justify-between">
-                                <strong className="font-bold text-[11.5px]">RRSP Home Buyers' Plan (HBP)</strong>
+                                <span className="font-bold text-[11.5px] flex items-center gap-1">
+                                  RRSP Home Buyers' Plan (HBP)
+                                  <TaxRuleTooltip ruleId="hbp_downpayment" size="xs" />
+                                </span>
                                 <span className={`text-[9.5px] px-1.5 py-0.2 rounded font-bold ${
                                   fundWithHbp ? 'bg-blue-200/80 dark:bg-blue-500/30 text-blue-900 dark:text-blue-200' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
                                 }`}>
@@ -3757,8 +3795,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
                 {/* CPP Start Age Slider */}
                 <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700 dark:text-slate-300">CPP Start Age (60 - 70):</span>
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      CPP Start Age (60 - 70):
+                      <TaxRuleTooltip ruleId="cpp_start_age" size="xs" />
+                    </span>
                     <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.cppStartAge} yrs</span>
                   </div>
                   <input
@@ -3981,8 +4022,11 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </div>
 
                 <div>
-                  <div className="flex justify-between text-xs font-semibold mb-1">
-                    <span className="text-slate-700 dark:text-slate-300">OAS Start Age (65 - 70):</span>
+                  <div className="flex justify-between items-center text-xs font-semibold mb-1">
+                    <span className="text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      OAS Start Age (65 - 70):
+                      <TaxRuleTooltip ruleId="oas_start_age" size="xs" />
+                    </span>
                     <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.oasStartAge} yrs</span>
                   </div>
                   <input

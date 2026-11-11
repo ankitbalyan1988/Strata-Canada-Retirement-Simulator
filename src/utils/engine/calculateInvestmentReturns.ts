@@ -64,18 +64,22 @@ export function calculateInvestmentReturnsForYear(
   // Apply Market Stress Test
   if (stressTest?.enabled) {
     const drop = (stressTest.dropPercent || 10) / 100;
-    if (stressTest.timing === 'at_retirement' && age === retirementAge) {
+    const isShockYear =
+      (stressTest.timing === 'immediate' && yearIndex === 0) ||
+      (stressTest.timing === 'custom' && stressTest.customAge !== undefined && age === stressTest.customAge) ||
+      ((stressTest.timing === 'at_retirement' || !stressTest.timing) && age === retirementAge);
+
+    if (isShockYear) {
       rrspRate = -drop;
       tfsaRate = -drop;
       fhsaRate = -drop;
       nonRegBaseRate = -drop;
-      notes.push(`🚨 Stress Test: -${stressTest.dropPercent}% market shock simulated at retirement.`);
-    } else if (stressTest.timing === 'immediate' && yearIndex === 0) {
-      rrspRate = -drop;
-      tfsaRate = -drop;
-      fhsaRate = -drop;
-      nonRegBaseRate = -drop;
-      notes.push(`🚨 Stress Test: -${stressTest.dropPercent}% immediate market downturn simulated.`);
+      const timingDesc = stressTest.timing === 'immediate'
+        ? 'immediate market downturn'
+        : stressTest.timing === 'custom'
+        ? `market shock simulated at Age ${stressTest.customAge ?? age}`
+        : 'market shock simulated at retirement';
+      notes.push(`🚨 Stress Test: -${stressTest.dropPercent}% ${timingDesc}.`);
     }
   }
 
@@ -96,10 +100,12 @@ export function calculateInvestmentReturnsForYear(
       // Apply Stress Test shock if active
       if (stressTest?.enabled) {
         const drop = (stressTest.dropPercent || 10) / 100;
-        if (
-          (stressTest.timing === 'at_retirement' && age === retirementAge) ||
-          (stressTest.timing === 'immediate' && yearIndex === 0)
-        ) {
+        const isShockYear =
+          (stressTest.timing === 'immediate' && yearIndex === 0) ||
+          (stressTest.timing === 'custom' && stressTest.customAge !== undefined && age === stressTest.customAge) ||
+          ((stressTest.timing === 'at_retirement' || !stressTest.timing) && age === retirementAge);
+
+        if (isShockYear) {
           accRate = -drop;
         }
       }

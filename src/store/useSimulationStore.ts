@@ -54,7 +54,8 @@ export interface SimulationState {
 
   // Stress test
   isStressTestActive: boolean;
-  stressTiming: 'at_retirement' | 'immediate';
+  stressTiming: 'at_retirement' | 'immediate' | 'custom';
+  customStressAge: number;
   stressSimulation: {
     yearlyResults: YearSimulationResult[];
     summary: SimulationSummary;
@@ -107,7 +108,8 @@ export interface SimulationState {
   applyAIPersona: (newInputs: RetirementInputs) => void;
   updateExpatInputs: (newExpat: ExpatInputs) => void;
   setIsStressTestActive: (active: boolean | ((prev: boolean) => boolean)) => void;
-  setStressTiming: (timing: 'at_retirement' | 'immediate') => void;
+  setStressTiming: (timing: 'at_retirement' | 'immediate' | 'custom') => void;
+  setCustomStressAge: (age: number) => void;
   setIsWhatIfActive: (active: boolean | ((prev: boolean) => boolean)) => void;
   setWhatIfSettings: (settings: Partial<WhatIfSettings> | ((prev: WhatIfSettings) => WhatIfSettings)) => void;
   resetWhatIfSettings: () => void;
@@ -321,12 +323,17 @@ function scheduleHeavyCalculation(
 
   debounceTimer = setTimeout(async () => {
     const runId = ++currentRunId;
-    const { inputs, isStressTestActive, stressTiming } = get();
+    const { inputs, isStressTestActive, stressTiming, customStressAge } = get();
 
     try {
       const mainPromise = calculateSimulationAsync(inputs);
       const stressPromise = isStressTestActive
-        ? calculateSimulationAsync(inputs, { enabled: true, dropPercent: 10, timing: stressTiming })
+        ? calculateSimulationAsync(inputs, {
+            enabled: true,
+            dropPercent: 10,
+            timing: stressTiming,
+            customAge: stressTiming === 'custom' ? customStressAge : undefined
+          })
         : Promise.resolve(null);
 
       const [mainResult, stressResult] = await Promise.all([mainPromise, stressPromise]);
@@ -434,6 +441,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   isStressTestActive: false,
   stressTiming: 'at_retirement',
+  customStressAge: DEFAULT_INPUTS.retirementAge,
   stressSimulation: {
     yearlyResults: [],
     summary: {} as SimulationSummary,
@@ -621,6 +629,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       activePreviewSnapshotId: null,
       whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
       isStressTestActive: false,
+      stressTiming: 'at_retirement',
+      customStressAge: BLANK_CANVAS_INPUTS.retirementAge,
       summary: blankSim.summary,
       optimisticSummary: blankSim.summary,
       yearlyResults: blankSim.yearlyResults,
@@ -747,6 +757,11 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setStressTiming: (timing) => {
     set({ stressTiming: timing, isRecalculatingLedger: true });
+    scheduleHeavyCalculation(get, set);
+  },
+
+  setCustomStressAge: (age) => {
+    set({ customStressAge: age, isRecalculatingLedger: true });
     scheduleHeavyCalculation(get, set);
   },
 

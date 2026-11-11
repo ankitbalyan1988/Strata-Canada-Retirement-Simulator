@@ -16,9 +16,13 @@ export interface ScenarioDefinition {
   name: string;
   description: string;
   severity: 'moderate' | 'severe' | 'extreme';
-  applyInputs: (base: RetirementInputs) => {
+  applyInputs: (
+    base: RetirementInputs,
+    timingOverride?: 'at_retirement' | 'immediate' | 'custom',
+    customAgeOverride?: number
+  ) => {
     inputs: RetirementInputs;
-    stressTest?: { enabled: boolean; dropPercent: number; timing: 'at_retirement' | 'immediate' };
+    stressTest?: { enabled: boolean; dropPercent: number; timing: 'at_retirement' | 'immediate' | 'custom'; customAge?: number };
   };
 }
 
@@ -26,9 +30,9 @@ export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
   {
     id: 'gfc_2008',
     name: '2008 Global Financial Crisis',
-    description: '-35% equity crash at retirement with 4 years of suppressed economic recovery.',
+    description: '-35% equity crash with 4 years of suppressed economic recovery.',
     severity: 'extreme',
-    applyInputs: (base) => {
+    applyInputs: (base, timingOverride, customAgeOverride) => {
       const inputs: RetirementInputs = {
         ...base,
         accountReturns: base.accountReturns ? {
@@ -38,9 +42,15 @@ export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
           nonRegPostReturn: Math.max(1, (base.accountReturns.nonRegPostReturn ?? 4.5) - 1.0)
         } : undefined
       };
+      const timing = timingOverride || 'at_retirement';
       return {
         inputs,
-        stressTest: { enabled: true, dropPercent: 35, timing: 'at_retirement' }
+        stressTest: {
+          enabled: true,
+          dropPercent: 35,
+          timing,
+          customAge: timing === 'custom' ? (customAgeOverride ?? base.retirementAge) : undefined
+        }
       };
     }
   },
@@ -49,7 +59,7 @@ export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
     name: '1970s Stagflation Surge',
     description: 'Inflation surges by +2.5% (BoC rate spike) with prolonged negative real equity returns.',
     severity: 'severe',
-    applyInputs: (base) => {
+    applyInputs: (base, timingOverride, customAgeOverride) => {
       const inputs: RetirementInputs = {
         ...base,
         inflationRate: (base.inflationRate || 2.1) + 2.5,
@@ -61,28 +71,42 @@ export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
           tfsaPostReturn: Math.max(1.5, (base.accountReturns.tfsaPostReturn ?? 5.5) - 1.8)
         } : undefined
       };
+      const timing = timingOverride || 'at_retirement';
       return {
         inputs,
-        stressTest: { enabled: true, dropPercent: 15, timing: 'at_retirement' }
+        stressTest: {
+          enabled: true,
+          dropPercent: 15,
+          timing,
+          customAge: timing === 'custom' ? (customAgeOverride ?? base.retirementAge) : undefined
+        }
       };
     }
   },
   {
     id: 'sequence_of_returns',
     name: 'Sequence of Returns Shock',
-    description: '-25% market drawdown precisely at retirement day while living withdrawals begin.',
+    description: '-25% market drawdown at the designated milestone as withdrawals and cash needs occur.',
     severity: 'severe',
-    applyInputs: (base) => ({
-      inputs: base,
-      stressTest: { enabled: true, dropPercent: 25, timing: 'at_retirement' }
-    })
+    applyInputs: (base, timingOverride, customAgeOverride) => {
+      const timing = timingOverride || 'at_retirement';
+      return {
+        inputs: base,
+        stressTest: {
+          enabled: true,
+          dropPercent: 25,
+          timing,
+          customAge: timing === 'custom' ? (customAgeOverride ?? base.retirementAge) : undefined
+        }
+      };
+    }
   },
   {
     id: 'dotcom_2000',
     name: '2000 Dot-Com Tech Bust',
     description: 'Three consecutive years of flat/negative growth (-20% first-year shock).',
     severity: 'moderate',
-    applyInputs: (base) => {
+    applyInputs: (base, timingOverride, customAgeOverride) => {
       const inputs: RetirementInputs = {
         ...base,
         accountReturns: base.accountReturns ? {
@@ -91,21 +115,35 @@ export const HISTORICAL_SCENARIOS: ScenarioDefinition[] = [
           tfsaPostReturn: Math.max(1.5, (base.accountReturns.tfsaPostReturn ?? 5.5) - 1.0)
         } : undefined
       };
+      const timing = timingOverride || 'at_retirement';
       return {
         inputs,
-        stressTest: { enabled: true, dropPercent: 20, timing: 'at_retirement' }
+        stressTest: {
+          enabled: true,
+          dropPercent: 20,
+          timing,
+          customAge: timing === 'custom' ? (customAgeOverride ?? base.retirementAge) : undefined
+        }
       };
     }
   },
   {
     id: 'immediate_crash',
     name: 'Immediate Near-Term Shock',
-    description: '-20% sudden correction in current portfolio before retirement accumulation finishes.',
+    description: '-20% sudden correction in portfolio before retirement accumulation finishes.',
     severity: 'moderate',
-    applyInputs: (base) => ({
-      inputs: base,
-      stressTest: { enabled: true, dropPercent: 20, timing: 'immediate' }
-    })
+    applyInputs: (base, timingOverride, customAgeOverride) => {
+      const timing = timingOverride || 'immediate';
+      return {
+        inputs: base,
+        stressTest: {
+          enabled: true,
+          dropPercent: 20,
+          timing,
+          customAge: timing === 'custom' ? (customAgeOverride ?? base.currentAge) : undefined
+        }
+      };
+    }
   },
   {
     id: 'longevity_95',
@@ -153,10 +191,12 @@ export interface ScenarioSimulationDetails {
  */
 export function runStressScenarioSimulation(
   inputs: RetirementInputs,
-  scenarioId: string
+  scenarioId: string,
+  timingOverride?: 'at_retirement' | 'immediate' | 'custom',
+  customAgeOverride?: number
 ): ScenarioSimulationDetails {
   const scenarioDef = HISTORICAL_SCENARIOS.find((s) => s.id === scenarioId) || HISTORICAL_SCENARIOS[0];
-  const { inputs: scenInputs, stressTest } = scenarioDef.applyInputs(inputs);
+  const { inputs: scenInputs, stressTest } = scenarioDef.applyInputs(inputs, timingOverride, customAgeOverride);
   const { yearlyResults, summary } = runRetirementSimulation(scenInputs, stressTest);
 
   const baseSim = fastSimulateEndNetWorth(inputs);
@@ -171,6 +211,8 @@ export function runStressScenarioSimulation(
 
   const shockAge = stressTest?.timing === 'immediate'
     ? scenInputs.currentAge
+    : stressTest?.timing === 'custom'
+    ? (stressTest.customAge ?? customAgeOverride ?? scenInputs.retirementAge)
     : scenInputs.retirementAge;
   const shockDropPercent = stressTest?.dropPercent || 0;
 
@@ -195,6 +237,8 @@ export function runStressScenarioSimulation(
       value: shockDropPercent > 0 ? `-${shockDropPercent}% at Age ${shockAge}` : 'Longevity + Years',
       detail: stressTest?.timing === 'immediate'
         ? `Applied immediately to current portfolio balances at Age ${scenInputs.currentAge}`
+        : stressTest?.timing === 'custom'
+        ? `Applied at custom user-selected Age ${shockAge} during portfolio lifecycle`
         : shockDropPercent > 0
         ? `Applied at Age ${scenInputs.retirementAge} precisely as living decumulation begins`
         : `Simulates spending through Age ${scenInputs.lifeExpectancy}`
@@ -271,7 +315,9 @@ export function runStressScenarioSimulation(
  */
 export function calculateStressTestHealth(
   inputs: RetirementInputs,
-  summary: SimulationSummary
+  summary: SimulationSummary,
+  timingOverride?: 'at_retirement' | 'immediate' | 'custom',
+  customAgeOverride?: number
 ): StressTestHealthResult {
   const isBlankCanvas = (
     (inputs.currentAnnualIncome || 0) === 0 &&
@@ -288,7 +334,7 @@ export function calculateStressTestHealth(
 
   // 1. Evaluate Standard Historical Scenarios
   const scenarioOutcomes: StressScenarioOutcome[] = HISTORICAL_SCENARIOS.map((def) => {
-    const { inputs: scenInputs, stressTest } = def.applyInputs(inputs);
+    const { inputs: scenInputs, stressTest } = def.applyInputs(inputs, timingOverride, customAgeOverride);
     const scenSim = fastSimulateEndNetWorth(scenInputs, undefined, stressTest);
     const scenYearsInRetire = Math.max(1, scenInputs.lifeExpectancy - scenInputs.retirementAge);
     const yearsFunded = scenSim.isFullyFunded

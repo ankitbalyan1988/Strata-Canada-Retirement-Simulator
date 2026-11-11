@@ -30,14 +30,17 @@ export function StressTestHealthCard() {
   const summary = useSimulationStore(useShallow((state) => state.summary));
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
   const setIsStressTestActive = useSimulationStore((state) => state.setIsStressTestActive);
+  const stressTiming = useSimulationStore((state) => state.stressTiming);
   const setStressTiming = useSimulationStore((state) => state.setStressTiming);
+  const customStressAge = useSimulationStore((state) => state.customStressAge);
+  const setCustomStressAge = useSimulationStore((state) => state.setCustomStressAge);
   const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.stressTest));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
-  // Compute stress test health analysis
+  // Compute stress test health analysis incorporating user's timing and custom age
   const health = useMemo(() => {
-    return calculateStressTestHealth(inputs, summary);
-  }, [inputs, summary]);
+    return calculateStressTestHealth(inputs, summary, stressTiming, customStressAge);
+  }, [inputs, summary, stressTiming, customStressAge]);
 
   // Selected scenario for detail view
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>(health.worstCaseScenario.id);
@@ -47,10 +50,10 @@ export function StressTestHealthCard() {
     return health.scenarios.find((s) => s.id === selectedScenarioId) || health.worstCaseScenario;
   }, [health, selectedScenarioId]);
 
-  // Compute full annual simulation ledger for selected scenario
+  // Compute full annual simulation ledger for selected scenario with custom timing
   const scenarioDetails = useMemo(() => {
-    return runStressScenarioSimulation(inputs, activeScenario.id);
-  }, [inputs, activeScenario.id]);
+    return runStressScenarioSimulation(inputs, activeScenario.id, stressTiming, customStressAge);
+  }, [inputs, activeScenario.id, stressTiming, customStressAge]);
 
   // Health color styling
   const ratingTheme = {
@@ -76,11 +79,8 @@ export function StressTestHealthCard() {
 
   const RatingIcon = ratingTheme.icon;
 
-  const handleApplyToChart = (timing: 'at_retirement' | 'immediate') => {
-    setStressTiming(timing);
-    if (!isStressTestActive) {
-      setIsStressTestActive(true);
-    }
+  const handleApplyToChart = () => {
+    setIsStressTestActive(true);
   };
 
   return (
@@ -320,7 +320,7 @@ export function StressTestHealthCard() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleApplyToChart('at_retirement')}
+                  onClick={handleApplyToChart}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
                     isStressTestActive
                       ? 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700'
@@ -332,6 +332,130 @@ export function StressTestHealthCard() {
                   <span>{isStressTestActive ? 'Stress Shock Active in Chart' : 'Simulate in Trajectory Chart'}</span>
                 </button>
               </div>
+            </div>
+
+            {/* Stress Event Shock Timing Selector & Customizer */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-700/90 flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <Sliders className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                      <span>Stress Event Shock Timing</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        {stressTiming === 'at_retirement'
+                          ? `At Retirement (Age ${inputs.retirementAge})`
+                          : stressTiming === 'immediate'
+                          ? `Immediate (Age ${inputs.currentAge})`
+                          : `Custom (Age ${customStressAge})`}
+                      </span>
+                    </h5>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Customize precisely when the economic crisis occurs in your timeline. Default is at retirement.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Timing Options */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold self-start sm:self-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setStressTiming('at_retirement')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
+                      stressTiming === 'at_retirement'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>At Retirement (Age {inputs.retirementAge})</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono">Default</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStressTiming('immediate')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                      stressTiming === 'immediate'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Immediately (Age {inputs.currentAge})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStressTiming('custom')}
+                    className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                      stressTiming === 'custom'
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>Custom Age</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Age Slider & Quick Presets */}
+              {stressTiming === 'custom' && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-2.5 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between gap-3 text-xs flex-wrap">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Select Crisis Age:</span>
+                      <span className="font-extrabold text-slate-900 dark:text-white font-mono bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-500/30">
+                        Age {customStressAge} ({2026 + (customStressAge - inputs.currentAge)})
+                      </span>
+                    </span>
+
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      {customStressAge < inputs.retirementAge
+                        ? `During Accumulation (${inputs.retirementAge - customStressAge} yrs before retirement)`
+                        : customStressAge === inputs.retirementAge
+                        ? 'Precisely on Retirement Day'
+                        : `During Decumulation (${customStressAge - inputs.retirementAge} yrs into retirement)`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <span className="text-[11px] text-slate-400 font-mono">Age {inputs.currentAge}</span>
+                    <input
+                      type="range"
+                      min={inputs.currentAge}
+                      max={Math.min(95, Math.max(inputs.lifeExpectancy, 85))}
+                      step={1}
+                      value={customStressAge}
+                      onChange={(e) => setCustomStressAge(Number(e.target.value))}
+                      className="flex-1 accent-amber-500 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[11px] text-slate-400 font-mono">Age {Math.min(95, Math.max(inputs.lifeExpectancy, 85))}</span>
+                  </div>
+
+                  {/* Quick Select Age Buttons */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mr-1">Quick Select:</span>
+                    {[inputs.currentAge, 50, 55, 60, inputs.retirementAge, 70, 75]
+                      .filter((a, idx, arr) => a >= inputs.currentAge && a <= inputs.lifeExpectancy && arr.indexOf(a) === idx)
+                      .map((age) => (
+                        <button
+                          key={age}
+                          type="button"
+                          onClick={() => setCustomStressAge(age)}
+                          className={`px-2 py-0.5 text-[11px] rounded-md font-mono transition cursor-pointer border ${
+                            customStressAge === age
+                              ? 'bg-amber-500 text-white border-amber-500 font-bold'
+                              : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
+                          }`}
+                        >
+                          Age {age} {age === inputs.retirementAge ? '(Retire)' : ''}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Scenario Chips */}
@@ -451,6 +575,10 @@ export function StressTestHealthCard() {
                 <StressScenarioLedger
                   scenarioDetails={scenarioDetails}
                   inputs={inputs}
+                  stressTiming={stressTiming}
+                  customStressAge={customStressAge}
+                  onChangeStressTiming={setStressTiming}
+                  onChangeCustomStressAge={setCustomStressAge}
                 />
               )}
             </div>

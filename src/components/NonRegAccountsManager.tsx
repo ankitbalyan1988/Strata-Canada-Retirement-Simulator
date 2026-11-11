@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, Trash2, Calendar, Lock, TrendingUp, PiggyBank, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { CustomNonRegAccount, NonRegAccountCategory } from '../types/retirement';
 import { CurrencyInput } from './CurrencyInput';
+import { TaxRuleTooltip } from './TaxRuleTooltip';
 
 interface NonRegAccountsManagerProps {
   accounts?: CustomNonRegAccount[];
@@ -159,6 +160,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100">Non-Registered (SA / Taxable)</span>
+              <TaxRuleTooltip ruleId="nonreg_balance" />
               <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/90 dark:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 px-2 py-0.5 rounded-full">
                 Unified Non - Reg Bucket
               </span>
@@ -224,8 +226,9 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
             <div className="flex flex-col justify-end">
               <div className="min-h-[32px] flex flex-col justify-end pb-1">
-                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
                   Current Balance
+                  <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
                 </label>
               </div>
               <CurrencyInput
@@ -240,8 +243,9 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
 
             <div className="flex flex-col justify-end">
               <div className="min-h-[32px] flex flex-col justify-end pb-1">
-                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block leading-tight">
+                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
                   Annual Contributions Target
+                  <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
                 </label>
               </div>
               <CurrencyInput

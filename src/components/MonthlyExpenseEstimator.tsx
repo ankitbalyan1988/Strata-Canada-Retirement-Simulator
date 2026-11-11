@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { MonthlyExpenseEstimates, RealEstateInputs } from '../types/retirement';
 import { CurrencyInput } from './CurrencyInput';
+import { TaxRuleTooltip } from './TaxRuleTooltip';
 import { calculateMonthlyMortgagePayment } from '../utils/mortgage';
 
 interface MonthlyExpenseEstimatorProps {
@@ -157,6 +158,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
               <h5 className="text-xs font-bold uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
                 Monthly Living Expenses (Today's Dollars)
               </h5>
+              <TaxRuleTooltip ruleId="living_expenses" />
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30">
                 Budget Estimator
               </span>

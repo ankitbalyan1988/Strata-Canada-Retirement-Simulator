@@ -23,8 +23,8 @@ export interface NetWorthChartProps {
   retirementAge: number;
   isStressTestActive?: boolean;
   onToggleStressTest?: () => void;
-  stressTiming?: 'at_retirement' | 'immediate';
-  onChangeStressTiming?: (timing: 'at_retirement' | 'immediate') => void;
+  stressTiming?: 'at_retirement' | 'immediate' | 'custom';
+  onChangeStressTiming?: (timing: 'at_retirement' | 'immediate' | 'custom') => void;
   showStressTestToggle?: boolean;
   showWhatIfToggle?: boolean;
   showWhatIfOverlayLine?: boolean;
@@ -413,7 +413,7 @@ const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold">
-                  Market Stress Test Active (-10% Downturn Shock {stressTiming === 'at_retirement' ? 'at Retirement' : 'Immediate'})
+                  Market Stress Test Active (-10% Downturn Shock {stressTiming === 'at_retirement' ? 'at Retirement' : stressTiming === 'immediate' ? 'Immediate' : 'Custom Age'})
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                   passesStressTest

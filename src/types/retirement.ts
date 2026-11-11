@@ -82,7 +82,8 @@ export type CppCalculationMethod = 'percentage' | 'service_canada';
 export interface StressTestOptions {
   enabled: boolean;
   dropPercent: number; // e.g. 10 for 10% market crash
-  timing: 'at_retirement' | 'immediate';
+  timing: 'at_retirement' | 'immediate' | 'custom';
+  customAge?: number; // User-selected age when the shock occurs
 }
 
 export interface SimulationOptions {
