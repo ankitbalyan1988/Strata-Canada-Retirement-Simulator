@@ -8,8 +8,10 @@ import {
   StressTestOptions
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
+import { EstatePlanningInputs } from '../types/estate';
 import { WhatIfSettings } from '../types/whatIf';
 import { DEFAULT_INPUTS, BLANK_CANVAS_INPUTS } from '../utils/presets';
+import { DEFAULT_ESTATE_INPUTS } from '../utils/estatePlanning';
 import { DEFAULT_WHAT_IF_SETTINGS } from '../utils/whatIfCalculator';
 import {
   runRetirementSimulation,
@@ -21,7 +23,7 @@ import { triggerConfetti } from '../utils/confettiHelper';
 import { SimulationSnapshot } from '../types/history';
 
 export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
-export type DashboardTab = 'ledger' | 'dashboard' | 'stresstest' | 'whatif';
+export type DashboardTab = 'dashboard' | 'ledger' | 'cashflows' | 'stresstest' | 'whatif';
 export type InputTab = 
   | 'personal'
   | 'expenses'
@@ -71,6 +73,7 @@ export interface SimulationState {
   selectedCompareSnapshotIds: string[];
   isAIPersonaModalOpen: boolean;
   isWealthGuideModalOpen: boolean;
+  isHelpGuideModalOpen: boolean;
 
   // Section Collapse State
   collapsedSections: Record<string, boolean>;
@@ -108,6 +111,8 @@ export interface SimulationState {
   applyMonthlyBoost: (additionalMonthly: number) => void;
   applyAIPersona: (newInputs: RetirementInputs) => void;
   updateExpatInputs: (newExpat: ExpatInputs) => void;
+  estateInputs: EstatePlanningInputs;
+  setEstateInputs: (estateInputs: EstatePlanningInputs | ((prev: EstatePlanningInputs) => EstatePlanningInputs)) => void;
   setIsStressTestActive: (active: boolean | ((prev: boolean) => boolean)) => void;
   setStressTiming: (timing: 'at_retirement' | 'immediate' | 'custom') => void;
   setCustomStressAge: (age: number) => void;
@@ -121,6 +126,7 @@ export interface SimulationState {
   openSnapshotCompare: (snapshotIds?: string[]) => void;
   setIsAIPersonaModalOpen: (open: boolean) => void;
   setIsWealthGuideModalOpen: (open: boolean) => void;
+  setIsHelpGuideModalOpen: (open: boolean) => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
@@ -385,9 +391,28 @@ function scheduleHeavyCalculation(
   }, 250);
 }
 
+export const AUTOSAVE_PLAN_STORAGE_KEY = 'strata_autosaved_plan_inputs';
+
+const loadSavedPlanInputs = (): RetirementInputs => {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_PLAN_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const data = parsed.inputs || parsed;
+        if (data && typeof data === 'object' && typeof data.currentAge === 'number') {
+          return { ...DEFAULT_INPUTS, ...data };
+        }
+      }
+    } catch (_) {}
+  }
+  return DEFAULT_INPUTS;
+};
+
 // Compute initial state synchronously on first load
-const initialSim = runRetirementSimulation(DEFAULT_INPUTS);
-const initialPulse = calculateSavingsPulse(DEFAULT_INPUTS, initialSim.summary);
+const initialPlanInputs = loadSavedPlanInputs();
+const initialSim = runRetirementSimulation(initialPlanInputs);
+const initialPulse = calculateSavingsPulse(initialPlanInputs, initialSim.summary);
 
 // Theme detection
 const getInitialTheme = (): 'light' | 'dark' => {
@@ -425,7 +450,7 @@ const loadSavedHistory = (): SimulationSnapshot[] => {
 };
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
-  inputs: DEFAULT_INPUTS,
+  inputs: initialPlanInputs,
   activePresetId: 'blank',
   yearlyResults: initialSim.yearlyResults,
   summary: initialSim.summary,
@@ -458,6 +483,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectedCompareSnapshotIds: [],
   isAIPersonaModalOpen: false,
   isWealthGuideModalOpen: false,
+  isHelpGuideModalOpen: false,
   collapsedSections: {
     personaSelection: false,
     aiPersona: false,
@@ -473,6 +499,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     tips: false
   },
   whatIfSettings: DEFAULT_WHAT_IF_SETTINGS,
+  estateInputs: {
+    ...DEFAULT_ESTATE_INPUTS,
+    passingAge: DEFAULT_INPUTS.lifeExpectancy || 85,
+    hasNextOfKin: DEFAULT_INPUTS.maritalStatus === 'married' || Boolean(DEFAULT_INPUTS.spouse),
+    kinCategory: (DEFAULT_INPUTS.maritalStatus === 'married' || Boolean(DEFAULT_INPUTS.spouse)) ? 'spouse' : 'children',
+  },
 
   // History State
   history: loadSavedHistory(),
@@ -607,10 +639,11 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   resetToBlankCanvas: () => {
-    // 1. Wipe simulation snapshots history from persistent storage
+    // 1. Wipe simulation snapshots history and autosaved plan draft from persistent storage
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('strata_simulation_history');
+        localStorage.removeItem(AUTOSAVE_PLAN_STORAGE_KEY);
       } catch (_) {}
     }
 
@@ -751,6 +784,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     scheduleHeavyCalculation(get, set);
   },
 
+  setEstateInputs: (updater) => {
+    set((state) => ({
+      estateInputs: typeof updater === 'function' ? updater(state.estateInputs) : updater
+    }));
+  },
+
   setIsStressTestActive: (active) => {
     set((state) => ({
       isStressTestActive: typeof active === 'function' ? active(state.isStressTestActive) : active,
@@ -822,6 +861,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setIsWealthGuideModalOpen: (open) => {
     set({ isWealthGuideModalOpen: open });
+  },
+
+  setIsHelpGuideModalOpen: (open) => {
+    set({ isHelpGuideModalOpen: open });
   },
 
   toggleSectionCollapse: (sectionId) => {

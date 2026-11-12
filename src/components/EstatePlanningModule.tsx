@@ -64,12 +64,9 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
   const retirementInputs = props.retirementInputs ?? storeInputs;
   const yearlyResults = props.yearlyResults ?? storeYearlyResults;
   const summary = props.summary ?? storeSummary;
-  const [estateInputs, setEstateInputs] = useState<EstatePlanningInputs>({
-    ...DEFAULT_ESTATE_INPUTS,
-    passingAge: retirementInputs.lifeExpectancy || 85,
-    hasNextOfKin: retirementInputs.maritalStatus === 'married' || Boolean(retirementInputs.spouse),
-    kinCategory: retirementInputs.maritalStatus === 'married' ? 'spouse' : 'children'
-  });
+
+  const estateInputs = useSimulationStore((state) => state.estateInputs);
+  const setEstateInputs = useSimulationStore((state) => state.setEstateInputs);
 
   const isEstateCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.estate));
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);

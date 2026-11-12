@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { DashboardTabBar } from './components/Navigation/DashboardTabBar';
 import { InputTabBar } from './components/Navigation/InputTabBar';
 import { LedgerTabContent } from './components/Tabs/LedgerTabContent';
+import { CashFlowTabContent } from './components/Tabs/CashFlowTabContent';
 import { MainDashboardTabContent } from './components/Tabs/MainDashboardTabContent';
 import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
 import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
@@ -45,6 +46,9 @@ const SnapshotComparisonModal = React.lazy(() =>
 const CanadianWealthGuideModal = React.lazy(() =>
   import('./components/CanadianWealthGuideModal').then((m) => ({ default: m.CanadianWealthGuideModal }))
 );
+const ApplicationHelpGuideModal = React.lazy(() =>
+  import('./components/ApplicationHelpGuideModal').then((m) => ({ default: m.ApplicationHelpGuideModal }))
+);
 
 export default function App() {
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
@@ -52,6 +56,7 @@ export default function App() {
   const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const isWealthGuideModalOpen = useSimulationStore((state) => state.isWealthGuideModalOpen);
+  const isHelpGuideModalOpen = useSimulationStore((state) => state.isHelpGuideModalOpen);
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
@@ -60,7 +65,10 @@ export default function App() {
   const activeView = useSimulationStore((state) => state.activeView);
   const activeDashboardTab = useSimulationStore((state) => state.activeDashboardTab);
   const setActiveView = useSimulationStore((state) => state.setActiveView);
+  const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
   const isSidebarCollapsed = useSimulationStore((state) => state.isSidebarCollapsed);
+  const inputs = useSimulationStore((state) => state.inputs);
+  const userName = inputs.userName?.trim();
 
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const areAllInputsCollapsed = useSimulationStore((state) => 
@@ -107,7 +115,14 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 3: Plan Stress Test & Economic Resilience */}
+              {/* Tab 3: Current and Projected Cash Flows (Visualizer & Ledger Table) */}
+              {activeDashboardTab === 'cashflows' && (
+                <div role="tabpanel" id="dashboard-tabpanel-cashflows" aria-labelledby="dashboard-tab-cashflows">
+                  <CashFlowTabContent />
+                </div>
+              )}
+
+              {/* Tab 4: Plan Stress Test & Economic Resilience */}
               {activeDashboardTab === 'stresstest' && (
                 <div role="tabpanel" id="dashboard-tabpanel-stresstest" aria-labelledby="dashboard-tab-stresstest">
                   <StressTestTabContent />
@@ -198,6 +213,11 @@ export default function App() {
           {isWealthGuideModalOpen && <CanadianWealthGuideModal />}
         </Suspense>
 
+        {/* Application Help Guide Modal (Functional & Technical) (Lazy Loaded) */}
+        <Suspense fallback={null}>
+          {isHelpGuideModalOpen && <ApplicationHelpGuideModal />}
+        </Suspense>
+
         {/* Simulation Version History Side-Panel Drawer */}
         <SimulationHistoryPanel />
 
@@ -221,6 +241,36 @@ export default function App() {
             </div>
           </div>
         </footer>
+
+        {/* Mobile Bottom-Left User Account Chip (Reflects logged-in user at bottom-left on mobile when sidebar is offscreen) */}
+        {userName && (
+          <aside aria-label="User Account" className="fixed bottom-5 left-5 z-40 lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveView('inputs');
+                setActiveInputTab('personal');
+              }}
+              className="group flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full bg-white/95 dark:bg-[#11141A]/95 backdrop-blur-md text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 shadow-md hover:shadow-lg transition cursor-pointer text-xs font-semibold"
+              title={`${userName} (Primary Planner) — Click to view profile`}
+              aria-label={`Logged in as ${userName}`}
+            >
+              <div className="relative shrink-0">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 flex items-center justify-center text-white text-[10px] font-bold shadow-xs group-hover:scale-105 transition-transform">
+                  {(() => {
+                    const parts = userName.split(/\s+/).filter(Boolean);
+                    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+                    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                  })()}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-white dark:border-[#11141A]" />
+              </div>
+              <span className="truncate max-w-[130px] text-xs font-bold text-slate-900 dark:text-white">
+                {userName}
+              </span>
+            </button>
+          </aside>
+        )}
 
         {/* Floating Quick Theme Toggle (Always Accessible on Screen) */}
         <aside aria-label="Quick Theme Switcher" className="fixed bottom-5 right-5 z-40">

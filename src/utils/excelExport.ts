@@ -1,7 +1,16 @@
 import ExcelJS from 'exceljs';
-import { YearSimulationResult, RetirementInputs } from '../types/retirement';
+import { YearSimulationResult, RetirementInputs, SimulationSummary } from '../types/retirement';
 import { EstateMilestoneRow, EstatePlanningInputs, EstateFilterMode } from '../types/estate';
-import { ExpatDestinationCountry, ExpatInputs } from '../types/expat';
+import { ExpatDestinationCountry, ExpatInputs, ExpatSimulationSummary } from '../types/expat';
+import {
+  HISTORICAL_SCENARIOS,
+  runStressScenarioSimulation,
+  ScenarioDefinition,
+  ScenarioSimulationDetails
+} from './stressTestHealthCalculator';
+import { generateEstateMilestoneLedger, DEFAULT_ESTATE_INPUTS } from './estatePlanning';
+import { calculateExpatRetirementPlan } from './expatSimulator';
+import { DEFAULT_EXPAT_INPUTS } from './expatCountries';
 
 export interface ExcelExportOptions {
   data: YearSimulationResult[];
@@ -9,6 +18,8 @@ export interface ExcelExportOptions {
   retirementAge: number;
   province?: string;
   inputs?: RetirementInputs;
+  customTitle?: string;
+  customSubtitle?: string;
 }
 
 export interface EstateExcelExportOptions {
@@ -21,34 +32,57 @@ export interface EstateExcelExportOptions {
   estateInputs: EstatePlanningInputs;
 }
 
-export async function exportMilestoneTableToExcel({
-  data,
-  filterMode,
-  retirementAge,
-  province = 'Ontario',
-  inputs
-}: ExcelExportOptions): Promise<void> {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Strata Canadian Wealth Platform';
-  workbook.lastModifiedBy = 'Strata';
-  workbook.created = new Date();
-  workbook.modified = new Date();
+export interface StressTestExcelExportOptions {
+  scenario: ScenarioDefinition;
+  stressDetails: ScenarioSimulationDetails;
+  baselineResults: YearSimulationResult[];
+  retirementAge: number;
+  province?: string;
+  inputs?: RetirementInputs;
+}
 
+export interface MasterExcelExportOptions {
+  inputs: RetirementInputs;
+  summary: SimulationSummary;
+  yearlyResults: YearSimulationResult[];
+  estateInputs?: EstatePlanningInputs;
+  expatInputs?: ExpatInputs;
+  stressTiming?: 'at_retirement' | 'immediate' | 'custom';
+  customStressAge?: number;
+}
+
+export async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  });
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.URL.revokeObjectURL(url);
+}
+
+export function populateSimulationLedgerSheet(
+  worksheet: ExcelJS.Worksheet,
+  {
+    data,
+    filterMode = 'all',
+    retirementAge,
+    province = 'Ontario',
+    inputs,
+    customTitle,
+    customSubtitle
+  }: ExcelExportOptions
+): void {
   const filterLabels: Record<string, string> = {
     milestones: 'Key Milestones (5-Year Intervals & Major Life Events)',
     retirement: 'Retirement Years Only',
     all: 'Complete Projection (All Years)'
   };
-
-  const sheetName = filterMode === 'milestones'
-    ? 'Milestone Schedule'
-    : filterMode === 'retirement'
-    ? 'Retirement Phase'
-    : 'Full Simulation';
-
-  const worksheet = workbook.addWorksheet(sheetName, {
-    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
-  });
 
   // 1. Column Definitions
   worksheet.columns = [
@@ -74,9 +108,9 @@ export async function exportMilestoneTableToExcel({
   worksheet.mergeCells('A1:P1');
   const titleCell = worksheet.getCell('A1');
   const clientName = inputs?.userName?.trim();
-  titleCell.value = clientName
+  titleCell.value = customTitle || (clientName
     ? `Strata — Canadian Wealth & Retirement Ledger (Prepared for: ${clientName})`
-    : 'Strata — Canadian Wealth & Retirement Simulation Annual Ledger';
+    : 'Strata — Canadian Wealth & Retirement Simulation Annual Ledger');
   titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
   titleCell.fill = {
     type: 'pattern',
@@ -444,57 +478,54 @@ export async function exportMilestoneTableToExcel({
     }
   }
 
-  // 6. Write Buffer & Trigger Browser Download
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+}
+
+export async function exportMilestoneTableToExcel(options: ExcelExportOptions): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Strata Canadian Wealth Platform';
+  workbook.lastModifiedBy = 'Strata';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const sheetName = options.filterMode === 'milestones'
+    ? 'Milestone Schedule'
+    : options.filterMode === 'retirement'
+    ? 'Retirement Phase'
+    : 'Full Simulation';
+
+  const worksheet = workbook.addWorksheet(sheetName, {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+  populateSimulationLedgerSheet(worksheet, options);
+
+  const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
-  const safeModeName = filterMode.replace(/\s+/g, '_');
-  anchor.href = url;
-  anchor.download = `Strata_${safeClient}${safeModeName}_Ledger_${todayStr}.xlsx`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(url);
+  const safeModeName = options.filterMode.replace(/\s+/g, '_');
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  await downloadWorkbook(workbook, `Strata_${safeClient}${safeModeName}_Ledger_${todayStr}.xlsx`);
 }
 
 /**
  * Exports the Canadian Estate Planning & Milestone Ledger to an audit-grade Excel workbook.
  */
-export async function exportEstateLedgerToExcel({
-  data,
-  filterMode,
-  passingAge,
-  retirementAge,
-  province = 'Ontario',
-  inputs,
-  estateInputs
-}: EstateExcelExportOptions): Promise<void> {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Strata Canadian Wealth & Estate Platform';
-  workbook.lastModifiedBy = 'Strata';
-  workbook.created = new Date();
-  workbook.modified = new Date();
-
+export function populateEstateLedgerSheet(
+  worksheet: ExcelJS.Worksheet,
+  {
+    data,
+    filterMode = 'all',
+    passingAge,
+    retirementAge,
+    province = 'Ontario',
+    inputs,
+    estateInputs
+  }: EstateExcelExportOptions
+): void {
   const filterLabels: Record<string, string> = {
     milestones: 'Key Estate Milestones (5-Year Intervals, Passing Age & Conversion Events)',
     retirement: 'Retirement Phase Liquidation',
     all: 'Complete Lifetime Estate Projection (All Years)'
   };
-
-  const sheetName = filterMode === 'milestones'
-    ? 'Estate Milestones'
-    : filterMode === 'retirement'
-    ? 'Estate in Retirement'
-    : 'Full Estate Projection';
-
-  const worksheet = workbook.addWorksheet(sheetName, {
-    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
-  });
 
   // 1. Column Definitions (Col A through Col R)
   worksheet.columns = [
@@ -869,22 +900,32 @@ export async function exportEstateLedgerToExcel({
     }
   }
 
-  // 6. Write Buffer & Trigger Browser Download
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+}
+
+export async function exportEstateLedgerToExcel(options: EstateExcelExportOptions): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Strata Canadian Wealth & Estate Platform';
+  workbook.lastModifiedBy = 'Strata';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const sheetName = options.filterMode === 'milestones'
+    ? 'Estate Milestones'
+    : options.filterMode === 'retirement'
+    ? 'Estate in Retirement'
+    : 'Full Estate Projection';
+
+  const worksheet = workbook.addWorksheet(sheetName, {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+  populateEstateLedgerSheet(worksheet, options);
+
+  const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
-  const safeModeName = filterMode.replace(/\s+/g, '_');
-  anchor.href = url;
-  anchor.download = `Strata_${safeClient}Estate_${safeModeName}_Ledger_${todayStr}.xlsx`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(url);
+  const safeModeName = options.filterMode.replace(/\s+/g, '_');
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  await downloadWorkbook(workbook, `Strata_${safeClient}Estate_${safeModeName}_Ledger_${todayStr}.xlsx`);
 }
 
 export interface ExpatExcelExportRow {
@@ -930,45 +971,30 @@ export interface ExpatExcelExportOptions {
   expatInputs?: ExpatInputs;
 }
 
-export async function exportExpatLedgerToExcel({
-  data,
-  filterMode,
-  departureAge,
-  departureYear,
-  destinationCountry,
-  exchangeRate,
-  colIndex,
-  qualifiesForLifetimeWorldwideOAS,
-  departureTaxEstimateCAD,
-  retirementAge,
-  province = 'Ontario',
-  inputs,
-  expatInputs
-}: ExpatExcelExportOptions): Promise<void> {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Strata Cross-Border & Expat Platform';
-  workbook.lastModifiedBy = 'Strata';
-  workbook.created = new Date();
-  workbook.modified = new Date();
-
+export function populateExpatLedgerSheet(
+  worksheet: ExcelJS.Worksheet,
+  {
+    data,
+    filterMode = 'all',
+    departureAge,
+    departureYear,
+    destinationCountry,
+    exchangeRate,
+    colIndex,
+    qualifiesForLifetimeWorldwideOAS,
+    departureTaxEstimateCAD,
+    retirementAge,
+    province = 'Ontario',
+    inputs,
+    expatInputs
+  }: ExpatExcelExportOptions
+): void {
   const filterLabels: Record<string, string> = {
     milestones: 'Strategic Milestones (Departure, Pensions, & Key Transition Events)',
     expat: `Expat Years Only (Ages ${departureAge}+ Abroad in ${destinationCountry.name})`,
     retirement: 'Retirement Decumulation Phase',
     all: 'Complete Cross-Border Lifecycle (All Simulation Years)'
   };
-
-  const sheetName = filterMode === 'milestones'
-    ? 'Expat Milestones'
-    : filterMode === 'expat'
-    ? `${destinationCountry.name} Expat Phase`
-    : filterMode === 'retirement'
-    ? 'Retirement Phase'
-    : 'Full Expat Lifecycle';
-
-  const worksheet = workbook.addWorksheet(sheetName.slice(0, 31), {
-    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
-  });
 
   // 1. Column Definitions (21 Columns A to U)
   worksheet.columns = [
@@ -1394,22 +1420,1059 @@ export async function exportExpatLedgerToExcel({
     }
   }
 
-  // 6. Write Buffer & Trigger Browser Download
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+}
+
+export async function exportExpatLedgerToExcel(options: ExpatExcelExportOptions): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Strata Cross-Border & Expat Platform';
+  workbook.lastModifiedBy = 'Strata';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const sheetName = options.filterMode === 'milestones'
+    ? 'Expat Milestones'
+    : options.filterMode === 'expat'
+    ? `${options.destinationCountry.name} Expat Phase`
+    : options.filterMode === 'retirement'
+    ? 'Retirement Phase'
+    : 'Full Expat Lifecycle';
+
+  const worksheet = workbook.addWorksheet(sheetName.slice(0, 31), {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
-  const url = window.URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
+  populateExpatLedgerSheet(worksheet, options);
+
+  const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
-  const safeCountry = destinationCountry.name.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const safeModeName = filterMode.replace(/\s+/g, '_');
-  anchor.href = url;
-  anchor.download = `Strata_${safeClient}Expat_${safeCountry}_${safeModeName}_Ledger_${todayStr}.xlsx`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  window.URL.revokeObjectURL(url);
+  const safeCountry = options.destinationCountry.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const safeModeName = options.filterMode.replace(/\s+/g, '_');
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  await downloadWorkbook(workbook, `Strata_${safeClient}Expat_${safeCountry}_${safeModeName}_Ledger_${todayStr}.xlsx`);
+}
+
+/**
+ * Populates a formatted Stress Test Ledger worksheet for an economic shock scenario.
+ */
+export function populateStressTestLedgerSheet(
+  worksheet: ExcelJS.Worksheet,
+  {
+    scenario,
+    stressDetails,
+    baselineResults,
+    retirementAge,
+    province = 'Ontario',
+    inputs
+  }: StressTestExcelExportOptions
+): void {
+  // 1. Column Definitions (18 columns A through R)
+  worksheet.columns = [
+    { key: 'age', width: 10 },               // Col A
+    { key: 'year', width: 12 },              // Col B
+    { key: 'phase', width: 14 },             // Col C
+    { key: 'shockEvent', width: 22 },        // Col D: Shock Event / Drawdown indicator
+    { key: 'rrsp', width: 17 },              // Col E: RRSP / RRIF
+    { key: 'tfsa', width: 17 },              // Col F: TFSA
+    { key: 'fhsa', width: 16 },              // Col G: FHSA
+    { key: 'nonReg', width: 17 },            // Col H: Non-Reg
+    { key: 'homeEquity', width: 18 },        // Col I: Home Equity
+    { key: 'totalNetWorth', width: 23 },     // Col J: Total Stressed Net Worth (FORMULA)
+    { key: 'cpp', width: 16 },               // Col K: CPP
+    { key: 'oas', width: 16 },               // Col L: OAS Net
+    { key: 'withdrawals', width: 18 },       // Col M: Withdrawals
+    { key: 'taxPaid', width: 16 },           // Col N: Tax Paid
+    { key: 'debtPayment', width: 18 },       // Col O: Debt Payments
+    { key: 'spendable', width: 20 },         // Col P: Spendable Cash
+    { key: 'netWorthDelta', width: 22 },     // Col Q: Delta vs Baseline Net Worth
+    { key: 'notes', width: 48 }              // Col R: Milestones & Resilience Notes
+  ];
+
+  // 2. Title Block (Row 1)
+  worksheet.mergeCells('A1:R1');
+  const titleCell = worksheet.getCell('A1');
+  const clientName = inputs?.userName?.trim();
+  titleCell.value = clientName
+    ? `Strata — Macroeconomic Stress Test: ${scenario.name} (Prepared for: ${clientName})`
+    : `Strata — Macroeconomic Stress Test: ${scenario.name} (${scenario.severity.toUpperCase()} IMPACT)`;
+  titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF0F172A' } // Slate 900
+  };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(1).height = 30;
+
+  // Subtitle / Metadata (Row 2)
+  worksheet.mergeCells('A2:R2');
+  const metaCell = worksheet.getCell('A2');
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const clientTag = clientName ? `Client: ${clientName} | ` : '';
+  const solvencyTag = stressDetails.isSolvent
+    ? 'Solvency: Fully Funded (Solvent Through Life Expectancy)'
+    : `Solvency: Portfolio Depleted @ Age ${stressDetails.depletionAge} (${stressDetails.yearsFunded} Yrs Funded)`;
+  const shockTag = stressDetails.shockDropPercent > 0
+    ? `Shock Drawdown: -${stressDetails.shockDropPercent}% @ Age ${stressDetails.shockAge}`
+    : 'Longevity Horizon (+95 extra years)';
+  const deltaTag = `Terminal NW Delta: $${Math.round(stressDetails.terminalNetWorthDelta).toLocaleString()}`;
+  
+  metaCell.value = `${clientTag}Historical Shock: ${scenario.description} | ${shockTag} | ${solvencyTag} | ${deltaTag} | Province: ${province} | Generated: ${todayStr}`;
+  metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+  metaCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFF1F5F9' } // Slate 100
+  };
+  metaCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(2).height = 20;
+
+  // Blank spacer row 3
+  worksheet.getRow(3).height = 8;
+
+  // Explanation note (Row 4)
+  worksheet.mergeCells('A4:R4');
+  const noteCell = worksheet.getCell('A4');
+  noteCell.value = `[STRESS TEST AUDIT] Evaluates retirement portfolio durability under ${scenario.name}. Drawdown shock applied at Age ${stressDetails.shockAge} (-${stressDetails.shockDropPercent}% portfolio drop). Total Stressed Net Worth =SUM(E:I) features dynamic Excel formulas.`;
+  noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
+  noteCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0F2FE' } // Sky 100
+  };
+  noteCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(4).height = 18;
+
+  // 3. Table Column Headers (Row 5)
+  const headerRowNumber = 5;
+  const headers = [
+    'Age',
+    'Sim Year',
+    'Phase',
+    'Shock Event & Severity',
+    'RRSP / RRIF ($)',
+    'TFSA ($)',
+    'FHSA ($)',
+    'Non-Reg ($)',
+    'Home Equity ($)',
+    'Total Stressed Net Worth ($)', // Col J - Total formula =SUM(E:I)
+    'CPP Benefit ($)',
+    'OAS Net ($)',
+    'Withdrawals ($)',
+    'Tax Paid ($)',
+    'Debt Payments ($)',
+    'Spendable Cash ($)',
+    'Baseline Net Worth Delta ($)',
+    'Resilience Notes & Milestones'
+  ];
+
+  const headerRow = worksheet.getRow(headerRowNumber);
+  headerRow.height = 26;
+  headers.forEach((hdr, idx) => {
+    const colNumber = idx + 1;
+    const cell = headerRow.getCell(colNumber);
+    cell.value = hdr;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: colNumber <= 4 ? 'center' : colNumber === 18 ? 'left' : 'right',
+      wrapText: true
+    };
+
+    if (colNumber === 10) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Deep Navy for Stressed Net Worth
+    } else if (colNumber === 9) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; // Amber for Home Equity
+    } else if (colNumber === 4) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF991B1B' } }; // Crimson for Shock Event
+    } else if (colNumber === 17) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } }; // Slate for Delta
+    } else {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }; // Slate 700
+    }
+
+    cell.border = {
+      top: { style: 'medium', color: { argb: 'FF0F172A' } },
+      bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
+      left: { style: 'thin', color: { argb: 'FF64748B' } },
+      right: { style: 'thin', color: { argb: 'FF64748B' } }
+    };
+  });
+
+  const currencyFormat = '$#,##0;($#,##0);"-"';
+
+  // 4. Data Rows
+  let currentRowNumber = headerRowNumber + 1;
+  const firstDataRow = currentRowNumber;
+
+  stressDetails.yearlyResults.forEach((row) => {
+    const dataRow = worksheet.getRow(currentRowNumber);
+    dataRow.height = 20;
+
+    const isRetireTarget = row.age === retirementAge;
+    const isShockAge = row.age === stressDetails.shockAge && stressDetails.shockDropPercent > 0;
+    const isDepletionAge = stressDetails.depletionAge !== null && row.age === stressDetails.depletionAge;
+    const isZebra = currentRowNumber % 2 === 0;
+
+    let rowBgColor = isZebra ? 'FFF8FAFC' : 'FFFFFFFF';
+    if (isShockAge) {
+      rowBgColor = 'FFFEF3C7'; // Soft Amber for shock year
+    } else if (isDepletionAge) {
+      rowBgColor = 'FFFEE2E2'; // Soft Rose/Red for portfolio depletion
+    } else if (isRetireTarget) {
+      rowBgColor = 'FFFFF1F2'; // Soft Rose for Retirement Target
+    }
+
+    // Col A: Age
+    const cellA = dataRow.getCell(1);
+    cellA.value = row.age;
+    cellA.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellA.font = { name: 'Calibri', size: 10, bold: isRetireTarget || isShockAge || isDepletionAge };
+
+    // Col B: Calendar Year
+    const cellB = dataRow.getCell(2);
+    cellB.value = row.year;
+    cellB.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellB.font = { name: 'Calibri', size: 10 };
+
+    // Col C: Phase
+    const cellC = dataRow.getCell(3);
+    cellC.value = {
+      formula: `IF(A${currentRowNumber}>=${retirementAge}, "Retirement", "Working")`,
+      result: row.isRetired ? 'Retirement' : 'Working'
+    };
+    cellC.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellC.font = {
+      name: 'Calibri',
+      size: 9.5,
+      bold: true,
+      color: { argb: row.isRetired ? 'FF059669' : 'FF475569' }
+    };
+
+    // Col D: Shock Event & Severity
+    const cellD = dataRow.getCell(4);
+    if (isShockAge) {
+      cellD.value = `💥 -${stressDetails.shockDropPercent}% Shock`;
+      cellD.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFB45309' } };
+    } else if (isDepletionAge) {
+      cellD.value = `⚠️ Depleted @ Age ${row.age}`;
+      cellD.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFE11D48' } };
+    } else {
+      cellD.value = '-';
+      cellD.font = { name: 'Calibri', size: 9.5, color: { argb: 'FF94A3B8' } };
+    }
+    cellD.alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Col E: RRSP / RRIF
+    const cellE = dataRow.getCell(5);
+    cellE.value = Math.round((row.rrspBalance || 0) + (row.rrifBalance || 0));
+    cellE.numFmt = currencyFormat;
+    cellE.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellE.font = { name: 'Calibri', size: 10, color: { argb: 'FF1D4ED8' } };
+
+    // Col F: TFSA
+    const cellF = dataRow.getCell(6);
+    cellF.value = Math.round(row.tfsaBalance || 0);
+    cellF.numFmt = currencyFormat;
+    cellF.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellF.font = { name: 'Calibri', size: 10, color: { argb: 'FF047857' } };
+
+    // Col G: FHSA
+    const cellG = dataRow.getCell(7);
+    cellG.value = Math.round(row.fhsaBalance || 0);
+    cellG.numFmt = currencyFormat;
+    cellG.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellG.font = { name: 'Calibri', size: 10, color: { argb: 'FFB45309' } };
+
+    // Col H: Non-Reg
+    const cellH = dataRow.getCell(8);
+    cellH.value = Math.round(row.nonRegBalance || 0);
+    cellH.numFmt = currencyFormat;
+    cellH.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellH.font = { name: 'Calibri', size: 10, color: { argb: 'FF6B21A8' } };
+
+    // Col I: Home Equity
+    const cellI = dataRow.getCell(9);
+    cellI.value = Math.round(row.realEstateShare || 0);
+    cellI.numFmt = currencyFormat;
+    cellI.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellI.font = { name: 'Calibri', size: 10, color: { argb: 'FFC2410C' } };
+
+    // Col J: Total Stressed Net Worth
+    const cellJ = dataRow.getCell(10);
+    const debtRemaining = Math.round(row.remainingDebt || 0);
+    cellJ.value = debtRemaining > 0
+      ? { formula: `SUM(E${currentRowNumber}:I${currentRowNumber}) - ${debtRemaining}`, result: Math.round(row.totalNetWorth) }
+      : { formula: `SUM(E${currentRowNumber}:I${currentRowNumber})`, result: Math.round(row.totalNetWorth) };
+    cellJ.numFmt = currencyFormat;
+    cellJ.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellJ.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+
+    // Col K: CPP Benefit
+    const cellK = dataRow.getCell(11);
+    cellK.value = Math.round(row.cppIncome || 0);
+    cellK.numFmt = currencyFormat;
+    cellK.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellK.font = { name: 'Calibri', size: 10 };
+
+    // Col L: OAS Net
+    const cellL = dataRow.getCell(12);
+    cellL.value = Math.round(row.oasNetIncome || 0);
+    cellL.numFmt = currencyFormat;
+    cellL.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellL.font = { name: 'Calibri', size: 10 };
+
+    // Col M: Withdrawals
+    const cellM = dataRow.getCell(13);
+    cellM.value = Math.round(row.totalWithdrawals || 0);
+    cellM.numFmt = currencyFormat;
+    cellM.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellM.font = { name: 'Calibri', size: 10 };
+
+    // Col N: Tax Paid
+    const cellN = dataRow.getCell(14);
+    cellN.value = Math.round(row.totalTaxPaid || 0);
+    cellN.numFmt = currencyFormat;
+    cellN.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellN.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
+
+    // Col O: Debt Payments
+    const cellO = dataRow.getCell(15);
+    cellO.value = Math.round(row.debtPayment || 0);
+    cellO.numFmt = currencyFormat;
+    cellO.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellO.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
+
+    // Col P: Spendable Cash
+    const cellP = dataRow.getCell(16);
+    cellP.value = Math.round(row.netSpendableCashflow || 0);
+    cellP.numFmt = currencyFormat;
+    cellP.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellP.font = { name: 'Calibri', size: 10, bold: true };
+
+    // Col Q: Baseline Delta
+    const cellQ = dataRow.getCell(17);
+    const baselineRow = baselineResults.find((b) => b.age === row.age);
+    const delta = baselineRow ? Math.round(row.totalNetWorth - baselineRow.totalNetWorth) : 0;
+    cellQ.value = delta;
+    cellQ.numFmt = currencyFormat;
+    cellQ.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellQ.font = {
+      name: 'Calibri',
+      size: 10,
+      bold: delta !== 0,
+      color: { argb: delta < 0 ? 'FFE11D48' : delta > 0 ? 'FF059669' : 'FF64748B' }
+    };
+
+    // Col R: Notes
+    const cellR = dataRow.getCell(18);
+    const badges = (row.milestoneBadges || []).map((b) => `[${b.label}]`);
+    const fullNotes = [...badges, ...row.notes];
+    if (isShockAge) {
+      fullNotes.unshift(`⚠️ HISTORICAL DRAWDOWN: -${stressDetails.shockDropPercent}% portfolio shock applied`);
+    }
+    if (isDepletionAge) {
+      fullNotes.unshift(`🚨 PORTFOLIO DEPLETION: Liquid capital exhausted at Age ${row.age}`);
+    }
+    cellR.value = fullNotes.length > 0 ? fullNotes.join(' • ') : '-';
+    cellR.alignment = { vertical: 'middle', horizontal: 'left' };
+    cellR.font = {
+      name: 'Calibri',
+      size: 9.5,
+      italic: fullNotes.length > 0,
+      color: { argb: fullNotes.length > 0 ? 'FF92400E' : 'FF94A3B8' }
+    };
+
+    // Apply borders and backgrounds
+    for (let c = 1; c <= 18; c++) {
+      const cell = dataRow.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: c === 10 && !isRetireTarget && !isShockAge && !isDepletionAge ? 'FFF0FDF4' : rowBgColor }
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFF1F5F9' } },
+        right: { style: 'thin', color: { argb: 'FFF1F5F9' } }
+      };
+    }
+
+    currentRowNumber++;
+  });
+
+  const lastDataRow = currentRowNumber - 1;
+
+  // 5. Totals / Summary Row
+  if (stressDetails.yearlyResults.length > 0) {
+    const totalRow = worksheet.getRow(currentRowNumber);
+    totalRow.height = 24;
+
+    totalRow.getCell(1).value = 'TOTALS / ENDING';
+    totalRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    totalRow.getCell(5).value = { formula: `E${lastDataRow}` };
+    totalRow.getCell(5).numFmt = currencyFormat;
+
+    totalRow.getCell(6).value = { formula: `F${lastDataRow}` };
+    totalRow.getCell(6).numFmt = currencyFormat;
+
+    totalRow.getCell(7).value = { formula: `G${lastDataRow}` };
+    totalRow.getCell(7).numFmt = currencyFormat;
+
+    totalRow.getCell(8).value = { formula: `H${lastDataRow}` };
+    totalRow.getCell(8).numFmt = currencyFormat;
+
+    totalRow.getCell(9).value = { formula: `I${lastDataRow}` };
+    totalRow.getCell(9).numFmt = currencyFormat;
+
+    totalRow.getCell(10).value = { formula: `J${lastDataRow}` };
+    totalRow.getCell(10).numFmt = currencyFormat;
+
+    totalRow.getCell(11).value = { formula: `SUM(K${firstDataRow}:K${lastDataRow})` };
+    totalRow.getCell(11).numFmt = currencyFormat;
+
+    totalRow.getCell(12).value = { formula: `SUM(L${firstDataRow}:L${lastDataRow})` };
+    totalRow.getCell(12).numFmt = currencyFormat;
+
+    totalRow.getCell(13).value = { formula: `SUM(M${firstDataRow}:M${lastDataRow})` };
+    totalRow.getCell(13).numFmt = currencyFormat;
+
+    totalRow.getCell(14).value = { formula: `SUM(N${firstDataRow}:N${lastDataRow})` };
+    totalRow.getCell(14).numFmt = currencyFormat;
+
+    totalRow.getCell(15).value = { formula: `SUM(O${firstDataRow}:O${lastDataRow})` };
+    totalRow.getCell(15).numFmt = currencyFormat;
+
+    totalRow.getCell(16).value = { formula: `AVERAGE(P${firstDataRow}:P${lastDataRow})` };
+    totalRow.getCell(16).numFmt = currencyFormat;
+
+    totalRow.getCell(17).value = { formula: `Q${lastDataRow}` };
+    totalRow.getCell(17).numFmt = currencyFormat;
+
+    totalRow.getCell(18).value = stressDetails.isSolvent
+      ? `Resilient: Fully Solvent Through Age ${inputs?.lifeExpectancy || 85}`
+      : `Stressed Depletion at Age ${stressDetails.depletionAge} (${stressDetails.yearsFunded} Years Funded)`;
+    totalRow.getCell(18).font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: stressDetails.isSolvent ? 'FF059669' : 'FFE11D48' } };
+
+    for (let c = 1; c <= 18; c++) {
+      const cell = totalRow.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE2E8F0' } // Slate 200
+      };
+      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF0F172A' } },
+        bottom: { style: 'double', color: { argb: 'FF0F172A' } }, // Classic Excel Accounting Underline
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    }
+  }
+}
+
+/**
+ * Overall Master Comprehensive Export:
+ * Exports the Annual Simulation Ledger, Estate Planning Ledger, 6 Macro Stress Test Ledgers,
+ * and Expat Planning Ledger all in one organized Excel (.xlsx) workbook with clearly labelled tabs.
+ */
+export async function exportMasterComprehensiveExcel({
+  inputs,
+  summary,
+  yearlyResults,
+  estateInputs,
+  expatInputs,
+  stressTiming = 'at_retirement',
+  customStressAge
+}: MasterExcelExportOptions): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Strata Canadian Wealth Platform';
+  workbook.lastModifiedBy = 'Strata';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const clientName = inputs?.userName?.trim();
+  const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
+  const todayStr = new Date().toLocaleDateString('en-CA');
+
+  // 1. Tab: Annual Simulation Ledger
+  const wsSim = workbook.addWorksheet('Annual Simulation Ledger', {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+  });
+  populateSimulationLedgerSheet(wsSim, {
+    data: yearlyResults,
+    filterMode: 'all',
+    retirementAge: inputs.retirementAge,
+    province: inputs.province,
+    inputs,
+    customTitle: clientName
+      ? `Strata — Annual Simulation Ledger (Prepared for: ${clientName})`
+      : 'Strata — Canadian Wealth & Retirement Simulation Annual Ledger'
+  });
+
+  // 2. Tab: Estate Planning Ledger
+  const effEstateInputs: EstatePlanningInputs = estateInputs || {
+    ...DEFAULT_ESTATE_INPUTS,
+    passingAge: inputs.lifeExpectancy || 85,
+    hasNextOfKin: inputs.maritalStatus === 'married' || Boolean(inputs.spouse),
+    kinCategory: (inputs.maritalStatus === 'married' || Boolean(inputs.spouse)) ? 'spouse' : 'children'
+  };
+  const estateRows = generateEstateMilestoneLedger(effEstateInputs, inputs, yearlyResults);
+  const wsEstate = workbook.addWorksheet('Estate Planning Ledger', {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+  });
+  populateEstateLedgerSheet(wsEstate, {
+    data: estateRows,
+    filterMode: 'all',
+    passingAge: effEstateInputs.passingAge,
+    retirementAge: inputs.retirementAge,
+    province: inputs.province,
+    inputs,
+    estateInputs: effEstateInputs
+  });
+
+  // 3. Tabs: The Different Historical Stress Test Ledgers
+  const scenarioTabNames: Record<string, string> = {
+    gfc_2008: 'Stress - 2008 Crisis',
+    stagflation_1973: 'Stress - 1970s Stagflation',
+    sequence_of_returns: 'Stress - Sequence Shock',
+    dotcom_2000: 'Stress - 2000 Dot-Com',
+    immediate_crash: 'Stress - Immediate Shock',
+    longevity_95: 'Stress - Longevity 95'
+  };
+
+  HISTORICAL_SCENARIOS.forEach((scen) => {
+    const tabName = scenarioTabNames[scen.id] || `Stress - ${scen.name.slice(0, 20)}`;
+    const stressDetails = runStressScenarioSimulation(inputs, scen.id, stressTiming, customStressAge);
+    const wsStress = workbook.addWorksheet(tabName, {
+      views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+    });
+    populateStressTestLedgerSheet(wsStress, {
+      scenario: scen,
+      stressDetails,
+      baselineResults: yearlyResults,
+      retirementAge: inputs.retirementAge,
+      province: inputs.province,
+      inputs
+    });
+  });
+
+  // 4. Tab: Expat Planning Ledger
+  const effExpatInputs: ExpatInputs = expatInputs || inputs.expat || DEFAULT_EXPAT_INPUTS;
+  const expatSummary = calculateExpatRetirementPlan(effExpatInputs, inputs, yearlyResults, summary);
+  const wsExpat = workbook.addWorksheet('Expat Planning Ledger', {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+  });
+
+  const expatExcelRows: ExpatExcelExportRow[] = yearlyResults.map((yr) => {
+    const isNonResident = yr.age >= expatSummary.departureAge;
+    const isRetired = yr.age >= inputs.retirementAge;
+    const isRetirement = yr.age === inputs.retirementAge;
+    const isDeparture = yr.age === expatSummary.departureAge;
+    const isOasAge = yr.age === 65;
+    const isRrifAge = yr.age === 71;
+
+    const expatYr = expatSummary.yearlyExpatResults.find((ey) => ey.age === yr.age);
+
+    const craPartXIIICAD = isNonResident && expatYr ? expatYr.craPartXIIIWithholdingCAD : 0;
+    const destinationLocalTaxCAD = isNonResident && expatYr ? expatYr.destinationLocalTaxCAD : 0;
+    const departureTaxCAD = isDeparture && expatYr ? expatYr.departureTaxCAD : (isDeparture ? expatSummary.departureTaxEstimateCAD : 0);
+
+    const totalTaxPaidCAD = isNonResident
+      ? (craPartXIIICAD + destinationLocalTaxCAD + departureTaxCAD)
+      : yr.totalTaxPaid;
+
+    const spendableCashCAD = isNonResident && expatYr
+      ? expatYr.expatNetIncomeCAD
+      : yr.netSpendableCashflow;
+
+    const exchangeRate = effExpatInputs.customExchangeRate || expatSummary.destinationCountry.exchangeRateToCAD;
+    const colIndex = effExpatInputs.customCostOfLivingFactor || expatSummary.destinationCountry.costOfLivingIndex;
+    const spendableCashLocal = isNonResident && expatYr
+      ? expatYr.expatNetIncomeLocalCurrency
+      : spendableCashCAD * exchangeRate;
+
+    const livingTargetCAD = yr.targetSpendingNominal;
+    const livingTargetLocal = isNonResident
+      ? (livingTargetCAD * colIndex * exchangeRate)
+      : (livingTargetCAD * exchangeRate);
+
+    const cppIncomeCAD = isNonResident && expatYr ? expatYr.cppReceivedCAD : yr.cppIncome;
+    const oasNetIncomeCAD = isNonResident && expatYr ? expatYr.oasReceivedCAD : yr.oasNetIncome;
+
+    const rowNotes: string[] = [];
+    if (isDeparture) {
+      rowNotes.push(`✈️ Relocated to ${expatSummary.destinationCountry.name} (Age ${expatSummary.departureAge}). Non-resident Part XIII tax rules active.`);
+      if (departureTaxCAD > 0) {
+        rowNotes.push(`⚠️ Section 128.1 Departure Tax: C$${Math.round(departureTaxCAD).toLocaleString()}`);
+      }
+    }
+    if (isRetirement && !isDeparture) {
+      rowNotes.push(`🎯 Retirement Day: Decumulation begins with starting wealth C$${Math.round(yr.totalNetWorth).toLocaleString()}`);
+    }
+    if (isOasAge) {
+      rowNotes.push(expatSummary.qualifiesForLifetimeWorldwideOAS ? `🇨🇦 OAS Worldwide Pension Active` : `⚠️ OAS Terminates Abroad (<20 yrs resident)`);
+    }
+    if (isRrifAge) {
+      rowNotes.push(`👴 Age 71 RRIF Mandatory Conversion with ${expatSummary.destinationCountry.treatyRates.rrspPeriodicWithholding}% withholding`);
+    }
+    if (yr.notes) {
+      yr.notes.forEach((n) => {
+        if (!rowNotes.some((rn) => rn.includes(n.slice(0, 15)))) {
+          rowNotes.push(n);
+        }
+      });
+    }
+
+    return {
+      age: yr.age,
+      year: yr.year,
+      isNonResident,
+      isRetired,
+      isDeparture,
+      rrspBalance: yr.rrspBalance,
+      tfsaBalance: yr.tfsaBalance,
+      fhsaBalance: yr.fhsaBalance,
+      nonRegBalance: yr.nonRegBalance,
+      homeEquity: yr.realEstateShare || yr.homeEquity || 0,
+      totalNetWorth: yr.totalNetWorth,
+      investmentGrowth: yr.totalInvestmentGrowth,
+      cppIncomeCAD,
+      oasNetIncomeCAD,
+      totalWithdrawalsCAD: yr.totalWithdrawals,
+      totalTaxPaidCAD,
+      craPartXIIICAD,
+      destinationLocalTaxCAD,
+      departureTaxCAD,
+      spendableCashCAD,
+      spendableCashLocal,
+      livingTargetCAD,
+      livingTargetLocal,
+      notes: rowNotes
+    };
+  });
+
+  populateExpatLedgerSheet(wsExpat, {
+    data: expatExcelRows,
+    filterMode: 'all',
+    departureAge: expatSummary.departureAge,
+    departureYear: expatSummary.departureYear,
+    destinationCountry: expatSummary.destinationCountry,
+    exchangeRate: effExpatInputs.customExchangeRate || expatSummary.destinationCountry.exchangeRateToCAD,
+    colIndex: effExpatInputs.customCostOfLivingFactor || expatSummary.destinationCountry.costOfLivingIndex,
+    qualifiesForLifetimeWorldwideOAS: expatSummary.qualifiesForLifetimeWorldwideOAS,
+    departureTaxEstimateCAD: expatSummary.departureTaxEstimateCAD,
+    retirementAge: inputs.retirementAge,
+    province: inputs.province,
+    inputs,
+    expatInputs: effExpatInputs
+  });
+
+  // 5. Tab: Current and Projected Cash Flows
+  const wsCashFlow = workbook.addWorksheet('Cash Flow Projections', {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+  });
+  populateCashFlowLedgerSheet(wsCashFlow, {
+    data: yearlyResults,
+    filterMode: 'all',
+    retirementAge: inputs.retirementAge,
+    province: inputs.province,
+    inputs
+  });
+
+  // 6. Download Master Unified Workbook
+  await downloadWorkbook(workbook, `Strata_${safeClient}Comprehensive_Wealth_Plan_Master_Ledger_${todayStr}.xlsx`);
+}
+
+export interface CashFlowExcelExportOptions {
+  data: YearSimulationResult[];
+  filterMode?: 'all' | 'working' | 'retirement' | 'milestones';
+  retirementAge: number;
+  province?: string;
+  inputs?: RetirementInputs;
+}
+
+/**
+ * Populates an audit-grade Excel worksheet for Current & Projected Annual Cash Flows
+ */
+export function populateCashFlowLedgerSheet(
+  worksheet: ExcelJS.Worksheet,
+  {
+    data,
+    filterMode = 'all',
+    retirementAge,
+    province = 'Ontario',
+    inputs
+  }: CashFlowExcelExportOptions
+): void {
+  // 1. Column Definitions (16 columns A to P)
+  worksheet.columns = [
+    { key: 'age', width: 10 },               // Col A: Age
+    { key: 'year', width: 12 },              // Col B: Sim Year
+    { key: 'phase', width: 14 },             // Col C: Phase
+    { key: 'salary', width: 18 },            // Col D: Salary / Employment
+    { key: 'pensions', width: 18 },          // Col E: CPP & OAS
+    { key: 'withdrawals', width: 18 },       // Col F: Withdrawals
+    { key: 'totalInflow', width: 22 },       // Col G: Total Inflow (FORMULA: =SUM(D:F))
+    { key: 'livingExpenses', width: 18 },    // Col H: Living Target
+    { key: 'debtPayments', width: 16 },      // Col I: Debt Payments
+    { key: 'totalOutflow', width: 20 },      // Col J: Total Outflow (FORMULA: =SUM(H:I))
+    { key: 'taxPaid', width: 17 },           // Col K: Tax Paid
+    { key: 'effTaxRate', width: 15 },        // Col L: Effective Tax %
+    { key: 'margTaxRate', width: 15 },       // Col M: Marginal Tax %
+    { key: 'savings', width: 18 },           // Col N: Registered Savings
+    { key: 'netSurplus', width: 22 },        // Col O: Net Spendable Surplus (FORMULA: =G-J-K)
+    { key: 'notes', width: 46 }              // Col P: Milestones & Notes
+  ];
+
+  // 2. Title Block (Row 1)
+  worksheet.mergeCells('A1:P1');
+  const titleCell = worksheet.getCell('A1');
+  const clientName = inputs?.userName?.trim();
+  titleCell.value = clientName
+    ? `Strata — Current & Projected Annual Cash Flows (Prepared for: ${clientName})`
+    : 'Strata — Current & Projected Annual Cash Flows';
+  titleCell.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+  titleCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF0F172A' } // Slate 900
+  };
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(1).height = 30;
+
+  // Subtitle / Metadata (Row 2)
+  worksheet.mergeCells('A2:P2');
+  const metaCell = worksheet.getCell('A2');
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  const clientTag = clientName ? `Client: ${clientName} | ` : '';
+  metaCell.value = `${clientTag}Target Retirement: Age ${retirementAge} | Province: ${province} | Cash Flow Model: Inflows, Outflows, Taxes & Savings | Generated: ${todayStr}`;
+  metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
+  metaCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFF1F5F9' } // Slate 100
+  };
+  metaCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(2).height = 20;
+
+  // Spacer row 3
+  worksheet.getRow(3).height = 8;
+
+  // Note row 4
+  worksheet.mergeCells('A4:P4');
+  const noteCell = worksheet.getCell('A4');
+  noteCell.value = '[NOTE] Strata Cash Flow Ledger: Inflows reflect earned salaries, CPP, OAS, and portfolio drawdowns. Total Inflow =SUM(D:F), Total Outflow =SUM(H:I), and Net Surplus =G-J-K feature dynamic Excel accounting formulas.';
+  noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
+  noteCell.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FFE0F2FE' } // Sky 100
+  };
+  noteCell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+  worksheet.getRow(4).height = 18;
+
+  // 3. Headers (Row 5)
+  const headerRowNumber = 5;
+  const headers = [
+    'Age',
+    'Sim Year',
+    'Phase',
+    'Employment Salary ($)',
+    'CPP & OAS Pensions ($)',
+    'Portfolio Withdrawals ($)',
+    'Total Cash Inflows ($)',    // Col G - Header Emerald FF047857
+    'Living Expenses ($)',
+    'Debt Payments ($)',
+    'Total Outflows ($)',        // Col J - Header Amber FFB45309
+    'CRA Income Tax ($)',        // Col K - Header Rose FFE11D48
+    'Effective Tax Rate',
+    'Marginal Tax Bracket',
+    'Registered Savings ($)',
+    'Net Spendable Surplus ($)', // Col O - Header Deep Navy FF1E3A8A
+    'Milestones & Strategic Notes'
+  ];
+
+  const headerRow = worksheet.getRow(headerRowNumber);
+  headerRow.height = 26;
+  headers.forEach((hdr, idx) => {
+    const colNumber = idx + 1;
+    const cell = headerRow.getCell(colNumber);
+    cell.value = hdr;
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.alignment = {
+      vertical: 'middle',
+      horizontal: colNumber <= 3 || colNumber === 12 || colNumber === 13 ? 'center' : colNumber === 16 ? 'left' : 'right',
+      wrapText: true
+    };
+
+    if (colNumber === 7) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // Emerald 800
+    } else if (colNumber === 10) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; // Amber 700
+    } else if (colNumber === 11) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9F1239' } }; // Rose 800
+    } else if (colNumber === 15) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Deep Navy
+    } else {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }; // Slate 700
+    }
+
+    cell.border = {
+      top: { style: 'medium', color: { argb: 'FF0F172A' } },
+      bottom: { style: 'medium', color: { argb: 'FF0F172A' } },
+      left: { style: 'thin', color: { argb: 'FF64748B' } },
+      right: { style: 'thin', color: { argb: 'FF64748B' } }
+    };
+  });
+
+  const currencyFormat = '$#,##0;($#,##0);"-"';
+  const percentFormat = '0.0%';
+
+  // 4. Data Rows
+  let currentRowNumber = headerRowNumber + 1;
+  const firstDataRow = currentRowNumber;
+
+  data.forEach((row) => {
+    const dataRow = worksheet.getRow(currentRowNumber);
+    dataRow.height = 20;
+
+    const isRetireTarget = row.age === retirementAge;
+    const isZebra = currentRowNumber % 2 === 0;
+    const rowBgColor = isRetireTarget ? 'FFFFF1F2' : isZebra ? 'FFF8FAFC' : 'FFFFFFFF';
+
+    // Col A: Age
+    const cellA = dataRow.getCell(1);
+    cellA.value = row.age;
+    cellA.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellA.font = { name: 'Calibri', size: 10, bold: isRetireTarget };
+
+    // Col B: Year
+    const cellB = dataRow.getCell(2);
+    cellB.value = row.year;
+    cellB.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellB.font = { name: 'Calibri', size: 10 };
+
+    // Col C: Phase
+    const cellC = dataRow.getCell(3);
+    cellC.value = {
+      formula: `IF(A${currentRowNumber}>=${retirementAge}, "Retirement", "Working")`,
+      result: row.isRetired ? 'Retirement' : 'Working'
+    };
+    cellC.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellC.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: row.isRetired ? 'FF059669' : 'FF475569' } };
+
+    // Col D: Employment Salary
+    const cellD = dataRow.getCell(4);
+    cellD.value = Math.round(row.employmentIncome + (row.spouseEmploymentIncome || 0));
+    cellD.numFmt = currencyFormat;
+    cellD.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellD.font = { name: 'Calibri', size: 10, color: { argb: 'FF4338CA' } };
+
+    // Col E: CPP & OAS
+    const cellE = dataRow.getCell(5);
+    cellE.value = Math.round(row.cppIncome + (row.spouseCppIncome || 0) + row.oasNetIncome + (row.spouseOasNetIncome || 0));
+    cellE.numFmt = currencyFormat;
+    cellE.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellE.font = { name: 'Calibri', size: 10, color: { argb: 'FF1D4ED8' } };
+
+    // Col F: Withdrawals
+    const cellF = dataRow.getCell(6);
+    cellF.value = Math.round(row.totalWithdrawals);
+    cellF.numFmt = currencyFormat;
+    cellF.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellF.font = { name: 'Calibri', size: 10, color: { argb: 'FF0D9488' } };
+
+    // Col G: Total Cash Inflow (Formula: =SUM(D:F))
+    const cellG = dataRow.getCell(7);
+    cellG.value = {
+      formula: `SUM(D${currentRowNumber}:F${currentRowNumber})`,
+      result: Math.round(row.employmentIncome + (row.spouseEmploymentIncome || 0) + row.cppIncome + (row.spouseCppIncome || 0) + row.oasNetIncome + (row.spouseOasNetIncome || 0) + row.totalWithdrawals)
+    };
+    cellG.numFmt = currencyFormat;
+    cellG.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellG.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF065F46' } };
+
+    // Col H: Living Expenses
+    const cellH = dataRow.getCell(8);
+    cellH.value = Math.round(row.targetSpendingNominal);
+    cellH.numFmt = currencyFormat;
+    cellH.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellH.font = { name: 'Calibri', size: 10, color: { argb: 'FFB45309' } };
+
+    // Col I: Debt Payments
+    const cellI = dataRow.getCell(9);
+    cellI.value = Math.round(row.debtPayment || 0);
+    cellI.numFmt = currencyFormat;
+    cellI.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellI.font = { name: 'Calibri', size: 10, color: { argb: 'FFEA580C' } };
+
+    // Col J: Total Outflow (Formula: =SUM(H:I))
+    const cellJ = dataRow.getCell(10);
+    cellJ.value = {
+      formula: `SUM(H${currentRowNumber}:I${currentRowNumber})`,
+      result: Math.round(row.targetSpendingNominal + (row.debtPayment || 0))
+    };
+    cellJ.numFmt = currencyFormat;
+    cellJ.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellJ.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF9A3412' } };
+
+    // Col K: Tax Paid
+    const cellK = dataRow.getCell(11);
+    cellK.value = Math.round(row.totalTaxPaid);
+    cellK.numFmt = currencyFormat;
+    cellK.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellK.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
+
+    // Col L: Effective Tax Rate
+    const cellL = dataRow.getCell(12);
+    cellL.value = row.effectiveTaxRate;
+    cellL.numFmt = percentFormat;
+    cellL.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellL.font = { name: 'Calibri', size: 10 };
+
+    // Col M: Marginal Tax Rate
+    const cellM = dataRow.getCell(13);
+    cellM.value = row.marginalTaxRate;
+    cellM.numFmt = percentFormat;
+    cellM.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellM.font = { name: 'Calibri', size: 10 };
+
+    // Col N: Registered Savings
+    const cellN = dataRow.getCell(14);
+    const savings = Math.round(row.rrspContribution + row.tfsaContribution + row.fhsaContribution + row.nonRegContribution);
+    cellN.value = savings;
+    cellN.numFmt = currencyFormat;
+    cellN.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellN.font = { name: 'Calibri', size: 10, color: { argb: 'FF4F46E5' } };
+
+    // Col O: Net Spendable Surplus (Formula: =G-J-K)
+    const cellO = dataRow.getCell(15);
+    cellO.value = {
+      formula: `G${currentRowNumber}-J${currentRowNumber}-K${currentRowNumber}`,
+      result: Math.round(row.netSpendableCashflow)
+    };
+    cellO.numFmt = currencyFormat;
+    cellO.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellO.font = { name: 'Calibri', size: 10, bold: true, color: { argb: row.netSpendableCashflow >= 0 ? 'FF059669' : 'FFE11D48' } };
+
+    // Col P: Notes
+    const cellP = dataRow.getCell(16);
+    const badges = (row.milestoneBadges || []).map((b) => `[${b.label}]`);
+    const fullNotes = [...badges, ...row.notes];
+    cellP.value = fullNotes.length > 0 ? fullNotes.join(' • ') : '-';
+    cellP.alignment = { vertical: 'middle', horizontal: 'left' };
+    cellP.font = {
+      name: 'Calibri',
+      size: 9.5,
+      italic: fullNotes.length > 0,
+      color: { argb: fullNotes.length > 0 ? 'FF92400E' : 'FF94A3B8' }
+    };
+
+    // Apply borders and backgrounds
+    for (let c = 1; c <= 16; c++) {
+      const cell = dataRow.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: c === 7 && !isRetireTarget ? 'FFF0FDF4' : c === 15 && !isRetireTarget ? 'FFEFF6FF' : rowBgColor }
+      };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFF1F5F9' } },
+        right: { style: 'thin', color: { argb: 'FFF1F5F9' } }
+      };
+    }
+
+    currentRowNumber++;
+  });
+
+  const lastDataRow = currentRowNumber - 1;
+
+  // 5. Totals / Summary Row
+  if (data.length > 0) {
+    const totalRow = worksheet.getRow(currentRowNumber);
+    totalRow.height = 24;
+
+    totalRow.getCell(1).value = 'TOTALS / AVERAGES';
+    totalRow.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    totalRow.getCell(4).value = { formula: `SUM(D${firstDataRow}:D${lastDataRow})` };
+    totalRow.getCell(4).numFmt = currencyFormat;
+
+    totalRow.getCell(5).value = { formula: `SUM(E${firstDataRow}:E${lastDataRow})` };
+    totalRow.getCell(5).numFmt = currencyFormat;
+
+    totalRow.getCell(6).value = { formula: `SUM(F${firstDataRow}:F${lastDataRow})` };
+    totalRow.getCell(6).numFmt = currencyFormat;
+
+    totalRow.getCell(7).value = { formula: `SUM(G${firstDataRow}:G${lastDataRow})` };
+    totalRow.getCell(7).numFmt = currencyFormat;
+
+    totalRow.getCell(8).value = { formula: `SUM(H${firstDataRow}:H${lastDataRow})` };
+    totalRow.getCell(8).numFmt = currencyFormat;
+
+    totalRow.getCell(9).value = { formula: `SUM(I${firstDataRow}:I${lastDataRow})` };
+    totalRow.getCell(9).numFmt = currencyFormat;
+
+    totalRow.getCell(10).value = { formula: `SUM(J${firstDataRow}:J${lastDataRow})` };
+    totalRow.getCell(10).numFmt = currencyFormat;
+
+    totalRow.getCell(11).value = { formula: `SUM(K${firstDataRow}:K${lastDataRow})` };
+    totalRow.getCell(11).numFmt = currencyFormat;
+
+    totalRow.getCell(12).value = { formula: `AVERAGE(L${firstDataRow}:L${lastDataRow})` };
+    totalRow.getCell(12).numFmt = percentFormat;
+
+    totalRow.getCell(13).value = { formula: `AVERAGE(M${firstDataRow}:M${lastDataRow})` };
+    totalRow.getCell(13).numFmt = percentFormat;
+
+    totalRow.getCell(14).value = { formula: `SUM(N${firstDataRow}:N${lastDataRow})` };
+    totalRow.getCell(14).numFmt = currencyFormat;
+
+    totalRow.getCell(15).value = { formula: `AVERAGE(O${firstDataRow}:O${lastDataRow})` };
+    totalRow.getCell(15).numFmt = currencyFormat;
+
+    totalRow.getCell(16).value = 'Lifetime Cumulative Cash Flow Model';
+    totalRow.getCell(16).font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF059669' } };
+
+    for (let c = 1; c <= 16; c++) {
+      const cell = totalRow.getCell(c);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE2E8F0' } // Slate 200
+      };
+      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FF0F172A' } },
+        bottom: { style: 'double', color: { argb: 'FF0F172A' } }, // Classic Excel Accounting Underline
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+      };
+    }
+  }
+}
+
+export async function exportCashFlowLedgerToExcel(options: CashFlowExcelExportOptions): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Strata Canadian Wealth Platform';
+  workbook.lastModifiedBy = 'Strata';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  const worksheet = workbook.addWorksheet('Cash Flow Projections', {
+    views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
+  });
+
+  populateCashFlowLedgerSheet(worksheet, options);
+
+  const clientName = options.inputs?.userName?.trim();
+  const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
+  const todayStr = new Date().toLocaleDateString('en-CA');
+  await downloadWorkbook(workbook, `Strata_${safeClient}Current_Projected_Cash_Flows_${todayStr}.xlsx`);
 }
 

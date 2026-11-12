@@ -7,7 +7,8 @@ import {
   Sliders,
   Table,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  ArrowRightLeft
 } from 'lucide-react';
 
 interface TabItem {
@@ -35,6 +36,14 @@ const TABS: TabItem[] = [
     description: 'Year-by-year cash flows, tax details, and RRSP break-even',
     icon: Calendar,
     accentColor: 'blue'
+  },
+  {
+    id: 'cashflows',
+    title: 'Current and Projected Cash Flows',
+    badge: 'Inflow, Outflow & Taxes',
+    description: 'Year-by-year income, living expenses, potential savings & taxes',
+    icon: ArrowRightLeft,
+    accentColor: 'emerald'
   },
   {
     id: 'stresstest',
@@ -72,7 +81,7 @@ export const DashboardTabBar: React.FC = () => {
       aria-label="Dashboard horizontal views"
       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xs transition-colors"
     >
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-1.5 sm:gap-2">
         {TABS.map((tab, idx) => {
           const isActive = activeDashboardTab === tab.id;
           const Icon = tab.icon;

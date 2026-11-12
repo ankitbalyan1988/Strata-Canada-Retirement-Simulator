@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSimulationStore } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
+import { RetirementMilestoneTimeline } from '../RetirementMilestoneTimeline';
 import { RetirementScorecard } from '../RetirementScorecard';
 import { RetirementProgress } from '../RetirementProgress';
 import { HeroRetirementSlider } from '../HeroRetirementSlider';
@@ -20,7 +21,10 @@ export const MainDashboardTabContent: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-      {/* 1. Financial KPI Scorecard (Positioned at top for instant visibility) */}
+      {/* 0. Interactive Retirement Roadmap & Milestone Timeline (Highlights timeframe and key milestones) */}
+      <RetirementMilestoneTimeline />
+
+      {/* 1. Financial KPI Scorecard (Positioned directly below timeline) */}
       <RetirementScorecard />
 
       {/* 2. Retirement Progress Circular Gauge & Real-time Readiness Today */}

@@ -35,7 +35,9 @@ import {
   FileText,
   Check,
   Minus,
-  Plus
+  Plus,
+  Save,
+  Loader2
 } from 'lucide-react';
 import { 
   CanadianProvince, 
@@ -63,7 +65,7 @@ import { DebtsManager } from './DebtsManager';
 import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
 import { RealtorHomeCostCard } from './RealtorHomeCostCard';
 import { TaxRuleTooltip } from './TaxRuleTooltip';
-import { useSimulationStore } from '../store/useSimulationStore';
+import { useSimulationStore, AUTOSAVE_PLAN_STORAGE_KEY } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 
 export interface InputPanelProps {
@@ -92,6 +94,88 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     }
   };
   const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
+
+  // Auto-Save Mechanism State
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(AUTOSAVE_PLAN_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.timestamp) {
+            return new Date(parsed.timestamp);
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
+
+  // Persistence handler
+  const persistPlanData = (currentInputs: RetirementInputs) => {
+    if (typeof window === 'undefined') return;
+    try {
+      setSaveStatus('saving');
+      localStorage.setItem(
+        AUTOSAVE_PLAN_STORAGE_KEY,
+        JSON.stringify({
+          inputs: currentInputs,
+          timestamp: new Date().toISOString(),
+          version: '2026.1'
+        })
+      );
+      setLastSavedAt(new Date());
+      setSaveStatus('saved');
+    } catch (err) {
+      console.warn('Auto-save to localStorage failed:', err);
+      setSaveStatus('idle');
+    }
+  };
+
+  // 1. Debounced auto-save on user input modifications (1.2s delay)
+  useEffect(() => {
+    setSaveStatus('saving');
+    const timer = setTimeout(() => {
+      persistPlanData(inputs);
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [inputs]);
+
+  // 2. Periodic background persistence interval (every 25 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      persistPlanData(inputs);
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [inputs]);
+
+  // 3. Flush to storage immediately on page unload or visibility hidden
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      persistPlanData(inputs);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        persistPlanData(inputs);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [inputs]);
+
+  const handleManualSave = () => {
+    persistPlanData(inputs);
+  };
 
   // Conditional flow qualifiers
   const hasDebts = inputs.hasOngoingOrFutureDebts ?? Boolean(inputs.debts && inputs.debts.length > 0);
@@ -376,6 +460,41 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             >
               <Heart className="w-3.5 h-3.5 fill-current" />
               <span>Married / Common-Law</span>
+            </button>
+          </div>
+
+          {/* Auto-Save Status Indicator & Manual Save Button */}
+          <div 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-xs shadow-2xs"
+            title="Plan data is automatically persisted to browser local storage so your progress is preserved across sessions"
+          >
+            {saveStatus === 'saving' ? (
+              <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="font-medium text-[11px]">Saving...</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[11px] font-medium">
+                  {lastSavedAt ? (
+                    <>
+                      Auto-saved <span className="text-slate-400 dark:text-slate-500 font-mono">({lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
+                    </>
+                  ) : (
+                    'Auto-save active'
+                  )}
+                </span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleManualSave}
+              title="Click to force-save current plan inputs to local storage now"
+              className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
             </button>
           </div>
 

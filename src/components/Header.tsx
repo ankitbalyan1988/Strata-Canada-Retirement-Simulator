@@ -8,9 +8,12 @@ import {
   ChevronsDown,
   ChevronsUp,
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TopScenarioSwitcher } from './TopScenarioSwitcher';
 
 export const Header: React.FC = () => {
@@ -22,7 +25,35 @@ export const Header: React.FC = () => {
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const hasMultipleScenarios = useSimulationStore((state) => state.history.length > 1);
 
+  const inputs = useSimulationStore(useShallow((state) => state.inputs));
+  const summary = useSimulationStore(useShallow((state) => state.summary));
+  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const estateInputs = useSimulationStore((state) => state.estateInputs);
+  const stressTiming = useSimulationStore((state) => state.stressTiming);
+  const customStressAge = useSimulationStore((state) => state.customStressAge);
+
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
+  const [isExportingMasterExcel, setIsExportingMasterExcel] = useState<boolean>(false);
+
+  const handleExportMasterExcel = async () => {
+    try {
+      setIsExportingMasterExcel(true);
+      const { exportMasterComprehensiveExcel } = await import('../utils/excelExport');
+      await exportMasterComprehensiveExcel({
+        inputs,
+        summary,
+        yearlyResults,
+        estateInputs,
+        expatInputs: inputs.expat,
+        stressTiming,
+        customStressAge
+      });
+    } catch (err) {
+      console.error('Failed to export comprehensive master Excel:', err);
+    } finally {
+      setIsExportingMasterExcel(false);
+    }
+  };
 
   // Granular atomic boolean selector: only re-renders when the collapsed state boolean actually flips
   const areAllSectionsCollapsed = useSimulationStore((state) => {
@@ -108,6 +139,29 @@ export const Header: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
             {/* Scenario Switcher Dropdown (only visible when multiple scenarios exist) */}
             {hasMultipleScenarios && <TopScenarioSwitcher />}
+
+            {/* Overall Master Export to Excel Button */}
+            <button
+              type="button"
+              onClick={handleExportMasterExcel}
+              disabled={isExportingMasterExcel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700/80 transition cursor-pointer shadow-2xs hover:shadow-xs disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              title="Export complete financial model (Annual Simulation, Estate Planning, 6 Historical Stress Tests, and Expat Ledgers) into one Excel workbook with labelled tabs"
+              aria-label="Export all ledgers to Excel"
+            >
+              {isExportingMasterExcel ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                  <span className="font-bold">Exporting All...</span>
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="font-bold hidden sm:inline">Export All (Excel)</span>
+                  <span className="font-bold sm:hidden">Export Excel</span>
+                </>
+              )}
+            </button>
 
             {/* Clean Canvas ($0) Button */}
             {!isConfirmingClear ? (
