@@ -13,6 +13,7 @@ import {
 } from './engine/calculateMortgageAndHousing';
 import {
   calculateContributionsForYear,
+  reconcilePreRetirementOutflowsAndSurplus,
   ContributionYearState,
   CustomAccountState
 } from './engine/calculateContributions';
@@ -31,7 +32,8 @@ import {
   initializeDebtStates,
   calculateDebtsForYear,
   DebtYearState,
-  calculateEarlyPayoffComparison
+  calculateEarlyPayoffComparison,
+  getEffectiveDebts
 } from './debtCalculator';
 import { fastSimulateEndNetWorth, FastSimulationResult } from './engine/fastSimulator';
 
@@ -123,6 +125,11 @@ export function runRetirementSimulation(
         totalWithdrawals: 0,
         totalInvestmentGrowth: 0,
         targetSpendingNominal: 0,
+        livingExpensesNominal: 0,
+        rentOrMortgagePayment: 0,
+        housingCostType: 'none',
+        discretionaryScaleFactor: 1,
+        surplusSaved: 0,
         totalGrossIncome: 0,
         taxableIncome: 0,
         totalTaxPaid: 0,
@@ -274,6 +281,8 @@ export function runRetirementSimulation(
   const contributionState: ContributionYearState = {
     pEmploymentIncome: currentAnnualIncome,
     sEmploymentIncome: isCouple && spouse ? spouse.annualIncome : 0,
+    pBaselineIncome: currentAnnualIncome,
+    sBaselineIncome: isCouple && spouse ? spouse.annualIncome : 0,
     pCumulativeFhsa: pInitialCumulativeFhsa,
     sCumulativeFhsa: sInitialCumulativeFhsa,
     pFhsaActive,
@@ -298,7 +307,7 @@ export function runRetirementSimulation(
   let sumEffectiveTaxInRetirement = 0;
 
   // Initialize Consumer & Fixed-Term Debt State Machine
-  const effectiveDebts = inputs.hasOngoingOrFutureDebts === false ? [] : (inputs.debts || []);
+  const effectiveDebts = getEffectiveDebts(inputs);
   const debtStates: DebtYearState[] = initializeDebtStates(effectiveDebts, currentAge, inputs.debtStrategy);
   const totalInitialDebt = effectiveDebts.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
   let debtAtRetirement = 0;
@@ -336,7 +345,21 @@ export function runRetirementSimulation(
       contributionState.sFhsaActive = false;
     }
 
-    // Sub-Routine 2: Contributions, Wage Growth & Pre-Retirement Deductions
+    // Sub-Routine 2: Advance Consumer & Fixed-Term Debts for this year
+    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
+    lifetimeDebtInterest += debtResult.totalInterestPaid;
+    if (debtResult.newlyOriginatedDebtsThisYear.length > 0) {
+      debtResult.newlyOriginatedDebtsThisYear.forEach((d) => {
+        yearNotes.push(`💳 Future Debt Originated: ${d.name} ($${Math.round(d.amount).toLocaleString()} @ ${d.rate}% APR) — loan payments started.`);
+      });
+    }
+    if (debtResult.paidOffDebtsThisYear.length > 0) {
+      debtResult.paidOffDebtsThisYear.forEach((name) => {
+        yearNotes.push(`💳 Debt Paid Off: ${name} fully amortized & paid off!`);
+      });
+    }
+
+    // Sub-Routine 3: Contributions, Wage Growth & Discretionary Scaling Factor
     const contributionResult = calculateContributionsForYear(
       age,
       spouseAge,
@@ -362,7 +385,66 @@ export function runRetirementSimulation(
       housingState.sFhsaActive = false;
     }
 
-    // Sub-Routine 3: Investment Returns, Yield Drag, GIC Maturity & Stress Testing
+    // Sub-Routine 4: Separate Cash Outflows (Living Expenses, Rent/Mortgage, Debts)
+    let rentOrMortgagePayment = 0;
+    let housingCostType: 'rent' | 'mortgage' | 'none' = 'none';
+    if (housingResult.rentPaidThisYear > 0) {
+      rentOrMortgagePayment = Math.round(housingResult.rentPaidThisYear * inflationFactor);
+      housingCostType = 'rent';
+    } else if (housingResult.mortgagePaidThisYear > 0) {
+      // Fixed-rate Canadian mortgage P&I remains nominal across its amortization term
+      rentOrMortgagePayment = Math.round(housingResult.mortgagePaidThisYear);
+      housingCostType = 'mortgage';
+    }
+
+    const fixedOwnershipNominal = (housingResult.propertyTaxPaidThisYear + housingResult.condoFeesPaidThisYear) * inflationFactor;
+    let livingExpensesNominal = 0;
+
+    if (isRetired) {
+      const retireBaseNominal = targetRetirementSpendingToday * inflationFactor;
+      if (housingCostType === 'rent') {
+        livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentOrMortgagePayment));
+      } else {
+        livingExpensesNominal = Math.round(retireBaseNominal + fixedOwnershipNominal);
+      }
+    } else {
+      const fixedUtilitiesNominal = housingParams.utilitiesMonthly * 12 * inflationFactor;
+      const scaledDiscretionaryNominal =
+        housingParams.discretionaryMonthly * 12 * inflationFactor * contributionResult.discretionaryScaleFactor;
+      livingExpensesNominal = Math.round(fixedUtilitiesNominal + fixedOwnershipNominal + scaledDiscretionaryNominal);
+
+      if (contributionResult.discretionaryScaleFactor < 0.99 && housingParams.discretionaryMonthly > 0) {
+        const dropPct = Math.round((1 - contributionResult.discretionaryScaleFactor) * 100);
+        if (i === 0 || (inputs.careerDisruption?.enabled && age === inputs.careerDisruption.shockAge) || (inputs.spouse?.careerDisruption?.enabled && spouseAge === inputs.spouse.careerDisruption.shockAge)) {
+          yearNotes.push(
+            `📉 Discretionary Living Adjustment (Age ${age}): Non-fixed discretionary spending scaled down ${dropPct}% to $${Math.round(scaledDiscretionaryNominal).toLocaleString()}/yr; fixed rent/mortgage, utilities & debts kept at 100%.`
+          );
+        }
+      }
+    }
+
+    const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
+    const totalOutflows = targetSpendingNominal + debtResult.totalAnnualPayment;
+
+    // Sub-Routine 5: Pre-Retirement Outflow Reconciliation & Surplus-to-Savings Sweep
+    const sweepResult = reconcilePreRetirementOutflowsAndSurplus(
+      age,
+      spouseAge,
+      inputs,
+      spouse,
+      isCouple,
+      isPrimaryRetired,
+      isSpouseRetired,
+      inflationFactor,
+      totalOutflows,
+      contributionResult,
+      contributionState,
+      balances,
+      simulationOptions?.stopContributionsAge
+    );
+    let surplusSavedThisYear = sweepResult.surplusSaved;
+
+    // Sub-Routine 6: Investment Returns, Yield Drag, GIC Maturity & Stress Testing
     const investmentResult = calculateInvestmentReturnsForYear(
       age,
       retirementAge,
@@ -385,36 +467,6 @@ export function runRetirementSimulation(
     );
     yearNotes.push(...investmentResult.notes);
     lifetimeInvestmentGrowth += investmentResult.totalGrowth;
-
-    // Advance Consumer & Fixed-Term Debts for this year
-    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
-    lifetimeDebtInterest += debtResult.totalInterestPaid;
-    if (debtResult.paidOffDebtsThisYear.length > 0) {
-      debtResult.paidOffDebtsThisYear.forEach((name) => {
-        yearNotes.push(`💳 Debt Paid Off: ${name} fully amortized & paid off!`);
-      });
-    }
-
-    // Determine Annual Living Expenses
-    let currentLivingExpensesNominal: number;
-    if (isRetired) {
-      currentLivingExpensesNominal = targetRetirementSpendingToday * inflationFactor;
-      if (housingResult.remainingMortgage > 0) {
-        const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
-        currentLivingExpensesNominal += annualMortgage * inflationFactor;
-      }
-      if (housingResult.housingStatus === 'mortgage_free' || housingResult.housingStatus === 'mortgage') {
-        const ongoingOwnershipAnnual = housingParams.otherOwnershipCostsMonthly * 12;
-        currentLivingExpensesNominal += ongoingOwnershipAnnual * inflationFactor;
-      }
-      // If lingering consumer/fixed debts exist in retirement, payments augment required living expenses
-      if (debtResult.totalAnnualPayment > 0) {
-        currentLivingExpensesNominal += debtResult.totalAnnualPayment;
-      }
-    } else {
-      currentLivingExpensesNominal = (housingResult.yearHousingCost + housingParams.nonHousingMonthly * 12) * inflationFactor;
-    }
-    const targetSpendingNominal = Math.round(currentLivingExpensesNominal);
 
     // Decumulation & Retirement Cashflow variables
     let pensions: GovernmentPensionsResult = { pCppIncome: 0, sCppIncome: 0, pGrossOas: 0, sGrossOas: 0 };
@@ -440,7 +492,6 @@ export function runRetirementSimulation(
     let sOasClawback = 0;
     let pNetOas = 0;
     let sNetOas = 0;
-    let netSpendableCashflow = 0;
     let cashflowGap = 0;
     let surplusReinvestedThisYear = 0;
 
@@ -459,12 +510,12 @@ export function runRetirementSimulation(
         pensions.sGrossOas +
         (!isSpouseRetired ? contributionResult.sYearIncome - contributionResult.sTaxPaid : 0);
 
-      // Sub-Routine 4B: Decumulation Sequencing
+      // Sub-Routine 4B: Decumulation Sequencing (funds totalOutflows = living + rent/mortgage + consumer debt)
       const decumulationResult = calculateDecumulationForYear(
         age,
         spouseAge,
         i,
-        targetSpendingNominal,
+        totalOutflows,
         guaranteedCash,
         drawdownStrategy,
         balances,
@@ -503,7 +554,7 @@ export function runRetirementSimulation(
           pNonRegWithdrawal,
           sNonRegWithdrawal
         },
-        targetSpendingNominal,
+        totalOutflows,
         province,
         isCouple,
         spouse,
@@ -518,29 +569,36 @@ export function runRetirementSimulation(
       sNetOas = taxCashflowResult.sNetOas;
       pTaxPaid = taxCashflowResult.pTaxPaid;
       sTaxPaid = taxCashflowResult.sTaxPaid;
-      netSpendableCashflow = Math.max(0, taxCashflowResult.netSpendableCashflow - debtResult.totalAnnualPayment);
-      cashflowGap = taxCashflowResult.cashflowGap;
+      const spouseWorkingAfterTax = !isSpouseRetired ? Math.max(0, contributionResult.sYearIncome - contributionResult.sTaxPaid) : 0;
+      const netAvailableForOutflows = Math.max(0, taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax);
+      cashflowGap = Math.max(0, totalOutflows - netAvailableForOutflows);
       lifetimeOasReceived += pNetOas + sNetOas;
       yearNotes.push(...taxCashflowResult.notes);
 
       // Reinvest unspent surplus after-tax cashflow (e.g., from early RRSP meltdown or high pensions)
       // into TFSA up to annual limit, then Non-Registered accounts
-      if (netSpendableCashflow > targetSpendingNominal) {
-        const surplus = netSpendableCashflow - targetSpendingNominal;
+      if (netAvailableForOutflows > totalOutflows) {
+        const surplus = netAvailableForOutflows - totalOutflows;
         surplusReinvestedThisYear = surplus;
+        surplusSavedThisYear += surplus;
         const tfsaAnnualLimit = 7000 * inflationFactor;
         const pTfsaReinvest = Math.min(surplus * (isCouple ? 0.5 : 1.0), tfsaAnnualLimit);
         const sTfsaReinvest = isCouple && spouse ? Math.min(surplus * 0.5, tfsaAnnualLimit) : 0;
         balances.pTfsa += pTfsaReinvest;
         balances.sTfsa += sTfsaReinvest;
+        contributionResult.pTfsaContrib += pTfsaReinvest;
+        contributionResult.sTfsaContrib += sTfsaReinvest;
 
         const remSurplus = Math.max(0, surplus - (pTfsaReinvest + sTfsaReinvest));
         if (remSurplus > 0) {
           if (isCouple && spouse) {
             balances.pNonReg += remSurplus / 2;
             balances.sNonReg += remSurplus / 2;
+            contributionResult.pNonRegContrib += remSurplus / 2;
+            contributionResult.sNonRegContrib += remSurplus / 2;
           } else {
             balances.pNonReg += remSurplus;
+            contributionResult.pNonRegContrib += remSurplus;
           }
         }
         if (drawdownStrategy === 'rrsp_meltdown' && surplus > 500) {
@@ -631,12 +689,6 @@ export function runRetirementSimulation(
       }
 
       surplusReinvestedThisYear = totalNetSurplus;
-      netSpendableCashflow = Math.max(
-        0,
-        (contributionResult.pYearIncome - pTaxPaid) +
-          (isCouple && spouse ? contributionResult.sYearIncome - sTaxPaid : 0) -
-          debtResult.totalAnnualPayment
-      );
 
       const totalWithdrawal = pRrspWithdrawal + sRrspWithdrawal;
       const totalTaxPaidOnDraw = additionalPTax + additionalSTax;
@@ -645,13 +697,6 @@ export function runRetirementSimulation(
 
       yearNotes.push(
         `Strategic RRSP Meltdown (Age ${age}): Withdrew $${Math.round(totalWithdrawal).toLocaleString()} from RRSP ($${Math.round(totalTaxPaidOnDraw).toLocaleString()} tax paid). Reinvested after-tax net $${Math.round(totalNetSurplus).toLocaleString()} directly into Non-Registered ($${Math.round(totalNonRegAdded).toLocaleString()})${totalTfsaAdded > 0 ? ` and TFSA ($${Math.round(totalTfsaAdded).toLocaleString()})` : ''} to continue compounding.`
-      );
-    } else {
-      netSpendableCashflow = Math.max(
-        0,
-        (contributionResult.pYearIncome - pTaxPaid) +
-          (isCouple && spouse ? contributionResult.sYearIncome - sTaxPaid : 0) -
-          debtResult.totalAnnualPayment
       );
     }
 
@@ -708,7 +753,17 @@ export function runRetirementSimulation(
       contributionResult.pNonRegContrib +
       contributionResult.sNonRegContrib;
 
-    const preRetirementNetCashflow = contributionResult.pYearIncome + contributionResult.sYearIncome - totalTaxPaid - totalYearContributions - debtResult.totalAnnualPayment;
+    const ledgerInflow =
+      contributionResult.pYearIncome +
+      contributionResult.sYearIncome +
+      pensions.pCppIncome +
+      pensions.sCppIncome +
+      pNetOas +
+      sNetOas +
+      yearTotalWithdrawals;
+
+    // Consistent ledger surplus: Inflows - Total Outflows (Living + Rent/Mortgage + Debts) - CRA Income Tax
+    const unifiedNetCashSurplus = ledgerInflow - totalOutflows - totalTaxPaid;
 
     const isMeltdownActiveThisPlan = drawdownStrategy === 'rrsp_meltdown';
     const meltdownStartAge = inputs.meltdownStartAge ?? inputs.retirementAge;
@@ -767,20 +822,17 @@ export function runRetirementSimulation(
       totalWithdrawals: Math.round(yearTotalWithdrawals),
       totalInvestmentGrowth: Math.round(investmentResult.totalGrowth),
       targetSpendingNominal: Math.round(targetSpendingNominal),
-      totalGrossIncome: Math.round(
-        contributionResult.pYearIncome +
-        contributionResult.sYearIncome +
-        pensions.pCppIncome +
-        pensions.sCppIncome +
-        pensions.pGrossOas +
-        pensions.sGrossOas +
-        yearTotalWithdrawals
-      ),
+      livingExpensesNominal: Math.round(livingExpensesNominal),
+      rentOrMortgagePayment: Math.round(rentOrMortgagePayment),
+      housingCostType,
+      discretionaryScaleFactor: contributionResult.discretionaryScaleFactor,
+      surplusSaved: Math.round(surplusSavedThisYear),
+      totalGrossIncome: Math.round(ledgerInflow),
       taxableIncome: Math.round(pTaxable + sTaxable),
       totalTaxPaid: Math.round(totalTaxPaid),
       effectiveTaxRate: (pTaxable + sTaxable > 0 ? totalTaxPaid / (pTaxable + sTaxable) : 0),
       marginalTaxRate: calculateCanadianTax(pTaxable, province, age, 0).marginalRate,
-      netSpendableCashflow: Math.round(isRetired ? netSpendableCashflow : preRetirementNetCashflow),
+      netSpendableCashflow: Math.round(unifiedNetCashSurplus),
       cashflowGap: Math.round(cashflowGap),
       isRrifMandatory,
       rrifMinimumWithdrawal: Math.round(rrifMinimumWithdrawal),
@@ -873,7 +925,7 @@ export function runRetirementSimulation(
     debtAtRetirement: Math.round(debtAtRetirement),
     totalDebtInterestPaid: Math.round(lifetimeDebtInterest),
     debtInterestSaved: inputs.debtStrategy?.acceleratePayoff
-      ? (calculateEarlyPayoffComparison(inputs.debts || [], currentAge, retirementAge, inputs.debtStrategy)?.interestSaved || 0)
+      ? (calculateEarlyPayoffComparison(effectiveDebts, currentAge, retirementAge, inputs.debtStrategy)?.interestSaved || 0)
       : 0,
     isCouple,
     spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined,
@@ -997,7 +1049,7 @@ export function calculateSavingsPulse(
         } : undefined
       };
 
-      const testRes = fastSimulateEndNetWorth(testInputs);
+      const testRes = fastSimulateEndNetWorth(testInputs, undefined, undefined, { disableAutoSurplusSweep: true });
       if (testRes.isFullyFunded && testRes.netWorthAtLifeExpectancy >= 0) {
         minScale = mid;
         high = mid;
@@ -1024,7 +1076,7 @@ export function calculateSavingsPulse(
         nonRegAnnualContribution: inputs.nonRegAnnualContribution + addNonReg
       };
 
-      const testRes = fastSimulateEndNetWorth(testInputs);
+      const testRes = fastSimulateEndNetWorth(testInputs, undefined, undefined, { disableAutoSurplusSweep: true });
       if (testRes.isFullyFunded && testRes.netWorthAtLifeExpectancy >= 0) {
         bestDelta = mid;
         targetNestEggNeeded = testRes.netWorthAtRetirement;

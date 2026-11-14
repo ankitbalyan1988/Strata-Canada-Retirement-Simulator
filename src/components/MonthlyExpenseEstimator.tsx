@@ -65,7 +65,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
     return calculateMonthlyMortgagePayment(realEstate);
   }, [realEstate]);
 
-  const hasMortgage = Boolean(realEstate?.ownsHome && mortgagePayment > 0);
+  const hasMortgage = Boolean(realEstate?.ownsHome && realEstate?.purchaseType !== 'future' && mortgagePayment > 0);
   const initialSyncRef = React.useRef(false);
 
   // Automatically sync mortgage payment once if homeowner with mortgage and autoSyncMortgage is enabled

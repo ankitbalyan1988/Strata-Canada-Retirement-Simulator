@@ -2107,7 +2107,7 @@ export function populateCashFlowLedgerSheet(
     inputs
   }: CashFlowExcelExportOptions
 ): void {
-  // 1. Column Definitions (16 columns A to P)
+  // 1. Column Definitions (17 columns A to Q)
   worksheet.columns = [
     { key: 'age', width: 10 },               // Col A: Age
     { key: 'year', width: 12 },              // Col B: Sim Year
@@ -2116,19 +2116,20 @@ export function populateCashFlowLedgerSheet(
     { key: 'pensions', width: 18 },          // Col E: CPP & OAS
     { key: 'withdrawals', width: 18 },       // Col F: Withdrawals
     { key: 'totalInflow', width: 22 },       // Col G: Total Inflow (FORMULA: =SUM(D:F))
-    { key: 'livingExpenses', width: 18 },    // Col H: Living Target
-    { key: 'debtPayments', width: 16 },      // Col I: Debt Payments
-    { key: 'totalOutflow', width: 20 },      // Col J: Total Outflow (FORMULA: =SUM(H:I))
-    { key: 'taxPaid', width: 17 },           // Col K: Tax Paid
-    { key: 'effTaxRate', width: 15 },        // Col L: Effective Tax %
-    { key: 'margTaxRate', width: 15 },       // Col M: Marginal Tax %
-    { key: 'savings', width: 18 },           // Col N: Registered Savings
-    { key: 'netSurplus', width: 22 },        // Col O: Net Spendable Surplus (FORMULA: =G-J-K)
-    { key: 'notes', width: 46 }              // Col P: Milestones & Notes
+    { key: 'livingExpenses', width: 18 },    // Col H: Living Expenses
+    { key: 'rentOrMortgage', width: 18 },    // Col I: Rent / Mortgage
+    { key: 'debtPayments', width: 16 },      // Col J: Debt Payments
+    { key: 'totalOutflow', width: 20 },      // Col K: Total Outflow (FORMULA: =SUM(H:J))
+    { key: 'taxPaid', width: 17 },           // Col L: Tax Paid
+    { key: 'effTaxRate', width: 15 },        // Col M: Effective Tax %
+    { key: 'margTaxRate', width: 15 },       // Col N: Marginal Tax %
+    { key: 'savings', width: 18 },           // Col O: Registered & Total Savings
+    { key: 'netSurplus', width: 22 },        // Col P: Post-Tax Cash Surplus (FORMULA: =G-K-L)
+    { key: 'notes', width: 46 }              // Col Q: Milestones & Notes
   ];
 
   // 2. Title Block (Row 1)
-  worksheet.mergeCells('A1:P1');
+  worksheet.mergeCells('A1:Q1');
   const titleCell = worksheet.getCell('A1');
   const clientName = inputs?.userName?.trim();
   titleCell.value = clientName
@@ -2144,11 +2145,11 @@ export function populateCashFlowLedgerSheet(
   worksheet.getRow(1).height = 30;
 
   // Subtitle / Metadata (Row 2)
-  worksheet.mergeCells('A2:P2');
+  worksheet.mergeCells('A2:Q2');
   const metaCell = worksheet.getCell('A2');
   const todayStr = new Date().toLocaleDateString('en-CA');
   const clientTag = clientName ? `Client: ${clientName} | ` : '';
-  metaCell.value = `${clientTag}Target Retirement: Age ${retirementAge} | Province: ${province} | Cash Flow Model: Inflows, Outflows, Taxes & Savings | Generated: ${todayStr}`;
+  metaCell.value = `${clientTag}Target Retirement: Age ${retirementAge} | Province: ${province} | Cash Flow Model: Inflows, Living/Housing/Debt Outflows, Taxes & Savings | Generated: ${todayStr}`;
   metaCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF475569' } };
   metaCell.fill = {
     type: 'pattern',
@@ -2162,9 +2163,9 @@ export function populateCashFlowLedgerSheet(
   worksheet.getRow(3).height = 8;
 
   // Note row 4
-  worksheet.mergeCells('A4:P4');
+  worksheet.mergeCells('A4:Q4');
   const noteCell = worksheet.getCell('A4');
-  noteCell.value = '[NOTE] Strata Cash Flow Ledger: Inflows reflect earned salaries, CPP, OAS, and portfolio drawdowns. Total Inflow =SUM(D:F), Total Outflow =SUM(H:I), and Net Surplus =G-J-K feature dynamic Excel accounting formulas.';
+  noteCell.value = '[NOTE] Strata Cash Flow Ledger: Inflows reflect earned salaries, CPP, OAS, and portfolio drawdowns. Total Inflow =SUM(D:F), Total Outflow =SUM(H:J), and Post-Tax Surplus =G-K-L feature dynamic Excel accounting formulas.';
   noteCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: 'FF0369A1' } };
   noteCell.fill = {
     type: 'pattern',
@@ -2185,13 +2186,14 @@ export function populateCashFlowLedgerSheet(
     'Portfolio Withdrawals ($)',
     'Total Cash Inflows ($)',    // Col G - Header Emerald FF047857
     'Living Expenses ($)',
+    'Rent / Mortgage ($)',
     'Debt Payments ($)',
-    'Total Outflows ($)',        // Col J - Header Amber FFB45309
-    'CRA Income Tax ($)',        // Col K - Header Rose FFE11D48
+    'Total Outflows ($)',        // Col K - Header Amber FFB45309
+    'CRA Income Tax ($)',        // Col L - Header Rose FFE11D48
     'Effective Tax Rate',
     'Marginal Tax Bracket',
-    'Registered Savings ($)',
-    'Net Spendable Surplus ($)', // Col O - Header Deep Navy FF1E3A8A
+    'Total Savings Added ($)',
+    'Post-Tax Cash Surplus ($)', // Col P - Header Deep Navy FF1E3A8A
     'Milestones & Strategic Notes'
   ];
 
@@ -2204,17 +2206,17 @@ export function populateCashFlowLedgerSheet(
     cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
     cell.alignment = {
       vertical: 'middle',
-      horizontal: colNumber <= 3 || colNumber === 12 || colNumber === 13 ? 'center' : colNumber === 16 ? 'left' : 'right',
+      horizontal: colNumber <= 3 || colNumber === 13 || colNumber === 14 ? 'center' : colNumber === 17 ? 'left' : 'right',
       wrapText: true
     };
 
     if (colNumber === 7) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF065F46' } }; // Emerald 800
-    } else if (colNumber === 10) {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; // Amber 700
     } else if (colNumber === 11) {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFB45309' } }; // Amber 700
+    } else if (colNumber === 12) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF9F1239' } }; // Rose 800
-    } else if (colNumber === 15) {
+    } else if (colNumber === 16) {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; // Deep Navy
     } else {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }; // Slate 700
@@ -2243,6 +2245,12 @@ export function populateCashFlowLedgerSheet(
     const isZebra = currentRowNumber % 2 === 0;
     const rowBgColor = isRetireTarget ? 'FFFFF1F2' : isZebra ? 'FFF8FAFC' : 'FFFFFFFF';
 
+    const rentMortVal = Math.round(row.rentOrMortgagePayment ?? 0);
+    const livingExpVal = Math.round(row.livingExpensesNominal ?? Math.max(0, row.targetSpendingNominal - rentMortVal));
+    const debtVal = Math.round(row.debtPayment || 0);
+    const totalInflowVal = Math.round(row.employmentIncome + row.cppIncome + row.oasNetIncome + row.totalWithdrawals);
+    const totalOutflowVal = livingExpVal + rentMortVal + debtVal;
+
     // Col A: Age
     const cellA = dataRow.getCell(1);
     cellA.value = row.age;
@@ -2266,14 +2274,14 @@ export function populateCashFlowLedgerSheet(
 
     // Col D: Employment Salary
     const cellD = dataRow.getCell(4);
-    cellD.value = Math.round(row.employmentIncome + (row.spouseEmploymentIncome || 0));
+    cellD.value = Math.round(row.employmentIncome);
     cellD.numFmt = currencyFormat;
     cellD.alignment = { vertical: 'middle', horizontal: 'right' };
     cellD.font = { name: 'Calibri', size: 10, color: { argb: 'FF4338CA' } };
 
     // Col E: CPP & OAS
     const cellE = dataRow.getCell(5);
-    cellE.value = Math.round(row.cppIncome + (row.spouseCppIncome || 0) + row.oasNetIncome + (row.spouseOasNetIncome || 0));
+    cellE.value = Math.round(row.cppIncome + row.oasNetIncome);
     cellE.numFmt = currencyFormat;
     cellE.alignment = { vertical: 'middle', horizontal: 'right' };
     cellE.font = { name: 'Calibri', size: 10, color: { argb: 'FF1D4ED8' } };
@@ -2289,7 +2297,7 @@ export function populateCashFlowLedgerSheet(
     const cellG = dataRow.getCell(7);
     cellG.value = {
       formula: `SUM(D${currentRowNumber}:F${currentRowNumber})`,
-      result: Math.round(row.employmentIncome + (row.spouseEmploymentIncome || 0) + row.cppIncome + (row.spouseCppIncome || 0) + row.oasNetIncome + (row.spouseOasNetIncome || 0) + row.totalWithdrawals)
+      result: totalInflowVal
     };
     cellG.numFmt = currencyFormat;
     cellG.alignment = { vertical: 'middle', horizontal: 'right' };
@@ -2297,74 +2305,81 @@ export function populateCashFlowLedgerSheet(
 
     // Col H: Living Expenses
     const cellH = dataRow.getCell(8);
-    cellH.value = Math.round(row.targetSpendingNominal);
+    cellH.value = livingExpVal;
     cellH.numFmt = currencyFormat;
     cellH.alignment = { vertical: 'middle', horizontal: 'right' };
     cellH.font = { name: 'Calibri', size: 10, color: { argb: 'FFB45309' } };
 
-    // Col I: Debt Payments
+    // Col I: Rent / Mortgage
     const cellI = dataRow.getCell(9);
-    cellI.value = Math.round(row.debtPayment || 0);
+    cellI.value = rentMortVal;
     cellI.numFmt = currencyFormat;
     cellI.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellI.font = { name: 'Calibri', size: 10, color: { argb: 'FFEA580C' } };
+    cellI.font = { name: 'Calibri', size: 10, color: { argb: 'FF0369A1' } };
 
-    // Col J: Total Outflow (Formula: =SUM(H:I))
+    // Col J: Debt Payments
     const cellJ = dataRow.getCell(10);
-    cellJ.value = {
-      formula: `SUM(H${currentRowNumber}:I${currentRowNumber})`,
-      result: Math.round(row.targetSpendingNominal + (row.debtPayment || 0))
-    };
+    cellJ.value = debtVal;
     cellJ.numFmt = currencyFormat;
     cellJ.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellJ.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF9A3412' } };
+    cellJ.font = { name: 'Calibri', size: 10, color: { argb: 'FFEA580C' } };
 
-    // Col K: Tax Paid
+    // Col K: Total Outflow (Formula: =SUM(H:J))
     const cellK = dataRow.getCell(11);
-    cellK.value = Math.round(row.totalTaxPaid);
+    cellK.value = {
+      formula: `SUM(H${currentRowNumber}:J${currentRowNumber})`,
+      result: totalOutflowVal
+    };
     cellK.numFmt = currencyFormat;
     cellK.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellK.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
+    cellK.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF9A3412' } };
 
-    // Col L: Effective Tax Rate
+    // Col L: Tax Paid
     const cellL = dataRow.getCell(12);
-    cellL.value = row.effectiveTaxRate;
-    cellL.numFmt = percentFormat;
-    cellL.alignment = { vertical: 'middle', horizontal: 'center' };
-    cellL.font = { name: 'Calibri', size: 10 };
+    cellL.value = Math.round(row.totalTaxPaid);
+    cellL.numFmt = currencyFormat;
+    cellL.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellL.font = { name: 'Calibri', size: 10, color: { argb: 'FFE11D48' } };
 
-    // Col M: Marginal Tax Rate
+    // Col M: Effective Tax Rate
     const cellM = dataRow.getCell(13);
-    cellM.value = row.marginalTaxRate;
+    cellM.value = row.effectiveTaxRate;
     cellM.numFmt = percentFormat;
     cellM.alignment = { vertical: 'middle', horizontal: 'center' };
     cellM.font = { name: 'Calibri', size: 10 };
 
-    // Col N: Registered Savings
+    // Col N: Marginal Tax Rate
     const cellN = dataRow.getCell(14);
-    const savings = Math.round(row.rrspContribution + row.tfsaContribution + row.fhsaContribution + row.nonRegContribution);
-    cellN.value = savings;
-    cellN.numFmt = currencyFormat;
-    cellN.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellN.font = { name: 'Calibri', size: 10, color: { argb: 'FF4F46E5' } };
+    cellN.value = row.marginalTaxRate;
+    cellN.numFmt = percentFormat;
+    cellN.alignment = { vertical: 'middle', horizontal: 'center' };
+    cellN.font = { name: 'Calibri', size: 10 };
 
-    // Col O: Net Spendable Surplus (Formula: =G-J-K)
+    // Col O: Registered & Total Savings
     const cellO = dataRow.getCell(15);
-    cellO.value = {
-      formula: `G${currentRowNumber}-J${currentRowNumber}-K${currentRowNumber}`,
-      result: Math.round(row.netSpendableCashflow)
-    };
+    const savings = Math.round(row.rrspContribution + row.tfsaContribution + row.fhsaContribution + row.nonRegContribution);
+    cellO.value = savings;
     cellO.numFmt = currencyFormat;
     cellO.alignment = { vertical: 'middle', horizontal: 'right' };
-    cellO.font = { name: 'Calibri', size: 10, bold: true, color: { argb: row.netSpendableCashflow >= 0 ? 'FF059669' : 'FFE11D48' } };
+    cellO.font = { name: 'Calibri', size: 10, color: { argb: 'FF4F46E5' } };
 
-    // Col P: Notes
+    // Col P: Post-Tax Cash Surplus (Formula: =G-K-L)
     const cellP = dataRow.getCell(16);
+    cellP.value = {
+      formula: `G${currentRowNumber}-K${currentRowNumber}-L${currentRowNumber}`,
+      result: Math.round(totalInflowVal - totalOutflowVal - row.totalTaxPaid)
+    };
+    cellP.numFmt = currencyFormat;
+    cellP.alignment = { vertical: 'middle', horizontal: 'right' };
+    cellP.font = { name: 'Calibri', size: 10, bold: true, color: { argb: row.netSpendableCashflow >= 0 ? 'FF059669' : 'FFE11D48' } };
+
+    // Col Q: Notes
+    const cellQ = dataRow.getCell(17);
     const badges = (row.milestoneBadges || []).map((b) => `[${b.label}]`);
     const fullNotes = [...badges, ...row.notes];
-    cellP.value = fullNotes.length > 0 ? fullNotes.join(' • ') : '-';
-    cellP.alignment = { vertical: 'middle', horizontal: 'left' };
-    cellP.font = {
+    cellQ.value = fullNotes.length > 0 ? fullNotes.join(' • ') : '-';
+    cellQ.alignment = { vertical: 'middle', horizontal: 'left' };
+    cellQ.font = {
       name: 'Calibri',
       size: 9.5,
       italic: fullNotes.length > 0,
@@ -2372,12 +2387,12 @@ export function populateCashFlowLedgerSheet(
     };
 
     // Apply borders and backgrounds
-    for (let c = 1; c <= 16; c++) {
+    for (let c = 1; c <= 17; c++) {
       const cell = dataRow.getCell(c);
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: c === 7 && !isRetireTarget ? 'FFF0FDF4' : c === 15 && !isRetireTarget ? 'FFEFF6FF' : rowBgColor }
+        fgColor: { argb: c === 7 && !isRetireTarget ? 'FFF0FDF4' : c === 16 && !isRetireTarget ? 'FFEFF6FF' : rowBgColor }
       };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -2424,22 +2439,25 @@ export function populateCashFlowLedgerSheet(
     totalRow.getCell(11).value = { formula: `SUM(K${firstDataRow}:K${lastDataRow})` };
     totalRow.getCell(11).numFmt = currencyFormat;
 
-    totalRow.getCell(12).value = { formula: `AVERAGE(L${firstDataRow}:L${lastDataRow})` };
-    totalRow.getCell(12).numFmt = percentFormat;
+    totalRow.getCell(12).value = { formula: `SUM(L${firstDataRow}:L${lastDataRow})` };
+    totalRow.getCell(12).numFmt = currencyFormat;
 
     totalRow.getCell(13).value = { formula: `AVERAGE(M${firstDataRow}:M${lastDataRow})` };
     totalRow.getCell(13).numFmt = percentFormat;
 
-    totalRow.getCell(14).value = { formula: `SUM(N${firstDataRow}:N${lastDataRow})` };
-    totalRow.getCell(14).numFmt = currencyFormat;
+    totalRow.getCell(14).value = { formula: `AVERAGE(N${firstDataRow}:N${lastDataRow})` };
+    totalRow.getCell(14).numFmt = percentFormat;
 
-    totalRow.getCell(15).value = { formula: `AVERAGE(O${firstDataRow}:O${lastDataRow})` };
+    totalRow.getCell(15).value = { formula: `SUM(O${firstDataRow}:O${lastDataRow})` };
     totalRow.getCell(15).numFmt = currencyFormat;
 
-    totalRow.getCell(16).value = 'Lifetime Cumulative Cash Flow Model';
-    totalRow.getCell(16).font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF059669' } };
+    totalRow.getCell(16).value = { formula: `SUM(P${firstDataRow}:P${lastDataRow})` };
+    totalRow.getCell(16).numFmt = currencyFormat;
 
-    for (let c = 1; c <= 16; c++) {
+    totalRow.getCell(17).value = 'Lifetime Cumulative Cash Flow Model';
+    totalRow.getCell(17).font = { name: 'Calibri', size: 9.5, italic: true, color: { argb: 'FF059669' } };
+
+    for (let c = 1; c <= 17; c++) {
       const cell = totalRow.getCell(c);
       cell.fill = {
         type: 'pattern',

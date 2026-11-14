@@ -5,6 +5,7 @@ import {
   StressTestOptions
 } from '../../types/retirement';
 import { getRrifMinimumRate } from '../canadianTax';
+import { getEffectiveDebts } from '../debtCalculator';
 import { fastSimulateEndNetWorth } from './fastSimulator';
 
 export interface MilestoneSimulationOptions {
@@ -250,15 +251,26 @@ export function evaluateSimulationMilestones(
   }
 
   // 5B. Consumer Debt Freedom Milestone (Personal, Student, Vehicle loans paid off)
-  const hasInitialConsumerDebts = Boolean(
-    inputs.debts && inputs.debts.length > 0 && inputs.debts.some((d) => (Number(d.initialBalance) || 0) > 0)
-  );
-  if (hasInitialConsumerDebts) {
-    const initialDebtTotal = inputs.debts!.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+  const effectiveDebts = getEffectiveDebts(inputs).filter((d) => (Number(d.initialBalance) || 0) > 0);
+  const hasModeledConsumerDebts = effectiveDebts.length > 0;
+  if (hasModeledConsumerDebts) {
+    const initialDebtTotalAtStart = effectiveDebts
+      .filter((d) => (d.startAge ?? currentAge) <= currentAge)
+      .reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+    const maxDebtStartAge = Math.max(
+      currentAge,
+      ...effectiveDebts.map((d) => d.startAge ?? currentAge)
+    );
+
     for (let rIdx = 0; rIdx < yearlyResults.length; rIdx++) {
       const row = yearlyResults[rIdx];
-      const prevDebt = rIdx === 0 ? initialDebtTotal : yearlyResults[rIdx - 1].remainingDebt;
-      if (prevDebt > 0 && row.remainingDebt === 0) {
+      if (row.age < maxDebtStartAge) continue;
+      const prevDebt = rIdx === 0 ? initialDebtTotalAtStart : yearlyResults[rIdx - 1].remainingDebt;
+      const paidOffThisYear =
+        (prevDebt > 0 && row.remainingDebt === 0) ||
+        (row.debtPayment > 0 && row.remainingDebt === 0);
+
+      if (paidOffThisYear) {
         debtPayoffAge = row.age;
         debtPayoffYear = row.year;
         row.isDebtFreeMilestone = true;

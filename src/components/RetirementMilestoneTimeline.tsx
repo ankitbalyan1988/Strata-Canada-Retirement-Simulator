@@ -19,11 +19,13 @@ import {
   Wallet,
   DollarSign,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CreditCard
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { YearSimulationResult } from '../types/retirement';
+import { getEffectiveDebts, calculateDebtMonthlyPayment } from '../utils/debtCalculator';
 
 export type MilestoneCategory = 'all' | 'pension' | 'cra_tax' | 'wealth' | 'lifestyle';
 
@@ -95,8 +97,8 @@ export const RetirementMilestoneTimeline: React.FC = () => {
   const currentAge = inputs.currentAge;
   const retirementAge = inputs.retirementAge;
   const lifeExpectancy = inputs.lifeExpectancy;
-  const startYear = yearlyResults[0]?.year || new Date().getFullYear();
-  const endYear = yearlyResults[yearlyResults.length - 1]?.year || (startYear + (lifeExpectancy - currentAge));
+  const startYear = 2026;
+  const endYear = startYear + Math.max(0, lifeExpectancy - currentAge);
   const totalYears = Math.max(1, lifeExpectancy - currentAge);
   const workingYears = Math.max(0, retirementAge - currentAge);
   const retirementYears = Math.max(0, lifeExpectancy - retirementAge);
@@ -115,7 +117,7 @@ export const RetirementMilestoneTimeline: React.FC = () => {
     const list: TimelineMilestone[] = [];
     const getYear = (age: number) => {
       const match = yearlyResults.find((y) => y.age === age);
-      return match ? match.year : startYear + (age - currentAge);
+      return match ? startYear + Math.max(0, match.year - 1) : startYear + (age - currentAge);
     };
 
     // 1. Current Age / Plan Baseline
@@ -136,14 +138,35 @@ export const RetirementMilestoneTimeline: React.FC = () => {
       planningTakeaway: 'Maximizing tax deductions in high marginal tax brackets today builds compounding momentum across registered shelters (RRSP, TFSA, FHSA).'
     });
 
-    // 2. FHSA / Home Purchase (if planned)
-    const homePurchaseAge = inputs.fhsaHomePurchaseAge || (inputs.planFutureHomePurchase ? currentAge + 3 : null);
-    if (homePurchaseAge && homePurchaseAge > currentAge && homePurchaseAge < retirementAge) {
+    // 2. Future / Qualifying First Home Purchase (only when user plans a future home purchase or sets FHSA intent to home_purchase)
+    const isFutureRealEstatePurchase =
+      inputs.housingStatus === 'rent'
+        ? Boolean(inputs.planFutureHomePurchase)
+        : Boolean(
+            inputs.housingStatus === undefined &&
+              inputs.realEstate?.ownsHome &&
+              inputs.realEstate?.purchaseType === 'future'
+          );
+    const isFhsaHomePurchase = inputs.fhsaIntent === 'home_purchase';
+
+    const homePurchaseAge = isFutureRealEstatePurchase
+      ? (inputs.realEstate?.futurePurchaseAge && inputs.realEstate.futurePurchaseAge > currentAge
+          ? inputs.realEstate.futurePurchaseAge
+          : (isFhsaHomePurchase ? inputs.fhsaHomePurchaseAge : undefined) || currentAge + 3)
+      : isFhsaHomePurchase
+      ? (inputs.fhsaHomePurchaseAge || currentAge + 3)
+      : null;
+
+    if (homePurchaseAge && homePurchaseAge > currentAge && homePurchaseAge <= lifeExpectancy) {
+      const targetHomePrice = inputs.realEstate?.costOfHome || 0;
+      const usesFhsa = isFhsaHomePurchase || inputs.realEstate?.fundWithFhsa !== false;
       list.push({
         id: 'home_purchase',
         age: homePurchaseAge,
         year: getYear(homePurchaseAge),
-        title: 'Qualifying First Home Purchase',
+        title: isFutureRealEstatePurchase && !isFhsaHomePurchase
+          ? 'Planned Home Purchase'
+          : 'Qualifying First Home Purchase',
         shortTitle: 'Home Buy',
         category: 'lifestyle',
         icon: Home,
@@ -151,8 +174,14 @@ export const RetirementMilestoneTimeline: React.FC = () => {
         iconColor: 'text-cyan-600 dark:text-cyan-400',
         pinBorderColor: 'border-cyan-500',
         pinRingColor: 'ring-cyan-300 dark:ring-cyan-800',
-        tagline: 'Tax-free FHSA & RRSP HBP withdrawal',
-        description: `Qualifying first home acquisition. FHSA funds are withdrawn 100% tax-free with zero CRA repayment obligation, stacked with up to $60,000 from the RRSP Home Buyers' Plan.`,
+        tagline: usesFhsa
+          ? 'Tax-free FHSA & RRSP HBP withdrawal'
+          : targetHomePrice > 0
+          ? `Planned home acquisition (${formatCur(targetHomePrice)})`
+          : 'Transition from renting to homeownership',
+        description: usesFhsa
+          ? `Qualifying first home acquisition${targetHomePrice > 0 ? ` (${formatCur(targetHomePrice)} target price)` : ''}. FHSA funds are withdrawn 100% tax-free with zero CRA repayment obligation, stacked with up to $60,000 from the RRSP Home Buyers' Plan.`
+          : `Planned transition from renting to homeownership${targetHomePrice > 0 ? ` with a target home price of ${formatCur(targetHomePrice)}` : ''}.`,
         craStatutoryRule: 'CRA allows tax-free FHSA qualifying withdrawals up to $40,000 lifetime limit plus tax-deferred RRSP HBP loan repaid over 15 years.',
         planningTakeaway: 'Home equity serves as an inflation-hedged wealth anchor that can later be tapped via downsizing or reverse mortgage.'
       });
@@ -197,6 +226,37 @@ export const RetirementMilestoneTimeline: React.FC = () => {
         planningTakeaway: 'At this stage, your money makes more money per year than your household spends, accelerating true financial independence.'
       });
     }
+
+    // 4B. Planned Future Debt Origination Milestones
+    const modeledDebts = getEffectiveDebts(inputs);
+    modeledDebts.forEach((debt) => {
+      const startAge = debt.startAge ?? currentAge;
+      const principal = Number(debt.initialBalance) || 0;
+      if (principal > 0 && startAge > currentAge && startAge <= lifeExpectancy) {
+        const rate = Number(debt.interestRate) || 0;
+        const termMonths = Number(debt.remainingTermMonths) || 60;
+        const monthlyPmt = (debt.monthlyPayment && debt.monthlyPayment > 0)
+          ? debt.monthlyPayment
+          : calculateDebtMonthlyPayment(principal, rate, termMonths);
+        const annualPmt = Math.round(monthlyPmt * 12);
+        list.push({
+          id: `future_debt_${debt.id}`,
+          age: startAge,
+          year: getYear(startAge),
+          title: `Future Debt: ${debt.name || 'Loan'}`,
+          shortTitle: debt.name ? debt.name.slice(0, 14) : 'Future Debt',
+          category: 'lifestyle',
+          icon: CreditCard,
+          iconBg: 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400',
+          iconColor: 'text-rose-600 dark:text-rose-400',
+          pinBorderColor: 'border-rose-500',
+          pinRingColor: 'ring-rose-300 dark:ring-rose-800',
+          tagline: `${formatCur(principal)} @ ${rate}% APR · $${annualPmt.toLocaleString()}/yr outflow`,
+          description: `Scheduled future loan "${debt.name || 'Loan'}" originates at Age ${startAge} for ${formatCur(principal)} over ${termMonths} months (${rate}% APR), adding $${Math.round(monthlyPmt).toLocaleString()}/mo ($${annualPmt.toLocaleString()}/yr) in cash outflow until amortized.`,
+          planningTakeaway: 'Future debt payments reduce post-tax cash surplus and pre-retirement savings capacity while active, then free up cash flow upon payoff.'
+        });
+      }
+    });
 
     // 5. Debt / Mortgage Free Milestone
     const debtFreeAge = summary?.mortgagePayoffAge || summary?.debtPayoffAge;

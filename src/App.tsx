@@ -49,8 +49,15 @@ const CanadianWealthGuideModal = React.lazy(() =>
 const ApplicationHelpGuideModal = React.lazy(() =>
   import('./components/ApplicationHelpGuideModal').then((m) => ({ default: m.ApplicationHelpGuideModal }))
 );
+const CommandPaletteModal = React.lazy(() =>
+  import('./components/CommandPaletteModal').then((m) => ({ default: m.CommandPaletteModal }))
+);
+import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
 
 export default function App() {
+  useGlobalKeyboardShortcuts();
+
+  const isCommandPaletteOpen = useSimulationStore((state) => state.isCommandPaletteOpen);
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
   const isSnapshotCompareModalOpen = useSimulationStore((state) => state.isSnapshotCompareModalOpen);
   const isAIPersonaModalOpen = useSimulationStore((state) => state.isAIPersonaModalOpen);
@@ -216,6 +223,11 @@ export default function App() {
         {/* Application Help Guide Modal (Functional & Technical) (Lazy Loaded) */}
         <Suspense fallback={null}>
           {isHelpGuideModalOpen && <ApplicationHelpGuideModal />}
+        </Suspense>
+
+        {/* Global Command Palette & Shortcut Manager Modal (Lazy Loaded) */}
+        <Suspense fallback={null}>
+          {isCommandPaletteOpen && <CommandPaletteModal />}
         </Suspense>
 
         {/* Simulation Version History Side-Panel Drawer */}

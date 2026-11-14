@@ -13,6 +13,7 @@ import {
   ArrowRightLeft,
   Globe
 } from 'lucide-react';
+import { getDebtQualifierFlags, getEffectiveDebts } from '../../utils/debtCalculator';
 
 interface TabItem {
   id: InputTab;
@@ -29,7 +30,13 @@ export const InputTabBar: React.FC = () => {
   const inputs = useSimulationStore(useShallow((state) => state.inputs));
 
   const isMarried = inputs.maritalStatus === 'married';
-  const hasDebts = inputs.hasOngoingOrFutureDebts ?? Boolean(inputs.debts && inputs.debts.length > 0);
+  const debtFlags = getDebtQualifierFlags(inputs);
+  const hasDebts = debtFlags.hasDebtModule;
+  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
+  const effectiveDebts = getEffectiveDebts(inputs);
+  const earliestFutureDebtAge = isFutureOnlyDebtMode && effectiveDebts.length > 0
+    ? Math.min(...effectiveDebts.map((d) => d.startAge ?? inputs.currentAge + 1))
+    : undefined;
 
   const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
     inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
@@ -68,11 +75,13 @@ export const InputTabBar: React.FC = () => {
     },
     {
       id: 'debts',
-      title: 'Debts & Loans',
-      badge: 'Liabilities',
+      title: isFutureOnlyDebtMode ? 'Future Debts & Loans' : 'Debts & Loans',
+      badge: isFutureOnlyDebtMode
+        ? (earliestFutureDebtAge ? `Starts @ ${earliestFutureDebtAge}` : 'Future Loans')
+        : 'Liabilities',
       icon: CreditCard,
       show: hasDebts,
-      extraBadge: inputs.debts && inputs.debts.length > 0 ? inputs.debts.length : undefined
+      extraBadge: effectiveDebts.length > 0 ? effectiveDebts.length : undefined
     },
     {
       id: 'realestate',

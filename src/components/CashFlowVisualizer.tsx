@@ -60,7 +60,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
       totalLifetimeSavings += (yr.rrspContribution + yr.tfsaContribution + yr.fhsaContribution + yr.nonRegContribution);
 
       if (yr.age === inputs.currentAge) {
-        currentInflow = yr.employmentIncome + (yr.spouseEmploymentIncome || 0);
+        currentInflow = yr.employmentIncome;
         currentSavings = (yr.rrspContribution + yr.tfsaContribution + yr.fhsaContribution + yr.nonRegContribution);
       }
       if (yr.age === retirementAge) {
@@ -84,7 +84,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
     if (displayData.length === 0) return 100000;
     let peak = 50000;
     displayData.forEach((d) => {
-      const inflow = d.employmentIncome + (d.spouseEmploymentIncome || 0) + d.cppIncome + (d.spouseCppIncome || 0) + d.oasNetIncome + (d.spouseOasNetIncome || 0) + d.totalWithdrawals + (d.homeSaleProceeds || 0);
+      const inflow = d.employmentIncome + d.cppIncome + d.oasNetIncome + d.totalWithdrawals + (d.homeSaleProceeds || 0);
       const outflow = d.targetSpendingNominal + d.debtPayment;
       const outflowWithTax = outflow + d.totalTaxPaid;
       peak = Math.max(peak, inflow, outflowWithTax);
@@ -346,12 +346,20 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
               Living Expenses
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-xs bg-sky-500"></span>
+              Rent / Mortgage
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-xs bg-orange-600"></span>
+              Debts
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
               <span className="w-2.5 h-2.5 rounded-xs bg-rose-500"></span>
               CRA Income Tax
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
               <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500"></span>
-              Potential Savings Surplus
+              Savings & Surplus
             </span>
           </div>
 
@@ -481,7 +489,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
             {/* Bars for Each Year */}
             {displayData.map((d) => {
               const xCenter = getX(d.age);
-              const totalInflow = d.employmentIncome + (d.spouseEmploymentIncome || 0) + d.cppIncome + (d.spouseCppIncome || 0) + d.oasNetIncome + (d.spouseOasNetIncome || 0) + d.totalWithdrawals + (d.homeSaleProceeds || 0);
+              const totalInflow = d.employmentIncome + d.cppIncome + d.oasNetIncome + d.totalWithdrawals + (d.homeSaleProceeds || 0);
               const totalOutflow = d.targetSpendingNominal + d.debtPayment;
               const totalTaxes = d.totalTaxPaid;
               const savings = (d.rrspContribution + d.tfsaContribution + d.fhsaContribution + d.nonRegContribution);
@@ -545,13 +553,13 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
                     </>
                   )}
 
-                  {/* Mode 2: Inflows Breakdown (Salary, CPP, OAS, Withdrawals) */}
+                  {/* Mode 2: Inflows Breakdown (Salary, CPP/OAS, Withdrawals) */}
                   {viewMode === 'inflows' && (
                     <>
                       {(() => {
-                        let bottom = padding.top + chartHeight;
-                        const salary = d.employmentIncome + (d.spouseEmploymentIncome || 0);
-                        const pensions = d.cppIncome + (d.spouseCppIncome || 0) + d.oasNetIncome + (d.spouseOasNetIncome || 0);
+                        const bottom = padding.top + chartHeight;
+                        const salary = d.employmentIncome;
+                        const pensions = d.cppIncome + d.oasNetIncome;
                         const draws = d.totalWithdrawals;
 
                         return (
@@ -592,12 +600,13 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
                     </>
                   )}
 
-                  {/* Mode 3: Outflows & Taxes Breakdown */}
+                  {/* Mode 3: Outflows & Taxes Breakdown (Living, Rent/Mortgage, Debts, Taxes) */}
                   {viewMode === 'outflows' && (
                     <>
                       {(() => {
-                        let bottom = padding.top + chartHeight;
-                        const living = d.targetSpendingNominal;
+                        const bottom = padding.top + chartHeight;
+                        const rentMort = d.rentOrMortgagePayment ?? 0;
+                        const living = d.livingExpensesNominal ?? Math.max(0, d.targetSpendingNominal - rentMort);
                         const debt = d.debtPayment;
                         const tax = d.totalTaxPaid;
 
@@ -613,10 +622,20 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
                                 fill="#F59E0B" // Amber
                               />
                             )}
+                            {rentMort > 0 && (
+                              <rect
+                                x={xCenter - barWidth * 0.4}
+                                y={bottom - ((living + rentMort) / maxY) * chartHeight}
+                                width={barWidth * 0.8}
+                                height={(rentMort / maxY) * chartHeight}
+                                rx="2"
+                                fill="#0EA5E9" // Sky Blue
+                              />
+                            )}
                             {debt > 0 && (
                               <rect
                                 x={xCenter - barWidth * 0.4}
-                                y={bottom - ((living + debt) / maxY) * chartHeight}
+                                y={bottom - ((living + rentMort + debt) / maxY) * chartHeight}
                                 width={barWidth * 0.8}
                                 height={(debt / maxY) * chartHeight}
                                 rx="2"
@@ -626,7 +645,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
                             {tax > 0 && (
                               <rect
                                 x={xCenter - barWidth * 0.4}
-                                y={bottom - ((living + debt + tax) / maxY) * chartHeight}
+                                y={bottom - ((living + rentMort + debt + tax) / maxY) * chartHeight}
                                 width={barWidth * 0.8}
                                 height={(tax / maxY) * chartHeight}
                                 rx="2"
@@ -720,11 +739,8 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
               <div className="text-base font-bold font-mono text-emerald-400">
                 ${Math.round(
                   hoveredRow.employmentIncome +
-                  (hoveredRow.spouseEmploymentIncome || 0) +
                   hoveredRow.cppIncome +
-                  (hoveredRow.spouseCppIncome || 0) +
                   hoveredRow.oasNetIncome +
-                  (hoveredRow.spouseOasNetIncome || 0) +
                   hoveredRow.totalWithdrawals +
                   (hoveredRow.homeSaleProceeds || 0)
                 ).toLocaleString()}
@@ -744,14 +760,24 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
 
             {/* Outflows Breakdown */}
             <div>
-              <span className="text-slate-400 font-semibold block mb-1">Living & Debt Outflows</span>
+              <span className="text-slate-400 font-semibold block mb-1">Cash Outflows (Living, Housing & Debt)</span>
               <div className="text-base font-bold font-mono text-amber-400">
                 ${Math.round(hoveredRow.targetSpendingNominal + hoveredRow.debtPayment).toLocaleString()}
               </div>
               <ul className="text-[11px] text-slate-300 space-y-0.5 mt-1">
-                <li>• Living Target: ${Math.round(hoveredRow.targetSpendingNominal).toLocaleString()}</li>
+                <li>
+                  • Living Exp.: ${Math.round(hoveredRow.livingExpensesNominal ?? Math.max(0, hoveredRow.targetSpendingNominal - (hoveredRow.rentOrMortgagePayment ?? 0))).toLocaleString()}
+                  {!hoveredRow.isRetired && hoveredRow.discretionaryScaleFactor !== undefined && hoveredRow.discretionaryScaleFactor < 0.99 && (
+                    <span className="ml-1 text-amber-300">(-{Math.round((1 - hoveredRow.discretionaryScaleFactor) * 100)}% discr.)</span>
+                  )}
+                </li>
+                {(hoveredRow.rentOrMortgagePayment ?? 0) > 0 && (
+                  <li>
+                    • {hoveredRow.housingCostType === 'mortgage' ? 'Mortgage' : 'Rent'}: ${Math.round(hoveredRow.rentOrMortgagePayment ?? 0).toLocaleString()}
+                  </li>
+                )}
                 {hoveredRow.debtPayment > 0 && (
-                  <li>• Debt / Loans: ${Math.round(hoveredRow.debtPayment).toLocaleString()}</li>
+                  <li>• Debts / Loans: ${Math.round(hoveredRow.debtPayment).toLocaleString()}</li>
                 )}
               </ul>
             </div>
@@ -769,16 +795,18 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
 
             {/* Savings & Surplus */}
             <div>
-              <span className="text-slate-400 font-semibold block mb-1">Savings & Net Surplus</span>
+              <span className="text-slate-400 font-semibold block mb-1">Savings & Post-Tax Surplus</span>
               <div className="text-base font-bold font-mono text-indigo-400">
                 ${Math.round(
-                  (hoveredRow.rrspContribution + hoveredRow.tfsaContribution + hoveredRow.fhsaContribution + hoveredRow.nonRegContribution) +
-                  Math.max(0, hoveredRow.netSpendableCashflow)
+                  hoveredRow.rrspContribution + hoveredRow.tfsaContribution + hoveredRow.fhsaContribution + hoveredRow.nonRegContribution
                 ).toLocaleString()}
               </div>
               <ul className="text-[11px] text-slate-300 space-y-0.5 mt-1">
-                <li>• Registered Savings: ${Math.round(hoveredRow.rrspContribution + hoveredRow.tfsaContribution + hoveredRow.fhsaContribution + hoveredRow.nonRegContribution).toLocaleString()}</li>
-                <li>• Cash Surplus Buffer: ${Math.round(hoveredRow.netSpendableCashflow).toLocaleString()}</li>
+                <li>• Total Savings Added: ${Math.round(hoveredRow.rrspContribution + hoveredRow.tfsaContribution + hoveredRow.fhsaContribution + hoveredRow.nonRegContribution).toLocaleString()}</li>
+                {(hoveredRow.surplusSaved ?? 0) > 0 && (
+                  <li>• Surplus Swept to Savings: ${Math.round(hoveredRow.surplusSaved ?? 0).toLocaleString()}</li>
+                )}
+                <li>• Post-Tax Surplus: ${Math.round(hoveredRow.netSpendableCashflow).toLocaleString()}</li>
               </ul>
             </div>
           </div>

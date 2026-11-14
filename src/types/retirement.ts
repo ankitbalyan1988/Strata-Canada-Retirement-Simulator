@@ -291,6 +291,8 @@ export interface RetirementInputs {
 
   // User Onboarding & Flow Qualifiers
   hasOngoingOrFutureDebts?: boolean;
+  hasOngoingDebts?: boolean;
+  planFutureDebts?: boolean;
   housingStatus?: 'own' | 'rent';
   planFutureHomePurchase?: boolean;
   planExpatExit?: boolean;
@@ -377,6 +379,11 @@ export interface YearSimulationResult {
 
   // Expenses & Cashflow
   targetSpendingNominal: number;
+  livingExpensesNominal?: number;
+  rentOrMortgagePayment?: number;
+  housingCostType?: 'rent' | 'mortgage' | 'none';
+  discretionaryScaleFactor?: number;
+  surplusSaved?: number;
   totalGrossIncome: number;
   taxableIncome: number;
   totalTaxPaid: number;

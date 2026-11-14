@@ -7,6 +7,7 @@ import {
 } from './calculateMortgageAndHousing';
 import {
   calculateContributionsForYear,
+  reconcilePreRetirementOutflowsAndSurplus,
   ContributionYearState,
   CustomAccountState
 } from './calculateContributions';
@@ -16,13 +17,17 @@ import {
   calculateGovernmentPensionsForYear,
   calculateRetirementTaxesAndCashflow
 } from './calculatePensionsAndTaxes';
-import { initializeDebtStates, calculateDebtsForYear, DebtYearState } from '../debtCalculator';
+import { initializeDebtStates, calculateDebtsForYear, DebtYearState, getEffectiveDebts } from '../debtCalculator';
 
 export interface FastSimulationResult {
   isFullyFunded: boolean;
   netWorthAtLifeExpectancy: number;
   netWorthAtRetirement: number;
   depletionAge: number | null;
+}
+
+export interface FastSimulationOptions {
+  disableAutoSurplusSweep?: boolean;
 }
 
 /**
@@ -33,7 +38,8 @@ export interface FastSimulationResult {
 export function fastSimulateEndNetWorth(
   inputs: RetirementInputs,
   stopContributionsAge?: number,
-  stressTest?: StressTestOptions
+  stressTest?: StressTestOptions,
+  fastOptions?: FastSimulationOptions
 ): FastSimulationResult {
   const isCouple = inputs.maritalStatus === 'married' && Boolean(inputs.spouse);
   const spouse = inputs.spouse;
@@ -141,6 +147,8 @@ export function fastSimulateEndNetWorth(
   const contributionState: ContributionYearState = {
     pEmploymentIncome: currentAnnualIncome,
     sEmploymentIncome: isCouple && spouse ? spouse.annualIncome : 0,
+    pBaselineIncome: currentAnnualIncome,
+    sBaselineIncome: isCouple && spouse ? spouse.annualIncome : 0,
     pCumulativeFhsa: pInitialCumulativeFhsa,
     sCumulativeFhsa: sInitialCumulativeFhsa,
     pFhsaActive,
@@ -152,7 +160,7 @@ export function fastSimulateEndNetWorth(
   let netWorthAtRetirement = 0;
   let finalNetWorth = 0;
 
-  const effectiveDebts = inputs.hasOngoingOrFutureDebts === false ? [] : (inputs.debts || []);
+  const effectiveDebts = getEffectiveDebts(inputs);
   const debtStates: DebtYearState[] = initializeDebtStates(effectiveDebts, currentAge, inputs.debtStrategy);
 
   for (let i = 0; i < totalYears; i++) {
@@ -182,7 +190,10 @@ export function fastSimulateEndNetWorth(
       contributionState.sFhsaActive = false;
     }
 
-    // 2. Contributions
+    // 2. Advance Debts
+    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
+
+    // 3. Contributions, Income & Discretionary Scaling Factor
     const contributionResult = calculateContributionsForYear(
       age,
       spouseAge,
@@ -206,7 +217,53 @@ export function fastSimulateEndNetWorth(
       housingState.sFhsaActive = false;
     }
 
-    // 3. Compounding & Returns
+    // 4. Separate Cash Outflows: Living Expenses, Rent/Mortgage, Debts
+    let rentOrMortgagePayment = 0;
+    if (housingResult.rentPaidThisYear > 0) {
+      rentOrMortgagePayment = Math.round(housingResult.rentPaidThisYear * inflationFactor);
+    } else if (housingResult.mortgagePaidThisYear > 0) {
+      rentOrMortgagePayment = Math.round(housingResult.mortgagePaidThisYear);
+    }
+
+    const fixedOwnershipNominal = (housingResult.propertyTaxPaidThisYear + housingResult.condoFeesPaidThisYear) * inflationFactor;
+    let livingExpensesNominal = 0;
+
+    if (isRetired) {
+      const retireBaseNominal = targetRetirementSpendingToday * inflationFactor;
+      if (housingResult.rentPaidThisYear > 0) {
+        livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentOrMortgagePayment));
+      } else {
+        livingExpensesNominal = Math.round(retireBaseNominal + fixedOwnershipNominal);
+      }
+    } else {
+      const fixedUtilitiesNominal = housingParams.utilitiesMonthly * 12 * inflationFactor;
+      const scaledDiscretionaryNominal =
+        housingParams.discretionaryMonthly * 12 * inflationFactor * contributionResult.discretionaryScaleFactor;
+      livingExpensesNominal = Math.round(fixedUtilitiesNominal + fixedOwnershipNominal + scaledDiscretionaryNominal);
+    }
+
+    const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
+    const totalOutflows = targetSpendingNominal + debtResult.totalAnnualPayment;
+
+    // 5. Pre-Retirement Cashflow Reconciliation & Surplus-to-Savings Sweep
+    reconcilePreRetirementOutflowsAndSurplus(
+      age,
+      spouseAge,
+      inputs,
+      spouse,
+      isCouple,
+      isPrimaryRetired,
+      isSpouseRetired,
+      inflationFactor,
+      totalOutflows,
+      contributionResult,
+      contributionState,
+      balances,
+      stopContributionsAge,
+      fastOptions?.disableAutoSurplusSweep
+    );
+
+    // 6. Compounding & Returns
     calculateInvestmentReturnsForYear(
       age,
       retirementAge,
@@ -228,29 +285,6 @@ export function fastSimulateEndNetWorth(
       stressTest
     );
 
-    // Advance Debts
-    const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
-
-    // Determine Annual Living Expenses
-    let currentLivingExpensesNominal: number;
-    if (isRetired) {
-      currentLivingExpensesNominal = targetRetirementSpendingToday * inflationFactor;
-      if (housingResult.remainingMortgage > 0) {
-        const annualMortgage = (housingParams.isFuturePurchase ? housingState.futureActualMonthlyPmt : housingParams.monthlyMortgagePmt) * 12;
-        currentLivingExpensesNominal += annualMortgage * inflationFactor;
-      }
-      if (housingResult.housingStatus === 'mortgage_free' || housingResult.housingStatus === 'mortgage') {
-        const ongoingOwnershipAnnual = housingParams.otherOwnershipCostsMonthly * 12;
-        currentLivingExpensesNominal += ongoingOwnershipAnnual * inflationFactor;
-      }
-      if (debtResult.totalAnnualPayment > 0) {
-        currentLivingExpensesNominal += debtResult.totalAnnualPayment;
-      }
-    } else {
-      currentLivingExpensesNominal = (housingResult.yearHousingCost + housingParams.nonHousingMonthly * 12) * inflationFactor;
-    }
-    const targetSpendingNominal = Math.round(currentLivingExpensesNominal);
-
     if (isRetired) {
       const pensions = calculateGovernmentPensionsForYear(age, spouseAge, inputs, isCouple, spouse, inflationFactor);
       const guaranteedCash =
@@ -264,7 +298,7 @@ export function fastSimulateEndNetWorth(
         age,
         spouseAge,
         i,
-        targetSpendingNominal,
+        totalOutflows,
         guaranteedCash,
         drawdownStrategy,
         balances,
@@ -290,16 +324,17 @@ export function fastSimulateEndNetWorth(
           pNonRegWithdrawal: decumulationResult.pNonRegWithdrawal,
           sNonRegWithdrawal: decumulationResult.sNonRegWithdrawal
         },
-        targetSpendingNominal,
+        totalOutflows,
         province,
         isCouple,
         spouse,
         inflationFactor
       );
 
-      const netSpendable = Math.max(0, taxCashflowResult.netSpendableCashflow - debtResult.totalAnnualPayment);
-      if (netSpendable > targetSpendingNominal) {
-        const surplus = netSpendable - targetSpendingNominal;
+      const spouseWorkingAfterTax = !isSpouseRetired ? Math.max(0, contributionResult.sYearIncome - contributionResult.sTaxPaid) : 0;
+      const netSpendable = Math.max(0, taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax);
+      if (netSpendable > totalOutflows) {
+        const surplus = netSpendable - totalOutflows;
         const tfsaAnnualLimit = 7000 * inflationFactor;
         const pTfsaReinvest = Math.min(surplus * (isCouple ? 0.5 : 1.0), tfsaAnnualLimit);
         const sTfsaReinvest = isCouple && spouse ? Math.min(surplus * 0.5, tfsaAnnualLimit) : 0;

@@ -58,6 +58,7 @@ import { EXPAT_DESTINATIONS, DEFAULT_EXPAT_INPUTS } from '../utils/expatCountrie
 import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { calculateAdjustedServiceCanadaCpp, getCppTimingFactor } from '../utils/cppCalculator';
 import { calculateEmployerRrspMatch } from '../utils/employerMatch';
+import { getDebtQualifierFlags, getEffectiveDebts } from '../utils/debtCalculator';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
@@ -178,7 +179,12 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   };
 
   // Conditional flow qualifiers
-  const hasDebts = inputs.hasOngoingOrFutureDebts ?? Boolean(inputs.debts && inputs.debts.length > 0);
+  const debtFlags = getDebtQualifierFlags(inputs);
+  const hasOngoingDebts = debtFlags.hasOngoingDebts;
+  const planFutureDebts = debtFlags.planFutureDebts;
+  const hasDebts = debtFlags.hasDebtModule;
+  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
+  const effectiveDebts = getEffectiveDebts(inputs);
 
   const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
     inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
@@ -864,8 +870,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                 </p>
               </div>
 
-              {/* CARD 1: DEBTS & LOANS QUESTION */}
-              <div className="p-4 rounded-xl border border-rose-200/80 dark:border-rose-500/30 bg-rose-50/30 dark:bg-rose-500/10 flex flex-col gap-3">
+              {/* CARD 1: DEBTS & LOANS QUESTION (Ongoing -> Future Debt Follow-Up) */}
+              <div className="p-4 rounded-xl border border-rose-200/80 dark:border-rose-500/30 bg-rose-50/30 dark:bg-rose-500/10 flex flex-col gap-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-start gap-2.5">
                     <span className="p-1.5 rounded-lg bg-rose-600 text-white shrink-0 mt-0.5">
@@ -873,50 +879,63 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </span>
                     <div>
                       <h5 className="text-xs font-bold text-slate-900 dark:text-slate-50">
-                        Do you have any ongoing debts or do you want to model any future debts other than a home?
+                        Do you have any ongoing debts (other than a home mortgage)?
                       </h5>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Includes student loans, auto loans, personal loans, lines of credit (LOC), or credit cards.
+                        Includes current student loans, auto loans, personal loans, lines of credit (LOC), or credit cards.
                       </p>
                     </div>
                   </div>
 
-                  {/* Yes / No Segmented Choice */}
+                  {/* Yes / No Segmented Choice for Ongoing Debts */}
                   <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-rose-200 dark:border-rose-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
                     <button
                       type="button"
-                      onClick={() => updateField('hasOngoingOrFutureDebts', true)}
+                      onClick={() => {
+                        dispatchInputsChange((prev) => ({
+                          ...(typeof prev === 'object' && prev !== null ? prev : inputs),
+                          hasOngoingDebts: true,
+                          hasOngoingOrFutureDebts: true
+                        }));
+                      }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        hasDebts
+                        hasOngoingDebts
                           ? 'bg-rose-600 text-white shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      {hasDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      {hasOngoingDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                       <span>Yes</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => updateField('hasOngoingOrFutureDebts', false)}
+                      onClick={() => {
+                        dispatchInputsChange((prev) => ({
+                          ...(typeof prev === 'object' && prev !== null ? prev : inputs),
+                          hasOngoingDebts: false,
+                          hasOngoingOrFutureDebts: Boolean(planFutureDebts)
+                        }));
+                      }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                        !hasDebts
+                        !hasOngoingDebts
                           ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-xs'
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      {!hasDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                      {!hasOngoingDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                       <span>No</span>
                     </button>
                   </div>
                 </div>
 
-                {hasDebts && (
+                {/* If user selected "Yes" for Ongoing Debts */}
+                {hasOngoingDebts && (
                   <div className="pt-2.5 border-t border-rose-200/70 dark:border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-200 text-xs">
                     <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300">
                       <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
                       <span className="font-semibold">
                         Debts & Loans module is enabled in your planning tabs.
-                        {inputs.debts && inputs.debts.length > 0 && ` (${inputs.debts.length} active debt${inputs.debts.length > 1 ? 's' : ''} loaded)`}
+                        {effectiveDebts.length > 0 && ` (${effectiveDebts.length} debt${effectiveDebts.length > 1 ? 's' : ''} loaded)`}
                       </span>
                     </div>
                     <button
@@ -927,6 +946,96 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       <span>Configure Debts & Loans</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+                )}
+
+                {/* If user selected "No" for Ongoing Debts: Follow-up Future Debt question appears */}
+                {!hasOngoingDebts && (
+                  <div className="pt-3 border-t border-rose-200/70 dark:border-rose-500/30 flex flex-col gap-3 bg-rose-50/50 dark:bg-rose-950/20 p-3 rounded-xl border border-rose-200/60 dark:border-rose-500/20 animate-in fade-in duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="flex items-start gap-2">
+                        <span className="p-1 rounded-md bg-rose-600 text-white shrink-0 mt-0.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                        </span>
+                        <div>
+                          <h6 className="text-xs font-bold text-slate-900 dark:text-slate-50">
+                            Do you plan to take on a debt or loan in the future?
+                          </h6>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                            Model a future auto loan, education loan, personal loan, or line of credit starting at a chosen age.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Yes / No for Future Debts */}
+                      <div className="flex items-center bg-white dark:bg-slate-900 p-1 rounded-xl border border-rose-200 dark:border-rose-500/30 shrink-0 self-start sm:self-auto shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            dispatchInputsChange((prev) => ({
+                              ...(typeof prev === 'object' && prev !== null ? prev : inputs),
+                              hasOngoingDebts: false,
+                              planFutureDebts: true,
+                              hasOngoingOrFutureDebts: true
+                            }));
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            planFutureDebts
+                              ? 'bg-rose-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {planFutureDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          <span>Yes</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            dispatchInputsChange((prev) => ({
+                              ...(typeof prev === 'object' && prev !== null ? prev : inputs),
+                              hasOngoingDebts: false,
+                              planFutureDebts: false,
+                              hasOngoingOrFutureDebts: false
+                            }));
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            !planFutureDebts
+                              ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-xs'
+                              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                          }`}
+                        >
+                          {!planFutureDebts && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
+                          <span>No</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {planFutureDebts ? (
+                      <div className="pt-2 border-t border-rose-200/60 dark:border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-rose-900 dark:text-rose-200">
+                          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                          <span className="font-semibold">
+                            Future Debts & Loans tab enabled: Configure planned future loans and their start ages.
+                            {effectiveDebts.length > 0 && ` (${effectiveDebts.length} future loan${effectiveDebts.length > 1 ? 's' : ''} modeled)`}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('debts')}
+                          className="text-xs font-bold text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                        >
+                          <span>Open Future Debts & Loans</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/40 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                        <span>
+                          Debt-free outlook: Debts & Loans section is hidden. No consumer debts or future loans modeled.
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -953,11 +1062,22 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     <button
                       type="button"
                       onClick={() => {
+                        const needsHomeDefaults = (inputs.realEstate?.costOfHome ?? 0) <= 0;
                         updateField('housingStatus', 'own');
                         updateField('planFutureHomePurchase', false);
                         updateRealEstate({
                           ownsHome: true,
-                          purchaseType: 'current'
+                          purchaseType: 'current',
+                          ...(needsHomeDefaults ? {
+                            costOfHome: 650000,
+                            currentMarketValue: 650000,
+                            downPayment: 130000,
+                            mortgageInterestRate: 4.79,
+                            mortgageTermYears: 25,
+                            mortgageStartYear: 2021,
+                            annualAppreciationRate: 3.2,
+                            ownershipSharePercent: isMarried ? 50 : 100
+                          } : {})
                         });
                       }}
                       className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -974,10 +1094,32 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                       onClick={() => {
                         updateField('housingStatus', 'rent');
                         if (planFutureHomePurchase) {
+                          const needsHomeDefaults = (inputs.realEstate?.costOfHome ?? 0) <= 0;
+                          const defaultPurchaseAge = Math.max(
+                            inputs.currentAge + 1,
+                            Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                          );
+                          const existingAge = inputs.realEstate?.futurePurchaseAge;
+                          const resolvedPurchaseAge = existingAge && existingAge > inputs.currentAge
+                            ? existingAge
+                            : defaultPurchaseAge;
                           updateRealEstate({
                             ownsHome: true,
                             purchaseType: 'future',
-                            futurePurchaseAge: inputs.realEstate?.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                            futurePurchaseAge: resolvedPurchaseAge,
+                            ...(needsHomeDefaults ? {
+                              costOfHome: 650000,
+                              currentMarketValue: 650000,
+                              downPayment: 130000,
+                              mortgageInterestRate: 4.79,
+                              mortgageTermYears: 25,
+                              annualAppreciationRate: 3.2,
+                              ownershipSharePercent: isMarried ? 50 : 100,
+                              fundWithFhsa: true,
+                              fundWithHbp: true,
+                              fundWithTfsa: true,
+                              fundWithNonReg: true
+                            } : {})
                           });
                         } else {
                           updateRealEstate({
@@ -1040,11 +1182,33 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         <button
                           type="button"
                           onClick={() => {
+                            const needsHomeDefaults = (inputs.realEstate?.costOfHome ?? 0) <= 0;
+                            const defaultPurchaseAge = Math.max(
+                              inputs.currentAge + 1,
+                              Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                            );
+                            const existingAge = inputs.realEstate?.futurePurchaseAge;
+                            const resolvedPurchaseAge = existingAge && existingAge > inputs.currentAge
+                              ? existingAge
+                              : defaultPurchaseAge;
                             updateField('planFutureHomePurchase', true);
                             updateRealEstate({
                               ownsHome: true,
                               purchaseType: 'future',
-                              futurePurchaseAge: inputs.realEstate?.futurePurchaseAge || Math.min(inputs.retirementAge, inputs.currentAge + 3)
+                              futurePurchaseAge: resolvedPurchaseAge,
+                              ...(needsHomeDefaults ? {
+                                costOfHome: 650000,
+                                currentMarketValue: 650000,
+                                downPayment: 130000,
+                                mortgageInterestRate: 4.79,
+                                mortgageTermYears: 25,
+                                annualAppreciationRate: 3.2,
+                                ownershipSharePercent: isMarried ? 50 : 100,
+                                fundWithFhsa: true,
+                                fundWithHbp: true,
+                                fundWithTfsa: true,
+                                fundWithNonReg: true
+                              } : {})
                             });
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -1985,13 +2149,14 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
           </div>
         )}
 
-        {/* TAB: FIXED-TERM DEBTS & LOANS */}
+        {/* TAB: FIXED-TERM DEBTS & LOANS (OR FUTURE DEBTS & LOANS) */}
         {activeTab === 'debts' && (
           <DebtsManager
             debts={inputs.debts || []}
             currentAge={inputs.currentAge}
             retirementAge={inputs.retirementAge}
             debtStrategy={inputs.debtStrategy}
+            isFutureOnlyMode={isFutureOnlyDebtMode}
             onUpdateDebts={(newDebts) => updateField('debts', newDebts)}
             onUpdateStrategy={(newStrategy) => updateField('debtStrategy', newStrategy)}
             onChange={(newDebts) => updateField('debts', newDebts)}

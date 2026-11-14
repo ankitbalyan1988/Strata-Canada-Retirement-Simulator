@@ -32,12 +32,15 @@ import {
   Home,
   Heart,
   ArrowRightLeft,
-  HelpCircle
+  HelpCircle,
+  Command
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab, InputTab } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { PROVINCIAL_BRACKETS } from '../../utils/canadianTax';
 import { CanadianProvince } from '../../types/retirement';
+import { isMacPlatform } from '../../utils/keyboardShortcuts';
+import { getDebtQualifierFlags } from '../../utils/debtCalculator';
 
 export const Sidebar: React.FC = () => {
   const activeView = useSimulationStore((state) => state.activeView);
@@ -73,13 +76,17 @@ export const Sidebar: React.FC = () => {
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const setIsWealthGuideModalOpen = useSimulationStore((state) => state.setIsWealthGuideModalOpen);
   const setIsHelpGuideModalOpen = useSimulationStore((state) => state.setIsHelpGuideModalOpen);
+  const setIsCommandPaletteOpen = useSimulationStore((state) => state.setIsCommandPaletteOpen);
   const exportPdf = useSimulationStore((state) => state.exportPdf);
   const isExportingPdf = useSimulationStore((state) => state.isExportingPdf);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
+  const isMac = React.useMemo(() => isMacPlatform(), []);
 
   const planExpatExit = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
   const isMarried = inputs.maritalStatus === 'married';
-  const hasDebts = inputs.hasOngoingOrFutureDebts ?? Boolean(inputs.debts && inputs.debts.length > 0);
+  const debtFlags = getDebtQualifierFlags(inputs);
+  const hasDebts = debtFlags.hasDebtModule;
+  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
   const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
     inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
       ? 'own'
@@ -118,7 +125,7 @@ export const Sidebar: React.FC = () => {
     { id: 'expenses', label: 'Living Expenses', icon: Receipt },
     { id: 'accounts', label: 'Primary Accounts', icon: PiggyBank },
     ...(showRealEstateSection ? [{ id: 'realestate' as InputTab, label: housingStatus === 'rent' ? 'Future Home' : 'Real Estate', icon: Home }] : []),
-    ...(hasDebts ? [{ id: 'debts' as InputTab, label: 'Debts & Loans', icon: CreditCard }] : []),
+    ...(hasDebts ? [{ id: 'debts' as InputTab, label: isFutureOnlyDebtMode ? 'Future Debts & Loans' : 'Debts & Loans', icon: CreditCard }] : []),
     ...(isMarried ? [{ id: 'spouse' as InputTab, label: 'Spouse Profile', icon: Heart }] : []),
     { id: 'pensions', label: 'CPP & OAS Pensions', icon: Landmark },
     { id: 'market', label: 'Returns & Inflation', icon: TrendingUp },

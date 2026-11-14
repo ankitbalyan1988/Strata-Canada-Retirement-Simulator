@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Menu,
   SlidersHorizontal,
@@ -10,11 +10,13 @@ import {
   RotateCcw,
   ArrowRight,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  Command
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { TopScenarioSwitcher } from './TopScenarioSwitcher';
+import { isMacPlatform } from '../utils/keyboardShortcuts';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
@@ -34,6 +36,8 @@ export const Header: React.FC = () => {
 
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
   const [isExportingMasterExcel, setIsExportingMasterExcel] = useState<boolean>(false);
+  const setIsCommandPaletteOpen = useSimulationStore((state) => state.setIsCommandPaletteOpen);
+  const isMac = useMemo(() => isMacPlatform(), []);
 
   const handleExportMasterExcel = async () => {
     try {
@@ -137,6 +141,21 @@ export const Header: React.FC = () => {
 
           {/* Right: Top-of-UI Global Action Controls */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 flex-wrap">
+            {/* Quick Command Palette Button with Dynamic Platform Shortcut */}
+            <button
+              type="button"
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-750 dark:text-zinc-200 border border-zinc-200/80 dark:border-zinc-700/80 transition cursor-pointer shadow-2xs group shrink-0"
+              title={`Open Global Command Palette & Shortcuts (${isMac ? '⌘K' : 'Ctrl+K'})`}
+              aria-label="Open Global Command Palette"
+            >
+              <Command className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="hidden xl:inline text-zinc-600 dark:text-zinc-300">Quick Jump</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono font-bold text-zinc-700 dark:text-zinc-300 shadow-2xs">
+                {isMac ? '⌘K' : 'Ctrl+K'}
+              </kbd>
+            </button>
+
             {/* Scenario Switcher Dropdown (only visible when multiple scenarios exist) */}
             {hasMultipleScenarios && <TopScenarioSwitcher />}
 

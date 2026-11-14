@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
+import { getEffectiveDebts } from '../utils/debtCalculator';
 
 interface LedgerAiExplanation {
   summary: string;
@@ -836,7 +837,7 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           </button>
 
           {/* Card 7: Consumer Debt Freedom */}
-          {Boolean(summary?.debtPayoffAge || (inputs?.debts && inputs.debts.length > 0)) && (
+          {Boolean(summary?.debtPayoffAge || (inputs && getEffectiveDebts(inputs).length > 0)) && (
             <button
               type="button"
               onClick={() => summary?.debtPayoffAge && scrollToAge(summary.debtPayoffAge)}

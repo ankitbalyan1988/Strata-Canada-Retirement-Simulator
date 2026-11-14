@@ -11,6 +11,7 @@ import {
   FHSA_LIFETIME_LIMIT 
 } from './canadianTax';
 import { calculateEmployerRrspMatch } from './employerMatch';
+import { getEffectiveDebts, calculateDebtMonthlyPayment } from './debtCalculator';
 
 export interface InHandIncomeResult {
   grossAnnualIncome: number;
@@ -205,15 +206,21 @@ export function runCashFlowStressTest(inputs: RetirementInputs): CashFlowStressT
 
   const annualLivingExpenses = monthlyLivingExpenses * 12;
 
-  // Consumer debts service
+  // Consumer debts service (active today only — excludes future debts starting at a later age)
   let monthlyDebtPayments = 0;
-  if (inputs.debts && inputs.debts.length > 0) {
-    inputs.debts.forEach((debt) => {
-      if (debt.monthlyPayment && debt.monthlyPayment > 0) {
-        monthlyDebtPayments += debt.monthlyPayment;
-      }
-    });
-  }
+  const activeTodayDebts = getEffectiveDebts(inputs).filter(
+    (debt) => (debt.startAge ?? inputs.currentAge) <= inputs.currentAge && (Number(debt.initialBalance) || 0) > 0
+  );
+  activeTodayDebts.forEach((debt) => {
+    const pmt = (debt.monthlyPayment && debt.monthlyPayment > 0)
+      ? debt.monthlyPayment
+      : calculateDebtMonthlyPayment(
+          Number(debt.initialBalance) || 0,
+          Number(debt.interestRate) || 0,
+          Number(debt.remainingTermMonths) || 60
+        );
+    monthlyDebtPayments += pmt;
+  });
   const annualDebtPayments = monthlyDebtPayments * 12;
 
   const totalAnnualExpenses = annualLivingExpenses + annualDebtPayments;

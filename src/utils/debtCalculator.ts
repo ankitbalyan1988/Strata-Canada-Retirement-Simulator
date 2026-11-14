@@ -1,4 +1,4 @@
-import { DebtItem, DebtCategory, DebtRepaymentStrategy } from '../types/retirement';
+import { DebtItem, DebtCategory, DebtRepaymentStrategy, RetirementInputs } from '../types/retirement';
 
 export interface DebtPreset {
   id: string;
@@ -53,6 +53,8 @@ export interface DebtYearState {
   id: string;
   name: string;
   category: DebtCategory;
+  initialPrincipal: number;
+  hasOriginated: boolean;
   remainingBalance: number;
   monthlyPayment: number;
   extraMonthlyPayment: number;
@@ -72,6 +74,7 @@ export interface DebtYearResult {
   totalInterestPaid: number;
   activeDebtsCount: number;
   paidOffDebtsThisYear: string[];
+  newlyOriginatedDebtsThisYear: Array<{ id: string; name: string; amount: number; rate: number }>;
   debtBreakdowns: Array<{
     id: string;
     name: string;
@@ -82,6 +85,86 @@ export interface DebtYearResult {
     interestPaid: number;
     isPaidOff: boolean;
   }>;
+}
+
+export interface DebtQualifierFlags {
+  hasOngoingDebts: boolean;
+  planFutureDebts: boolean;
+  hasDebtModule: boolean;
+  isFutureOnlyDebtMode: boolean;
+}
+
+/**
+ * Resolves ongoing vs future debt UI & engine flags while preserving backward
+ * compatibility with legacy plans that only stored `hasOngoingOrFutureDebts` or `debts`.
+ */
+export function getDebtQualifierFlags(
+  inputs: Pick<RetirementInputs, 'currentAge' | 'hasOngoingDebts' | 'planFutureDebts' | 'hasOngoingOrFutureDebts' | 'debts'>
+): DebtQualifierFlags {
+  const debts = inputs.debts || [];
+  const hasAnyListedDebt = debts.length > 0;
+  const allListedAreFuture = hasAnyListedDebt && debts.every((d) => (d.startAge ?? inputs.currentAge) > inputs.currentAge);
+
+  let hasOngoingDebts: boolean;
+  let planFutureDebts: boolean;
+
+  if (inputs.hasOngoingDebts !== undefined || inputs.planFutureDebts !== undefined) {
+    if (inputs.hasOngoingDebts !== undefined) {
+      hasOngoingDebts = inputs.hasOngoingDebts;
+    } else if (inputs.hasOngoingOrFutureDebts === false) {
+      hasOngoingDebts = false;
+    } else {
+      hasOngoingDebts = hasAnyListedDebt ? !allListedAreFuture : Boolean(inputs.hasOngoingOrFutureDebts);
+    }
+
+    if (inputs.planFutureDebts !== undefined) {
+      planFutureDebts = inputs.planFutureDebts;
+    } else if (inputs.hasOngoingOrFutureDebts === false) {
+      planFutureDebts = false;
+    } else {
+      planFutureDebts = !hasOngoingDebts && allListedAreFuture;
+    }
+  } else if (inputs.hasOngoingOrFutureDebts === false) {
+    hasOngoingDebts = false;
+    planFutureDebts = false;
+  } else if (hasAnyListedDebt) {
+    hasOngoingDebts = !allListedAreFuture;
+    planFutureDebts = allListedAreFuture;
+  } else {
+    hasOngoingDebts = Boolean(inputs.hasOngoingOrFutureDebts);
+    planFutureDebts = false;
+  }
+
+  const hasDebtModule = hasOngoingDebts || planFutureDebts;
+  const isFutureOnlyDebtMode = !hasOngoingDebts && planFutureDebts;
+
+  return {
+    hasOngoingDebts,
+    planFutureDebts,
+    hasDebtModule,
+    isFutureOnlyDebtMode
+  };
+}
+
+export function hasDebtModuleEnabled(
+  inputs: Pick<RetirementInputs, 'currentAge' | 'hasOngoingDebts' | 'planFutureDebts' | 'hasOngoingOrFutureDebts' | 'debts'>
+): boolean {
+  return getDebtQualifierFlags(inputs).hasDebtModule;
+}
+
+export function getEffectiveDebts(
+  inputs: Pick<RetirementInputs, 'currentAge' | 'hasOngoingDebts' | 'planFutureDebts' | 'hasOngoingOrFutureDebts' | 'debts'>
+): DebtItem[] {
+  const flags = getDebtQualifierFlags(inputs);
+  if (!flags.hasDebtModule) return [];
+  const raw = inputs.debts || [];
+  if (flags.isFutureOnlyDebtMode) {
+    return raw.map((d) => ({
+      ...d,
+      startAge: d.startAge !== undefined && d.startAge > inputs.currentAge ? d.startAge : inputs.currentAge + 1
+    }));
+  }
+  return raw;
 }
 
 /**
@@ -165,20 +248,25 @@ export function initializeDebtStates(
       extraPmt += strategy.extraMonthlyPayment * weight;
     }
 
+    const startAge = d.startAge !== undefined ? d.startAge : currentAge;
+    const startsNow = startAge <= currentAge;
+
     return {
       id: d.id,
       name: d.name || 'Personal Loan',
       category: d.category || 'personal_loan',
-      remainingBalance: balance,
+      initialPrincipal: balance,
+      hasOriginated: startsNow,
+      remainingBalance: startsNow ? balance : 0,
       monthlyPayment: pmt,
       extraMonthlyPayment: extraPmt,
       interestRate: rate,
       monthsRemaining: termMonths,
-      startAge: d.startAge !== undefined ? d.startAge : currentAge,
+      startAge,
       earlyPayoffAge: d.earlyPayoffAge ?? strategy?.targetPayoffAge,
       lumpSumPrepaymentAmount: d.lumpSumPrepaymentAmount,
       lumpSumPrepaymentAge: d.lumpSumPrepaymentAge,
-      isPaidOff: balance <= 0
+      isPaidOff: startsNow && balance <= 0
     };
   });
 }
@@ -196,7 +284,23 @@ export function calculateDebtsForYear(
   let totalPrincipalPaid = 0;
   let totalInterestPaid = 0;
   const paidOffDebtsThisYear: string[] = [];
+  const newlyOriginatedDebtsThisYear: Array<{ id: string; name: string; amount: number; rate: number }> = [];
   const debtBreakdowns: DebtYearResult['debtBreakdowns'] = [];
+
+  // Activate any scheduled future debts whose startAge has arrived
+  for (const s of states) {
+    if (!s.hasOriginated && age >= s.startAge && s.initialPrincipal > 0) {
+      s.hasOriginated = true;
+      s.remainingBalance = s.initialPrincipal;
+      s.isPaidOff = false;
+      newlyOriginatedDebtsThisYear.push({
+        id: s.id,
+        name: s.name,
+        amount: s.initialPrincipal,
+        rate: s.interestRate
+      });
+    }
+  }
 
   // Track starting balances for reporting
   const startBalances = new Map<string, number>();
@@ -206,7 +310,7 @@ export function calculateDebtsForYear(
 
   // Check for lump-sum prepayment or complete early payoff at the start of this year
   for (const s of states) {
-    if (s.remainingBalance <= 0 || age < s.startAge) continue;
+    if (!s.hasOriginated || s.remainingBalance <= 0 || age < s.startAge) continue;
 
     // 1. Target Early Payoff in Full
     if (s.earlyPayoffAge !== undefined && age >= s.earlyPayoffAge) {
@@ -307,8 +411,8 @@ export function calculateDebtsForYear(
     });
   }
 
-  const totalRemainingBalance = states.reduce((sum, s) => sum + s.remainingBalance, 0);
-  const activeDebtsCount = states.filter((s) => s.remainingBalance > 0).length;
+  const totalRemainingBalance = states.reduce((sum, s) => sum + (s.hasOriginated ? s.remainingBalance : 0), 0);
+  const activeDebtsCount = states.filter((s) => s.hasOriginated && s.remainingBalance > 0).length;
 
   return {
     totalRemainingBalance: Math.round(totalRemainingBalance),
@@ -317,6 +421,7 @@ export function calculateDebtsForYear(
     totalInterestPaid: Math.round(totalInterestPaid),
     activeDebtsCount,
     paidOffDebtsThisYear,
+    newlyOriginatedDebtsThisYear,
     debtBreakdowns
   };
 }
@@ -348,29 +453,36 @@ export function calculateEarlyPayoffComparison(
     return null;
   }
 
+  const maxStartAge = Math.max(
+    currentAge,
+    ...debts.filter((d) => (Number(d.initialBalance) || 0) > 0).map((d) => d.startAge ?? currentAge)
+  );
+  const simYears = Math.max(40, maxStartAge - currentAge + 40);
+
   // 1. Simulate Baseline
   const baselineStates = initializeDebtStates(debts, currentAge, undefined);
-  let baseAge = currentAge;
   let baseTotalInterest = 0;
-  let basePayoffAge = currentAge;
-  for (let yr = 0; yr < 40; yr++) {
-    const res = calculateDebtsForYear(baselineStates, currentAge + yr, undefined);
+  let basePayoffAge = maxStartAge;
+  for (let yr = 0; yr < simYears; yr++) {
+    const simAge = currentAge + yr;
+    const res = calculateDebtsForYear(baselineStates, simAge, undefined);
     baseTotalInterest += res.totalInterestPaid;
-    if (res.totalRemainingBalance <= 0) {
-      basePayoffAge = currentAge + yr;
+    if (simAge >= maxStartAge && res.totalRemainingBalance <= 0) {
+      basePayoffAge = simAge;
       break;
     }
   }
 
   // 2. Simulate Accelerated
   const accelStates = initializeDebtStates(debts, currentAge, strategy);
-  let accelPayoffAge = currentAge;
+  let accelPayoffAge = maxStartAge;
   let accelTotalInterest = 0;
-  for (let yr = 0; yr < 40; yr++) {
-    const res = calculateDebtsForYear(accelStates, currentAge + yr, strategy);
+  for (let yr = 0; yr < simYears; yr++) {
+    const simAge = currentAge + yr;
+    const res = calculateDebtsForYear(accelStates, simAge, strategy);
     accelTotalInterest += res.totalInterestPaid;
-    if (res.totalRemainingBalance <= 0) {
-      accelPayoffAge = currentAge + yr;
+    if (simAge >= maxStartAge && res.totalRemainingBalance <= 0) {
+      accelPayoffAge = simAge;
       break;
     }
   }

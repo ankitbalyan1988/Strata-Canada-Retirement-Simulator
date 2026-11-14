@@ -74,6 +74,7 @@ export interface SimulationState {
   isAIPersonaModalOpen: boolean;
   isWealthGuideModalOpen: boolean;
   isHelpGuideModalOpen: boolean;
+  isCommandPaletteOpen: boolean;
 
   // Section Collapse State
   collapsedSections: Record<string, boolean>;
@@ -127,6 +128,8 @@ export interface SimulationState {
   setIsAIPersonaModalOpen: (open: boolean) => void;
   setIsWealthGuideModalOpen: (open: boolean) => void;
   setIsHelpGuideModalOpen: (open: boolean) => void;
+  setIsCommandPaletteOpen: (open: boolean) => void;
+  toggleCommandPalette: () => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
@@ -484,6 +487,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isAIPersonaModalOpen: false,
   isWealthGuideModalOpen: false,
   isHelpGuideModalOpen: false,
+  isCommandPaletteOpen: false,
   collapsedSections: {
     personaSelection: false,
     aiPersona: false,
@@ -867,6 +871,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set({ isHelpGuideModalOpen: open });
   },
 
+  setIsCommandPaletteOpen: (open) => {
+    set({ isCommandPaletteOpen: open });
+  },
+
+  toggleCommandPalette: () => {
+    set((state) => ({ isCommandPaletteOpen: !state.isCommandPaletteOpen }));
+  },
+
   toggleSectionCollapse: (sectionId) => {
     set((state) => ({
       collapsedSections: {
@@ -908,11 +920,36 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   exportPdf: async () => {
-    const { inputs, summary, yearlyResults } = get();
+    const {
+      inputs,
+      summary,
+      yearlyResults,
+      pulse,
+      whatIfSettings,
+      isStressTestActive,
+      stressTiming,
+      customStressAge,
+      stressSimulation,
+      history
+    } = get();
     try {
       set({ isExportingPdf: true });
       const { generateRetirementPdfReport } = await import('../utils/pdfExport');
-      generateRetirementPdfReport(inputs, summary, yearlyResults);
+      generateRetirementPdfReport(inputs, summary, yearlyResults, {
+        pulse,
+        whatIfSettings,
+        stressTest: isStressTestActive
+          ? {
+              enabled: true,
+              dropPercent: 10,
+              timing: stressTiming,
+              customAge: stressTiming === 'custom' ? customStressAge : undefined,
+              summary: stressSimulation?.summary,
+              yearlyResults: stressSimulation?.yearlyResults
+            }
+          : undefined,
+        savedScenarios: history
+      });
     } catch (err) {
       console.error('PDF export error:', err);
     } finally {

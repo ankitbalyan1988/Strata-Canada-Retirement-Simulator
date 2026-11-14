@@ -41,6 +41,7 @@ export interface DebtsManagerProps {
   currentAge: number;
   retirementAge?: number;
   debtStrategy?: DebtRepaymentStrategy;
+  isFutureOnlyMode?: boolean;
   onUpdateDebts?: (debts: DebtItem[]) => void;
   onUpdateStrategy?: (strategy: DebtRepaymentStrategy) => void;
   onChange?: (debts: DebtItem[]) => void;
@@ -60,6 +61,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
   currentAge,
   retirementAge: propRetirementAge,
   debtStrategy: propDebtStrategy,
+  isFutureOnlyMode = false,
   onUpdateDebts,
   onUpdateStrategy,
   onChange
@@ -69,8 +71,17 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
   const storeDebtStrategy = useSimulationStore(useShallow((state) => state.inputs.debtStrategy));
   const storeUpdateField = useSimulationStore((state) => state.updateField);
 
-  const debts = propDebts ?? storeDebts ?? [];
+  const rawDebts = propDebts ?? storeDebts ?? [];
   const retirementAge = propRetirementAge ?? storeRetirementAge ?? 65;
+  const defaultFutureStartAge = Math.max(currentAge + 1, Math.min(retirementAge, currentAge + 3));
+
+  const debts = useMemo(() => {
+    if (!isFutureOnlyMode) return rawDebts;
+    return rawDebts.map((d) => ({
+      ...d,
+      startAge: d.startAge !== undefined && d.startAge > currentAge ? d.startAge : defaultFutureStartAge
+    }));
+  }, [rawDebts, isFutureOnlyMode, currentAge, defaultFutureStartAge]);
 
   const currentStrategy: DebtRepaymentStrategy = propDebtStrategy ?? storeDebtStrategy ?? {
     acceleratePayoff: false,
@@ -116,7 +127,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
       initialBalance: preset.initialBalance,
       interestRate: preset.interestRate,
       remainingTermMonths: preset.remainingTermMonths,
-      startAge: currentAge,
+      startAge: isFutureOnlyMode ? defaultFutureStartAge : currentAge,
       notes: preset.description
     };
     handleUpdateDebtsList([...debts, newDebt]);
@@ -125,12 +136,12 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
   const handleAddCustomDebt = () => {
     const newDebt: DebtItem = {
       id: `debt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      name: 'Personal Loan',
+      name: isFutureOnlyMode ? 'Future Loan' : 'Personal Loan',
       category: 'personal_loan',
       initialBalance: 10000,
       interestRate: 7.5,
       remainingTermMonths: 36,
-      startAge: currentAge
+      startAge: isFutureOnlyMode ? defaultFutureStartAge : currentAge
     };
     handleUpdateDebtsList([...debts, newDebt]);
   };
@@ -185,11 +196,13 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
               <CreditCard className="w-4 h-4" />
             </span>
             <h3 className="font-bold text-slate-900 dark:text-slate-50 text-base">
-              Consumer Debts, Loans & Liabilities
+              {isFutureOnlyMode ? 'Future Debts, Loans & Planned Borrowing' : 'Consumer Debts, Loans & Liabilities'}
             </h3>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Model personal loans, Canada student loans (0% statutory relief), vehicle financing, or lines of credit, and test early debt payoff impact on retirement income.
+            {isFutureOnlyMode
+              ? 'Model future personal loans, vehicle financing, student loans, or lines of credit starting at a future age and see their outflow and net worth impact across all simulation ledgers.'
+              : 'Model personal loans, Canada student loans (0% statutory relief), vehicle financing, or lines of credit (current or future-dated), and test early debt payoff impact on retirement income.'}
           </p>
         </div>
 
@@ -200,7 +213,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition shadow-2xs self-start sm:self-auto cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Add Custom Debt</span>
+          <span>{isFutureOnlyMode ? 'Add Future Debt' : 'Add Custom Debt'}</span>
         </button>
       </div>
 
@@ -209,26 +222,26 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
-            Total Debt Principal
+            {isFutureOnlyMode ? 'Planned Future Principal' : 'Total Debt Principal'}
           </span>
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono mt-1">
             ${totalPrincipal.toLocaleString()}
           </span>
           <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Deducted from Total Net Worth
+            {isFutureOnlyMode ? 'Added to liabilities at Start Age' : 'Deducted from Total Net Worth'}
           </span>
         </div>
 
         <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
           <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <DollarSign className="w-3.5 h-3.5 text-amber-500" />
-            Monthly Debt Service
+            {isFutureOnlyMode ? 'Future Monthly Service' : 'Monthly Debt Service'}
           </span>
           <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono mt-1">
             ${Math.round(totalMonthlyService).toLocaleString()}/mo
           </span>
           <span className="text-[10px] text-slate-500 dark:text-slate-400">
-            Deducted from spendable cash
+            {isFutureOnlyMode ? 'Deducted once loan begins' : 'Deducted from spendable cash'}
           </span>
         </div>
 
@@ -568,10 +581,12 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
               <ShieldCheck className="w-6 h-6" />
             </span>
             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">
-              No Consumer Debts or Loans Modeled
+              {isFutureOnlyMode ? 'No Future Debts or Loans Scheduled Yet' : 'No Consumer Debts or Loans Modeled'}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md">
-              Your household is debt-free (excluding any mortgage modeled under Real Estate). All income flows directly into living expenses and savings. Click a preset above or "Add Custom Debt" to model the impact of loan amortization and debt repayment.
+              {isFutureOnlyMode
+                ? 'Click a preset above or "Add Future Debt" to schedule a planned loan (auto, student, personal, or line of credit) starting at a target future age. Its payments and balance will automatically flow into all cash flow and net worth ledgers.'
+                : 'Your household is debt-free (excluding any mortgage modeled under Real Estate). All income flows directly into living expenses and savings. Click a preset above or "Add Custom Debt" to model the impact of loan amortization and debt repayment.'}
             </p>
           </div>
         ) : (
@@ -634,12 +649,12 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                   </div>
                 </div>
 
-                {/* Second Row: Inputs Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                {/* Second Row: Inputs Grid (with Start Age for modeling future loans) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
                   {/* Principal Balance */}
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                      Initial Balance ($)
+                      {startAge > currentAge ? 'Loan Amount ($)' : 'Initial Balance ($)'}
                     </label>
                     <CurrencyInput
                       value={balance}
@@ -681,7 +696,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
-                        Remaining Term
+                        {startAge > currentAge ? 'Loan Term' : 'Remaining Term'}
                       </label>
                       <span className="text-[9.5px] text-slate-400 font-mono">
                         {(termMonths / 12).toFixed(1)} yrs
@@ -698,6 +713,36 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 font-mono pointer-events-none">
                         mos
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Loan Start Age */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                        Start Age
+                      </label>
+                      <span className={`text-[9.5px] font-mono ${startAge > currentAge ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-slate-400'}`}>
+                        {startAge > currentAge ? `In ${startAge - currentAge} yrs` : 'Active now'}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={isFutureOnlyMode ? currentAge + 1 : currentAge}
+                        max={85}
+                        value={startAge}
+                        onChange={(e) => {
+                          const minAge = isFutureOnlyMode ? currentAge + 1 : currentAge;
+                          const parsed = parseInt(e.target.value, 10);
+                          if (Number.isNaN(parsed)) return;
+                          handleUpdateDebt(debt.id, { startAge: Math.max(minAge, Math.min(85, parsed)) });
+                        }}
+                        className="w-full text-xs font-mono font-bold py-1.5 pl-2.5 pr-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono pointer-events-none">
+                        age
                       </span>
                     </div>
                   </div>
@@ -756,6 +801,13 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
                         <span>{isCustomOpen ? 'Hide Early Payoff Options' : 'Customize Early Payoff'}</span>
                         {isCustomOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
+
+                      {startAge > currentAge && (
+                        <div className="flex items-center gap-1 font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-500/20 text-[10.5px]">
+                          <Clock className="w-3 h-3" />
+                          <span>Starts Age {startAge}</span>
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-500/20 text-[10.5px]">
                         <ShieldCheck className="w-3 h-3" />
