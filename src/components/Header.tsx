@@ -14,7 +14,6 @@ import {
   Command
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
-import { useShallow } from 'zustand/react/shallow';
 import { TopScenarioSwitcher } from './TopScenarioSwitcher';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
 
@@ -27,13 +26,6 @@ export const Header: React.FC = () => {
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const hasMultipleScenarios = useSimulationStore((state) => state.history.length > 1);
 
-  const inputs = useSimulationStore(useShallow((state) => state.inputs));
-  const summary = useSimulationStore(useShallow((state) => state.summary));
-  const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
-  const estateInputs = useSimulationStore((state) => state.estateInputs);
-  const stressTiming = useSimulationStore((state) => state.stressTiming);
-  const customStressAge = useSimulationStore((state) => state.customStressAge);
-
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
   const [isExportingMasterExcel, setIsExportingMasterExcel] = useState<boolean>(false);
   const setIsCommandPaletteOpen = useSimulationStore((state) => state.setIsCommandPaletteOpen);
@@ -42,6 +34,8 @@ export const Header: React.FC = () => {
   const handleExportMasterExcel = async () => {
     try {
       setIsExportingMasterExcel(true);
+      const { inputs, summary, yearlyResults, estateInputs, stressTiming, customStressAge } =
+        useSimulationStore.getState();
       const { exportMasterComprehensiveExcel } = await import('../utils/excelExport');
       await exportMasterComprehensiveExcel({
         inputs,

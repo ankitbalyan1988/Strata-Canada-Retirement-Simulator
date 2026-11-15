@@ -22,18 +22,27 @@ import {
   Sparkles
 } from 'lucide-react';
 import { exportCashFlowLedgerToExcel } from '../utils/excelExport';
+import { useSimulationStore } from '../store/useSimulationStore';
 
 export interface CashFlowLedgerTableProps {
-  yearlyResults: YearSimulationResult[];
-  inputs: RetirementInputs;
+  yearlyResults?: YearSimulationResult[];
+  inputs?: RetirementInputs;
 }
 
 type FilterMode = 'all' | 'working' | 'retirement' | 'milestones';
 
-export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = ({
-  yearlyResults,
-  inputs
+export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.memo(({
+  yearlyResults: propYearlyResults,
+  inputs: propInputs
 }) => {
+  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
+  const storeProvince = useSimulationStore((state) => state.inputs.province);
+
+  const yearlyResults = propYearlyResults ?? storeYearlyResults;
+  const retirementAge = propInputs?.retirementAge ?? storeRetirementAge;
+  const province = propInputs?.province ?? storeProvince;
+
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [isExporting, setIsExporting] = useState(false);
@@ -41,8 +50,6 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
-
-  const retirementAge = inputs.retirementAge;
 
   // Handle escape key to exit fullscreen
   useEffect(() => {
@@ -168,12 +175,13 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = ({
     if (isExporting) return;
     try {
       setIsExporting(true);
+      const resolvedInputs = propInputs ?? useSimulationStore.getState().inputs;
       await exportCashFlowLedgerToExcel({
         data: yearlyResults,
         filterMode,
         retirementAge,
-        province: inputs.province,
-        inputs
+        province,
+        inputs: resolvedInputs
       });
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
@@ -723,9 +731,11 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = ({
           <span>Excel export preserves native SUM, difference, and IF logic formulas with audit-grade double borders.</span>
         </div>
         <div className="text-slate-400 dark:text-slate-500">
-          Province: <span className="font-semibold text-slate-600 dark:text-slate-300">{inputs.province}</span> • Target Retirement: <span className="font-semibold text-slate-600 dark:text-slate-300">Age {retirementAge}</span>
+          Province: <span className="font-semibold text-slate-600 dark:text-slate-300">{province}</span> • Target Retirement: <span className="font-semibold text-slate-600 dark:text-slate-300">Age {retirementAge}</span>
         </div>
       </div>
     </div>
   );
-};
+});
+
+CashFlowLedgerTable.displayName = 'CashFlowLedgerTable';

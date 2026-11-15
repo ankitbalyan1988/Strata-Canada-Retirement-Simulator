@@ -24,32 +24,47 @@ interface TabItem {
   extraBadge?: string | number;
 }
 
-export const InputTabBar: React.FC = () => {
+export const InputTabBar: React.FC = React.memo(() => {
   const activeInputTab = useSimulationStore((state) => state.activeInputTab);
   const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
-  const inputs = useSimulationStore(useShallow((state) => state.inputs));
-
-  const isMarried = inputs.maritalStatus === 'married';
-  const debtFlags = getDebtQualifierFlags(inputs);
-  const hasDebts = debtFlags.hasDebtModule;
-  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
-  const effectiveDebts = getEffectiveDebts(inputs);
-  const earliestFutureDebtAge = isFutureOnlyDebtMode && effectiveDebts.length > 0
-    ? Math.min(...effectiveDebts.map((d) => d.startAge ?? inputs.currentAge + 1))
-    : undefined;
-
-  const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
-      ? 'own'
-      : (inputs.realEstate?.purchaseType === 'future' ? 'rent' : (inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
+  const {
+    isMarried,
+    hasDebts,
+    isFutureOnlyDebtMode,
+    debtsCount,
+    earliestFutureDebtAge,
+    housingStatus,
+    showRealEstateSection,
+    futurePurchaseDisplayAge,
+    planExpatExit
+  } = useSimulationStore(
+    useShallow((state) => {
+      const inp = state.inputs;
+      const debtFlags = getDebtQualifierFlags(inp);
+      const effectiveDebts = getEffectiveDebts(inp);
+      const hStatus: 'own' | 'rent' = inp.housingStatus ?? (
+        inp.realEstate?.ownsHome && inp.realEstate?.purchaseType !== 'future'
+          ? 'own'
+          : (inp.realEstate?.purchaseType === 'future' ? 'rent' : (inp.realEstate?.ownsHome === false ? 'rent' : 'own'))
+      );
+      const planFutureHome: boolean = inp.planFutureHomePurchase ?? Boolean(
+        inp.realEstate?.ownsHome && inp.realEstate?.purchaseType === 'future'
+      );
+      return {
+        isMarried: inp.maritalStatus === 'married',
+        hasDebts: debtFlags.hasDebtModule,
+        isFutureOnlyDebtMode: debtFlags.isFutureOnlyDebtMode,
+        debtsCount: effectiveDebts.length,
+        earliestFutureDebtAge: debtFlags.isFutureOnlyDebtMode && effectiveDebts.length > 0
+          ? Math.min(...effectiveDebts.map((d) => d.startAge ?? inp.currentAge + 1))
+          : undefined,
+        housingStatus: hStatus,
+        showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome),
+        futurePurchaseDisplayAge: inp.realEstate?.futurePurchaseAge || inp.currentAge + 3,
+        planExpatExit: inp.planExpatExit ?? Boolean(inp.expat?.planToEmigrate)
+      };
+    })
   );
-
-  const planFutureHomePurchase: boolean = inputs.planFutureHomePurchase ?? Boolean(
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType === 'future'
-  );
-
-  const showRealEstateSection = housingStatus === 'own' || (housingStatus === 'rent' && planFutureHomePurchase);
-  const planExpatExit: boolean = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
 
   const TABS: TabItem[] = [
     {
@@ -81,12 +96,12 @@ export const InputTabBar: React.FC = () => {
         : 'Liabilities',
       icon: CreditCard,
       show: hasDebts,
-      extraBadge: effectiveDebts.length > 0 ? effectiveDebts.length : undefined
+      extraBadge: debtsCount > 0 ? debtsCount : undefined
     },
     {
       id: 'realestate',
       title: housingStatus === 'rent' ? 'Future Home' : 'Real Estate',
-      badge: housingStatus === 'rent' ? `Buy @ ${inputs.realEstate?.futurePurchaseAge || inputs.currentAge + 3}` : 'Property & Equity',
+      badge: housingStatus === 'rent' ? `Buy @ ${futurePurchaseDisplayAge}` : 'Property & Equity',
       icon: Home,
       show: showRealEstateSection
     },
@@ -198,4 +213,6 @@ export const InputTabBar: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+InputTabBar.displayName = 'InputTabBar';

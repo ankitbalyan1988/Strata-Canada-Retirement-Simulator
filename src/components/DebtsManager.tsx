@@ -1,4 +1,4 @@
-import React, { useState, useMemo, startTransition } from 'react';
+import React, { useState, useMemo, useCallback, startTransition } from 'react';
 import { 
   CreditCard, 
   Plus, 
@@ -30,15 +30,26 @@ import {
   calculateDebtMonthlyPayment, 
   calculateTotalDebtInterest,
   calculateEarlyPayoffComparison,
+  getDebtQualifierFlags,
   DebtPreset 
 } from '../utils/debtCalculator';
 import { CurrencyInput } from './CurrencyInput';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 
+const EMPTY_DEBTS: DebtItem[] = [];
+
+const DEFAULT_DEBT_STRATEGY: DebtRepaymentStrategy = {
+  acceleratePayoff: false,
+  extraMonthlyPayment: 0,
+  strategyType: 'avalanche',
+  targetPayoffAge: undefined,
+  redirectFreedCashflowToSavings: true
+};
+
 export interface DebtsManagerProps {
   debts?: DebtItem[];
-  currentAge: number;
+  currentAge?: number;
   retirementAge?: number;
   debtStrategy?: DebtRepaymentStrategy;
   isFutureOnlyMode?: boolean;
@@ -56,23 +67,27 @@ const CATEGORY_CONFIG: Record<DebtCategory, { label: string; icon: React.FC<{ cl
   other: { label: 'Other Debt', icon: Banknote, color: 'text-slate-500 bg-slate-50 dark:bg-slate-500/10 border-slate-200 dark:border-slate-500/20' }
 };
 
-export const DebtsManager: React.FC<DebtsManagerProps> = ({
+export const DebtsManager: React.FC<DebtsManagerProps> = React.memo(({
   debts: propDebts,
-  currentAge,
+  currentAge: propCurrentAge,
   retirementAge: propRetirementAge,
   debtStrategy: propDebtStrategy,
-  isFutureOnlyMode = false,
+  isFutureOnlyMode: propIsFutureOnlyMode,
   onUpdateDebts,
   onUpdateStrategy,
   onChange
 }) => {
   const storeDebts = useSimulationStore(useShallow((state) => state.inputs.debts));
+  const storeCurrentAge = useSimulationStore((state) => state.inputs.currentAge);
   const storeRetirementAge = useSimulationStore((state) => state.inputs.retirementAge);
   const storeDebtStrategy = useSimulationStore(useShallow((state) => state.inputs.debtStrategy));
+  const storeIsFutureOnlyMode = useSimulationStore((state) => getDebtQualifierFlags(state.inputs).isFutureOnlyDebtMode);
   const storeUpdateField = useSimulationStore((state) => state.updateField);
 
-  const rawDebts = propDebts ?? storeDebts ?? [];
+  const rawDebts = propDebts ?? storeDebts ?? EMPTY_DEBTS;
+  const currentAge = propCurrentAge ?? storeCurrentAge ?? 35;
   const retirementAge = propRetirementAge ?? storeRetirementAge ?? 65;
+  const isFutureOnlyMode = propIsFutureOnlyMode ?? storeIsFutureOnlyMode;
   const defaultFutureStartAge = Math.max(currentAge + 1, Math.min(retirementAge, currentAge + 3));
 
   const debts = useMemo(() => {
@@ -83,17 +98,11 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
     }));
   }, [rawDebts, isFutureOnlyMode, currentAge, defaultFutureStartAge]);
 
-  const currentStrategy: DebtRepaymentStrategy = propDebtStrategy ?? storeDebtStrategy ?? {
-    acceleratePayoff: false,
-    extraMonthlyPayment: 0,
-    strategyType: 'avalanche',
-    targetPayoffAge: undefined,
-    redirectFreedCashflowToSavings: true
-  };
+  const currentStrategy: DebtRepaymentStrategy = propDebtStrategy ?? storeDebtStrategy ?? DEFAULT_DEBT_STRATEGY;
 
   const [expandedCustomDebtId, setExpandedCustomDebtId] = useState<string | null>(null);
 
-  const handleUpdateDebtsList = (newDebts: DebtItem[]) => {
+  const handleUpdateDebtsList = useCallback((newDebts: DebtItem[]) => {
     if (onUpdateDebts) {
       onUpdateDebts(newDebts);
     }
@@ -103,9 +112,9 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
     if (!onUpdateDebts && !onChange) {
       storeUpdateField('debts', newDebts);
     }
-  };
+  }, [onUpdateDebts, onChange, storeUpdateField]);
 
-  const handleUpdateStrategy = (patch: Partial<DebtRepaymentStrategy>) => {
+  const handleUpdateStrategy = useCallback((patch: Partial<DebtRepaymentStrategy>) => {
     const updated: DebtRepaymentStrategy = {
       ...currentStrategy,
       ...patch
@@ -117,9 +126,9 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
         storeUpdateField('debtStrategy', updated);
       }
     });
-  };
+  }, [currentStrategy, onUpdateStrategy, storeUpdateField]);
 
-  const handleAddPreset = (preset: DebtPreset) => {
+  const handleAddPreset = useCallback((preset: DebtPreset) => {
     const newDebt: DebtItem = {
       id: `debt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: preset.name,
@@ -131,9 +140,9 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
       notes: preset.description
     };
     handleUpdateDebtsList([...debts, newDebt]);
-  };
+  }, [debts, isFutureOnlyMode, defaultFutureStartAge, currentAge, handleUpdateDebtsList]);
 
-  const handleAddCustomDebt = () => {
+  const handleAddCustomDebt = useCallback(() => {
     const newDebt: DebtItem = {
       id: `debt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: isFutureOnlyMode ? 'Future Loan' : 'Personal Loan',
@@ -144,36 +153,50 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
       startAge: isFutureOnlyMode ? defaultFutureStartAge : currentAge
     };
     handleUpdateDebtsList([...debts, newDebt]);
-  };
+  }, [debts, isFutureOnlyMode, defaultFutureStartAge, currentAge, handleUpdateDebtsList]);
 
-  const handleUpdateDebt = (id: string, patch: Partial<DebtItem>) => {
+  const handleUpdateDebt = useCallback((id: string, patch: Partial<DebtItem>) => {
     const updated = debts.map((d) => (d.id === id ? { ...d, ...patch } : d));
     handleUpdateDebtsList(updated);
-  };
+  }, [debts, handleUpdateDebtsList]);
 
-  const handleDeleteDebt = (id: string) => {
+  const handleDeleteDebt = useCallback((id: string) => {
     const updated = debts.filter((d) => d.id !== id);
     handleUpdateDebtsList(updated);
-  };
+  }, [debts, handleUpdateDebtsList]);
 
-  // Aggregate Metrics
-  const totalPrincipal = debts.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
-  const totalMonthlyService = debts.reduce((sum, d) => {
-    const bal = Number(d.initialBalance) || 0;
-    const rate = Number(d.interestRate) || 0;
-    const term = Number(d.remainingTermMonths) || 60;
-    const pmt = (d.monthlyPayment && d.monthlyPayment > 0)
-      ? d.monthlyPayment
-      : calculateDebtMonthlyPayment(bal, rate, term);
-    return sum + pmt;
-  }, 0);
-  const totalAnnualService = Math.round(totalMonthlyService * 12);
-  const totalLifetimeInterest = debts.reduce((sum, d) => {
-    const bal = Number(d.initialBalance) || 0;
-    const rate = Number(d.interestRate) || 0;
-    const term = Number(d.remainingTermMonths) || 60;
-    return sum + calculateTotalDebtInterest(bal, rate, term, d.monthlyPayment);
-  }, 0);
+  // Memoized Aggregate Metrics so UI state changes (e.g. expanding options) never recompute amortization loops
+  const {
+    totalPrincipal,
+    totalMonthlyService,
+    totalAnnualService,
+    totalLifetimeInterest
+  } = useMemo(() => {
+    const principal = debts.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
+    const monthlyService = debts.reduce((sum, d) => {
+      const bal = Number(d.initialBalance) || 0;
+      const rate = Number(d.interestRate) || 0;
+      const term = Number(d.remainingTermMonths) || 60;
+      const pmt = (d.monthlyPayment && d.monthlyPayment > 0)
+        ? d.monthlyPayment
+        : calculateDebtMonthlyPayment(bal, rate, term);
+      return sum + pmt;
+    }, 0);
+    const annualService = Math.round(monthlyService * 12);
+    const lifetimeInterest = debts.reduce((sum, d) => {
+      const bal = Number(d.initialBalance) || 0;
+      const rate = Number(d.interestRate) || 0;
+      const term = Number(d.remainingTermMonths) || 60;
+      return sum + calculateTotalDebtInterest(bal, rate, term, d.monthlyPayment);
+    }, 0);
+
+    return {
+      totalPrincipal: principal,
+      totalMonthlyService: monthlyService,
+      totalAnnualService: annualService,
+      totalLifetimeInterest: lifetimeInterest
+    };
+  }, [debts]);
 
   // Early Payoff Comparison
   const comparison = useMemo(() => {
@@ -922,4 +945,6 @@ export const DebtsManager: React.FC<DebtsManagerProps> = ({
 
     </div>
   );
-};
+});
+
+DebtsManager.displayName = 'DebtsManager';

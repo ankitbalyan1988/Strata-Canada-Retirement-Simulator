@@ -74,8 +74,7 @@ export default function App() {
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
   const isSidebarCollapsed = useSimulationStore((state) => state.isSidebarCollapsed);
-  const inputs = useSimulationStore((state) => state.inputs);
-  const userName = inputs.userName?.trim();
+  const userName = useSimulationStore((state) => state.inputs.userName?.trim() || '');
 
   const toggleCollapseAll = useSimulationStore((state) => state.toggleCollapseAll);
   const areAllInputsCollapsed = useSimulationStore((state) => 

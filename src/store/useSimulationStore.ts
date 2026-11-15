@@ -934,7 +934,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     } = get();
     try {
       set({ isExportingPdf: true });
-      const { generateRetirementPdfReport } = await import('../utils/pdfExport');
+      const [{ generateRetirementPdfReport }] = await Promise.all([
+        import('../utils/pdfExport'),
+        new Promise<void>((resolve) => {
+          if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+          } else {
+            setTimeout(resolve, 0);
+          }
+        })
+      ]);
       generateRetirementPdfReport(inputs, summary, yearlyResults, {
         pulse,
         whatIfSettings,

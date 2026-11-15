@@ -15,6 +15,9 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            if (id.includes('vite/preload-helper')) {
+              return 'preload-helper';
+            }
             if (id.includes('node_modules')) {
               if (id.includes('lucide-react')) {
                 return 'vendor-icons';

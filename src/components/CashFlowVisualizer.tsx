@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { YearSimulationResult, RetirementInputs } from '../types/retirement';
+import { useSimulationStore } from '../store/useSimulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { 
   ArrowRightLeft, 
   TrendingUp, 
@@ -18,22 +20,36 @@ import {
 } from 'lucide-react';
 
 export interface CashFlowVisualizerProps {
-  yearlyResults: YearSimulationResult[];
-  inputs: RetirementInputs;
+  yearlyResults?: YearSimulationResult[];
+  inputs?: RetirementInputs;
 }
 
 type ViewMode = 'all' | 'inflows' | 'outflows' | 'surplus';
 type HorizonFilter = 'all' | 'working' | 'retirement';
 
-export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
-  yearlyResults,
-  inputs
+export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(({
+  yearlyResults: propYearlyResults,
+  inputs: propInputs
 }) => {
+  const storeYearlyResults = useSimulationStore((state) => state.yearlyResults);
+  const storeMeta = useSimulationStore(
+    useShallow((state) => ({
+      currentAge: state.inputs.currentAge,
+      retirementAge: state.inputs.retirementAge,
+      lifeExpectancy: state.inputs.lifeExpectancy,
+      province: state.inputs.province
+    }))
+  );
+
+  const yearlyResults = propYearlyResults ?? storeYearlyResults;
+  const currentAge = propInputs?.currentAge ?? storeMeta.currentAge;
+  const retirementAge = propInputs?.retirementAge ?? storeMeta.retirementAge;
+  const lifeExpectancy = propInputs?.lifeExpectancy ?? storeMeta.lifeExpectancy;
+  const province = propInputs?.province ?? storeMeta.province;
+
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [horizonFilter, setHorizonFilter] = useState<HorizonFilter>('all');
   const [hoveredAge, setHoveredAge] = useState<number | null>(null);
-
-  const retirementAge = inputs.retirementAge;
 
   // Filter dataset by horizon
   const displayData = useMemo(() => {
@@ -59,7 +75,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
       lifetimeTaxes += yr.totalTaxPaid;
       totalLifetimeSavings += (yr.rrspContribution + yr.tfsaContribution + yr.fhsaContribution + yr.nonRegContribution);
 
-      if (yr.age === inputs.currentAge) {
+      if (yr.age === currentAge) {
         currentInflow = yr.employmentIncome;
         currentSavings = (yr.rrspContribution + yr.tfsaContribution + yr.fhsaContribution + yr.nonRegContribution);
       }
@@ -77,7 +93,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
       currentSavings,
       totalLifetimeSavings
     };
-  }, [yearlyResults, inputs.currentAge, retirementAge]);
+  }, [yearlyResults, currentAge, retirementAge]);
 
   // Compute Max Y value across visible dataset
   const maxY = useMemo(() => {
@@ -99,8 +115,8 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
   const chartWidth = svgWidth - padding.left - padding.right;
   const chartHeight = svgHeight - padding.top - padding.bottom;
 
-  const minAge = displayData[0]?.age ?? inputs.currentAge;
-  const maxAge = displayData[displayData.length - 1]?.age ?? inputs.lifeExpectancy;
+  const minAge = displayData[0]?.age ?? currentAge;
+  const maxAge = displayData[displayData.length - 1]?.age ?? lifeExpectancy;
   const ageSpan = Math.max(1, maxAge - minAge);
 
   const getX = useCallback(
@@ -256,7 +272,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span className="flex items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5 text-indigo-500" />
-              Current Inflow (Age {inputs.currentAge})
+              Current Inflow (Age {currentAge})
             </span>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Earned</span>
           </div>
@@ -300,7 +316,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
             ${Math.round(kpis.lifetimeTaxes).toLocaleString()}
           </div>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-            Federal and {inputs.province} provincial income tax
+            Federal and {province} provincial income tax
           </div>
         </div>
 
@@ -815,4 +831,6 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = ({
 
     </div>
   );
-};
+});
+
+CashFlowVisualizer.displayName = 'CashFlowVisualizer';

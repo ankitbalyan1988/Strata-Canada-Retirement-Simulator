@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, startTransition } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef, startTransition } from 'react';
 import { 
   PiggyBank, 
   User, 
@@ -50,7 +50,9 @@ import {
   CustomNonRegAccount,
   MonthlyExpenseEstimates,
   CppCalculationMethod,
-  EmployerMatchConfig
+  EmployerMatchConfig,
+  DebtItem,
+  DebtRepaymentStrategy
 } from '../types/retirement';
 import { ExpatInputs } from '../types/expat';
 import { DEFAULT_SPOUSE_INPUTS, DEFAULT_REAL_ESTATE_INPUTS, DEFAULT_ACCOUNT_RETURNS } from '../utils/presets';
@@ -67,36 +69,16 @@ import { CashFlowContributionStressTest } from './CashFlowContributionStressTest
 import { RealtorHomeCostCard } from './RealtorHomeCostCard';
 import { TaxRuleTooltip } from './TaxRuleTooltip';
 import { useSimulationStore, AUTOSAVE_PLAN_STORAGE_KEY } from '../store/useSimulationStore';
+import { BLANK_CANVAS_INPUTS } from '../utils/presets';
 import { useShallow } from 'zustand/react/shallow';
 
-export interface InputPanelProps {
-  inputs?: RetirementInputs;
-  onChange?: React.Dispatch<React.SetStateAction<RetirementInputs>> | ((inputs: RetirementInputs) => void);
+const EMPTY_DEBTS: DebtItem[] = [];
+
+interface AutoSaveStatusBadgeProps {
+  externalInputs?: RetirementInputs;
 }
 
-export const InputPanel: React.FC<InputPanelProps> = (props) => {
-  const storeInputs = useSimulationStore(useShallow((state) => state.inputs));
-  const storeSetInputs = useSimulationStore((state) => state.setInputs);
-  const isPlanningCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.planning));
-  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
-  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
-
-  const inputs = props.inputs ?? storeInputs;
-  const onChange = props.onChange ?? storeSetInputs;
-  const isMarried = inputs.maritalStatus === 'married';
-  const activeTab = useSimulationStore((state) => state.activeInputTab);
-  const setActiveTab = useSimulationStore((state) => state.setActiveInputTab);
-  const isExpanded = !isPlanningCollapsed;
-  const setIsExpanded = (expanded: boolean | ((prev: boolean) => boolean)) => {
-    if (typeof expanded === 'function') {
-      toggleSectionCollapse('planning');
-    } else {
-      setSectionCollapse('planning', !expanded);
-    }
-  };
-  const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
-
-  // Auto-Save Mechanism State
+const AutoSaveStatusBadge: React.FC<AutoSaveStatusBadgeProps> = React.memo(({ externalInputs }) => {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -112,9 +94,10 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     return null;
   });
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
+  const latestExternalInputsRef = useRef<RetirementInputs | undefined>(externalInputs);
+  latestExternalInputsRef.current = externalInputs;
 
-  // Persistence handler
-  const persistPlanData = (currentInputs: RetirementInputs) => {
+  const persistPlanData = useCallback((currentInputs: RetirementInputs) => {
     if (typeof window === 'undefined') return;
     try {
       setSaveStatus('saving');
@@ -132,36 +115,51 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
       console.warn('Auto-save to localStorage failed:', err);
       setSaveStatus('idle');
     }
-  };
+  }, []);
 
-  // 1. Debounced auto-save on user input modifications (1.2s delay)
+  // Uncontrolled store subscription: debounced save without re-rendering InputPanel
   useEffect(() => {
+    if (externalInputs !== undefined) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = useSimulationStore.subscribe((state, prevState) => {
+      if (state.inputs !== prevState.inputs) {
+        setSaveStatus('saving');
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          persistPlanData(useSimulationStore.getState().inputs);
+        }, 1200);
+      }
+    });
+    return () => {
+      unsubscribe();
+      if (timer) clearTimeout(timer);
+    };
+  }, [externalInputs !== undefined, persistPlanData]);
+
+  // Controlled-prop debounced save (when explicit inputs prop is supplied)
+  useEffect(() => {
+    if (externalInputs === undefined) return;
     setSaveStatus('saving');
     const timer = setTimeout(() => {
-      persistPlanData(inputs);
+      persistPlanData(externalInputs);
     }, 1200);
-
     return () => clearTimeout(timer);
-  }, [inputs]);
+  }, [externalInputs, persistPlanData]);
 
-  // 2. Periodic background persistence interval (every 25 seconds)
+  // Periodic background persistence interval (every 25s) & unload flush — attached once without churning on keystrokes
   useEffect(() => {
+    const getLatest = () => latestExternalInputsRef.current ?? useSimulationStore.getState().inputs;
     const interval = setInterval(() => {
-      persistPlanData(inputs);
+      persistPlanData(getLatest());
     }, 25000);
 
-    return () => clearInterval(interval);
-  }, [inputs]);
-
-  // 3. Flush to storage immediately on page unload or visibility hidden
-  useEffect(() => {
     const handleBeforeUnload = () => {
-      persistPlanData(inputs);
+      persistPlanData(getLatest());
     };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') {
-        persistPlanData(inputs);
+        persistPlanData(getLatest());
       }
     };
 
@@ -169,36 +167,169 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
+      clearInterval(interval);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [inputs]);
+  }, [persistPlanData]);
 
-  const handleManualSave = () => {
-    persistPlanData(inputs);
+  const handleManualSave = useCallback(() => {
+    const current = latestExternalInputsRef.current ?? useSimulationStore.getState().inputs;
+    persistPlanData(current);
+  }, [persistPlanData]);
+
+  return (
+    <div 
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-xs shadow-2xs"
+      title="Plan data is automatically persisted to browser local storage so your progress is preserved across sessions"
+    >
+      {saveStatus === 'saving' ? (
+        <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          <span className="font-medium text-[11px]">Saving...</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] font-medium">
+            {lastSavedAt ? (
+              <>
+                Auto-saved <span className="text-slate-400 dark:text-slate-500 font-mono">({lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
+              </>
+            ) : (
+              'Auto-save active'
+            )}
+          </span>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={handleManualSave}
+        title="Click to force-save current plan inputs to local storage now"
+        className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
+      >
+        <Save className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+});
+
+AutoSaveStatusBadge.displayName = 'AutoSaveStatusBadge';
+
+export interface InputPanelProps {
+  inputs?: RetirementInputs;
+  onChange?: React.Dispatch<React.SetStateAction<RetirementInputs>> | ((inputs: RetirementInputs) => void);
+}
+
+export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
+  const isPlanningCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.planning));
+  const activeTab = useSimulationStore((state) => state.activeInputTab);
+  const setActiveTab = useSimulationStore((state) => state.setActiveInputTab);
+  const storeSetInputs = useSimulationStore((state) => state.setInputs);
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
+  const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+
+  // Atomic primitive summary & tab-qualifier selectors (zero cascading renders on unrelated edits)
+  const storeHeaderSummary = useSimulationStore(
+    useShallow((state) => ({
+      maritalStatus: state.inputs.maritalStatus,
+      userName: state.inputs.userName,
+      currentAge: state.inputs.currentAge,
+      retirementAge: state.inputs.retirementAge,
+      currentAnnualIncome: state.inputs.currentAnnualIncome,
+      targetRetirementSpendingToday: state.inputs.targetRetirementSpendingToday,
+      province: state.inputs.province
+    }))
+  );
+
+  const storeQualifiers = useSimulationStore(
+    useShallow((state) => {
+      const dFlags = getDebtQualifierFlags(state.inputs);
+      const hStatus: 'own' | 'rent' = state.inputs.housingStatus ?? (
+        state.inputs.realEstate?.ownsHome && state.inputs.realEstate?.purchaseType !== 'future'
+          ? 'own'
+          : (state.inputs.realEstate?.purchaseType === 'future' ? 'rent' : (state.inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
+      );
+      const planFutureHome: boolean = state.inputs.planFutureHomePurchase ?? Boolean(
+        state.inputs.realEstate?.ownsHome && state.inputs.realEstate?.purchaseType === 'future'
+      );
+      const showRealEstate = hStatus === 'own' || (hStatus === 'rent' && planFutureHome);
+      const planExpat: boolean = state.inputs.planExpatExit ?? Boolean(state.inputs.expat?.planToEmigrate);
+      return {
+        hasOngoingDebts: dFlags.hasOngoingDebts,
+        planFutureDebts: dFlags.planFutureDebts,
+        hasDebtModule: dFlags.hasDebtModule,
+        isFutureOnlyDebtMode: dFlags.isFutureOnlyDebtMode,
+        housingStatus: hStatus,
+        planFutureHomePurchase: planFutureHome,
+        showRealEstateSection: showRealEstate,
+        planExpatExit: planExpat
+      };
+    })
+  );
+
+  // Subscribe to inputs only when expanded; when on 'debts' tab, mask debts/debtStrategy so DebtsManager owns its own re-renders
+  const storeInputs = useSimulationStore(
+    useShallow((state): RetirementInputs | null => {
+      if (props.inputs || state.collapsedSections.planning) return null;
+      if (state.activeInputTab === 'debts') {
+        return {
+          ...state.inputs,
+          debts: EMPTY_DEBTS,
+          debtStrategy: undefined
+        };
+      }
+      return state.inputs;
+    })
+  );
+
+  const inputs: RetirementInputs = props.inputs ?? storeInputs ?? {
+    ...BLANK_CANVAS_INPUTS,
+    ...storeHeaderSummary
   };
+  const onChange = props.onChange ?? storeSetInputs;
+  const isMarried = (props.inputs ? props.inputs.maritalStatus : storeHeaderSummary.maritalStatus) === 'married';
+  const isExpanded = !isPlanningCollapsed;
+  const setIsExpanded = useCallback((expanded: boolean | ((prev: boolean) => boolean)) => {
+    if (typeof expanded === 'function') {
+      toggleSectionCollapse('planning');
+    } else {
+      setSectionCollapse('planning', !expanded);
+    }
+  }, [toggleSectionCollapse, setSectionCollapse]);
+  const [expatRegionFilter, setExpatRegionFilter] = useState<'all' | 'Europe' | 'Americas' | 'Asia-Pacific' | 'Caribbean'>('all');
 
-  // Conditional flow qualifiers
-  const debtFlags = getDebtQualifierFlags(inputs);
-  const hasOngoingDebts = debtFlags.hasOngoingDebts;
-  const planFutureDebts = debtFlags.planFutureDebts;
-  const hasDebts = debtFlags.hasDebtModule;
-  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
-  const effectiveDebts = getEffectiveDebts(inputs);
+  // Conditional flow qualifiers (memoized when props.inputs is supplied, otherwise derived from atomic selector)
+  const propDebtFlags = useMemo(() => (props.inputs ? getDebtQualifierFlags(props.inputs) : null), [props.inputs]);
+  const hasOngoingDebts = propDebtFlags ? propDebtFlags.hasOngoingDebts : storeQualifiers.hasOngoingDebts;
+  const planFutureDebts = propDebtFlags ? propDebtFlags.planFutureDebts : storeQualifiers.planFutureDebts;
+  const hasDebts = propDebtFlags ? propDebtFlags.hasDebtModule : storeQualifiers.hasDebtModule;
+  const isFutureOnlyDebtMode = propDebtFlags ? propDebtFlags.isFutureOnlyDebtMode : storeQualifiers.isFutureOnlyDebtMode;
+  const effectiveDebts = useMemo(() => {
+    if (activeTab !== 'personal' || !isExpanded) return EMPTY_DEBTS;
+    return getEffectiveDebts(inputs);
+  }, [activeTab, isExpanded, inputs]);
 
-  const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
-      ? 'own'
-      : (inputs.realEstate?.purchaseType === 'future' ? 'rent' : (inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
-  );
+  const housingStatus: 'own' | 'rent' = props.inputs
+    ? (props.inputs.housingStatus ?? (
+        props.inputs.realEstate?.ownsHome && props.inputs.realEstate?.purchaseType !== 'future'
+          ? 'own'
+          : (props.inputs.realEstate?.purchaseType === 'future' ? 'rent' : (props.inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
+      ))
+    : storeQualifiers.housingStatus;
 
-  const planFutureHomePurchase: boolean = inputs.planFutureHomePurchase ?? Boolean(
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType === 'future'
-  );
+  const planFutureHomePurchase: boolean = props.inputs
+    ? (props.inputs.planFutureHomePurchase ?? Boolean(props.inputs.realEstate?.ownsHome && props.inputs.realEstate?.purchaseType === 'future'))
+    : storeQualifiers.planFutureHomePurchase;
 
-  const showRealEstateSection = housingStatus === 'own' || (housingStatus === 'rent' && planFutureHomePurchase);
+  const showRealEstateSection = props.inputs
+    ? (housingStatus === 'own' || (housingStatus === 'rent' && planFutureHomePurchase))
+    : storeQualifiers.showRealEstateSection;
 
-  const planExpatExit: boolean = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
+  const planExpatExit: boolean = props.inputs
+    ? (props.inputs.planExpatExit ?? Boolean(props.inputs.expat?.planToEmigrate))
+    : storeQualifiers.planExpatExit;
 
   useEffect(() => {
     if (activeTab === 'debts' && !hasDebts) {
@@ -208,22 +339,22 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     } else if (activeTab === 'expat' && !planExpatExit) {
       setActiveTab('personal');
     }
-  }, [activeTab, hasDebts, showRealEstateSection, planExpatExit]);
+  }, [activeTab, hasDebts, showRealEstateSection, planExpatExit, setActiveTab]);
 
-  const dispatchInputsChange = (updater: (prev: RetirementInputs) => RetirementInputs) => {
+  const dispatchInputsChange = useCallback((updater: (prev: RetirementInputs) => RetirementInputs) => {
     startTransition(() => {
       (onChange as any)(updater);
     });
-  };
+  }, [onChange]);
 
   const updateExpatField = <K extends keyof ExpatInputs>(field: K, value: ExpatInputs[K]) => {
-    const current = inputs.expat || {
-      ...DEFAULT_EXPAT_INPUTS,
-      emigrationAge: Math.max(inputs.currentAge + 1, inputs.retirementAge - 2),
-      yearsLivedInCanadaAfter18: Math.min(40, Math.max(20, inputs.retirementAge - 18))
-    };
     dispatchInputsChange((prev: RetirementInputs) => {
       const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      const current = base.expat || {
+        ...DEFAULT_EXPAT_INPUTS,
+        emigrationAge: Math.max(base.currentAge + 1, base.retirementAge - 2),
+        yearsLivedInCanadaAfter18: Math.min(40, Math.max(20, base.retirementAge - 18))
+      };
       return {
         ...base,
         expat: {
@@ -234,15 +365,23 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
     });
   };
 
-  const updateField = <K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
+  const updateField = useCallback(<K extends keyof RetirementInputs>(field: K, value: RetirementInputs[K]) => {
     dispatchInputsChange((prev: RetirementInputs) => {
-      const base = typeof prev === 'object' && prev !== null ? prev : inputs;
+      const base = typeof prev === 'object' && prev !== null ? prev : useSimulationStore.getState().inputs;
       return {
         ...base,
         [field]: value
       };
     });
-  };
+  }, [dispatchInputsChange]);
+
+  const handleDebtsChange = useCallback((newDebts: DebtItem[]) => {
+    updateField('debts', newDebts);
+  }, [updateField]);
+
+  const handleDebtStrategyChange = useCallback((newStrategy: DebtRepaymentStrategy) => {
+    updateField('debtStrategy', newStrategy);
+  }, [updateField]);
 
   const updateRealEstate = (patch: Partial<RealEstateInputs>) => {
     dispatchInputsChange((prev: RetirementInputs) => {
@@ -380,6 +519,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   const primaryServiceCanadaEstimate = inputs.cppServiceCanadaEstimateAt65 ?? 917;
 
   const primaryCppAdjResult = useMemo(() => {
+    if (!isExpanded || activeTab !== 'pensions') return null;
     return calculateAdjustedServiceCanadaCpp({
       serviceCanadaMonthlyAt65: primaryServiceCanadaEstimate,
       currentAge: inputs.currentAge,
@@ -389,6 +529,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
       careerDisruption: inputs.careerDisruption
     });
   }, [
+    isExpanded,
+    activeTab,
     primaryServiceCanadaEstimate,
     inputs.currentAge,
     inputs.retirementAge,
@@ -401,7 +543,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
   const spouseServiceCanadaEstimate = inputs.spouse?.cppServiceCanadaEstimateAt65 ?? 917;
 
   const spouseCppAdjResult = useMemo(() => {
-    if (!inputs.spouse) return null;
+    if (!isExpanded || activeTab !== 'pensions' || !inputs.spouse) return null;
     return calculateAdjustedServiceCanadaCpp({
       serviceCanadaMonthlyAt65: spouseServiceCanadaEstimate,
       currentAge: inputs.spouse.currentAge,
@@ -411,6 +553,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
       careerDisruption: inputs.spouse.careerDisruption
     });
   }, [
+    isExpanded,
+    activeTab,
     inputs.spouse,
     spouseServiceCanadaEstimate,
     inputs.spouse?.currentAge,
@@ -469,40 +613,8 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
             </button>
           </div>
 
-          {/* Auto-Save Status Indicator & Manual Save Button */}
-          <div 
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-xs shadow-2xs"
-            title="Plan data is automatically persisted to browser local storage so your progress is preserved across sessions"
-          >
-            {saveStatus === 'saving' ? (
-              <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span className="font-medium text-[11px]">Saving...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] font-medium">
-                  {lastSavedAt ? (
-                    <>
-                      Auto-saved <span className="text-slate-400 dark:text-slate-500 font-mono">({lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
-                    </>
-                  ) : (
-                    'Auto-save active'
-                  )}
-                </span>
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={handleManualSave}
-              title="Click to force-save current plan inputs to local storage now"
-              className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition cursor-pointer"
-            >
-              <Save className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          {/* Auto-Save Status Indicator & Manual Save Button (Isolated so timer/status updates never re-render InputPanel) */}
+          <AutoSaveStatusBadge externalInputs={props.inputs} />
 
           {/* Collapse / Expand Toggle Button */}
           <button
@@ -2151,16 +2263,24 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
 
         {/* TAB: FIXED-TERM DEBTS & LOANS (OR FUTURE DEBTS & LOANS) */}
         {activeTab === 'debts' && (
-          <DebtsManager
-            debts={inputs.debts || []}
-            currentAge={inputs.currentAge}
-            retirementAge={inputs.retirementAge}
-            debtStrategy={inputs.debtStrategy}
-            isFutureOnlyMode={isFutureOnlyDebtMode}
-            onUpdateDebts={(newDebts) => updateField('debts', newDebts)}
-            onUpdateStrategy={(newStrategy) => updateField('debtStrategy', newStrategy)}
-            onChange={(newDebts) => updateField('debts', newDebts)}
-          />
+          props.onChange ? (
+            <DebtsManager
+              debts={inputs.debts || EMPTY_DEBTS}
+              currentAge={inputs.currentAge}
+              retirementAge={inputs.retirementAge}
+              debtStrategy={inputs.debtStrategy}
+              isFutureOnlyMode={isFutureOnlyDebtMode}
+              onUpdateDebts={handleDebtsChange}
+              onUpdateStrategy={handleDebtStrategyChange}
+              onChange={handleDebtsChange}
+            />
+          ) : (
+            <DebtsManager
+              currentAge={inputs.currentAge}
+              retirementAge={inputs.retirementAge}
+              isFutureOnlyMode={isFutureOnlyDebtMode}
+            />
+          )
         )}
 
         {/* TAB: REAL ESTATE & HOME OWNERSHIP */}
@@ -4038,7 +4158,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     Canada Pension Plan (CPP)
                   </h5>
                   <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300">
-                    Age {inputs.cppStartAge} • ${primaryCppMethod === 'service_canada' ? Math.round(primaryCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString() : Math.round((1433.50 * (inputs.cppEstimatedPercentOfMax / 100)) * getCppTimingFactor(inputs.cppStartAge).factor).toLocaleString()}/mo
+                    Age {inputs.cppStartAge} • ${primaryCppMethod === 'service_canada' && primaryCppAdjResult ? Math.round(primaryCppAdjResult.anticipatedMonthlyAtStartAge).toLocaleString() : Math.round((1433.50 * (inputs.cppEstimatedPercentOfMax / 100)) * getCppTimingFactor(inputs.cppStartAge).factor).toLocaleString()}/mo
                   </span>
                 </div>
 
@@ -4201,6 +4321,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                     </div>
 
                     {/* Actuarial Recalibration Breakdown Card */}
+                    {primaryCppAdjResult && (
                     <div className="p-3 rounded-lg bg-white/80 dark:bg-slate-800/90 border border-blue-200 dark:border-blue-700/60 flex flex-col gap-2.5 text-xs shadow-xs">
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/70 pb-1.5">
                         <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1 text-[11px]">
@@ -4290,6 +4411,7 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
                         </div>
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -4985,4 +5107,6 @@ export const InputPanel: React.FC<InputPanelProps> = (props) => {
       )}
     </div>
   );
-};
+});
+
+InputPanel.displayName = 'InputPanel';

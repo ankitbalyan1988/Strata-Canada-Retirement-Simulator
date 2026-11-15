@@ -33,7 +33,8 @@ import {
   Heart,
   ArrowRightLeft,
   HelpCircle,
-  Command
+  Command,
+  Loader2
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab, InputTab } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -55,15 +56,53 @@ export const Sidebar: React.FC = () => {
   const activeInputTab = useSimulationStore((state) => state.activeInputTab);
   const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
   const isStressTestActive = useSimulationStore((state) => state.isStressTestActive);
-  const whatIfSettings = useSimulationStore((state) => state.whatIfSettings);
+  const hasWhatIfActive = useSimulationStore((state) => {
+    const w = state.whatIfSettings;
+    return w.isActive && (w.returnDelta !== 0 || w.appreciationDelta !== 0 || w.inflationDelta !== 0);
+  });
 
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
-  const inputs = useSimulationStore((state) => state.inputs);
-  const province = inputs.province;
   const applyProvince = useSimulationStore((state) => state.applyProvince);
-  const currentAge = inputs.currentAge;
-  const retirementAge = inputs.retirementAge;
+
+  const {
+    province,
+    currentAge,
+    retirementAge,
+    userName,
+    planExpatExit,
+    isMarried,
+    hasDebts,
+    isFutureOnlyDebtMode,
+    housingStatus,
+    showRealEstateSection
+  } = useSimulationStore(
+    useShallow((state) => {
+      const inp = state.inputs;
+      const dFlags = getDebtQualifierFlags(inp);
+      const hStatus: 'own' | 'rent' = inp.housingStatus ?? (
+        inp.realEstate?.ownsHome && inp.realEstate?.purchaseType !== 'future'
+          ? 'own'
+          : (inp.realEstate?.purchaseType === 'future' ? 'rent' : (inp.realEstate?.ownsHome === false ? 'rent' : 'own'))
+      );
+      const planFutureHome = inp.planFutureHomePurchase ?? Boolean(
+        inp.realEstate?.ownsHome && inp.realEstate?.purchaseType === 'future'
+      );
+      return {
+        province: inp.province,
+        currentAge: inp.currentAge,
+        retirementAge: inp.retirementAge,
+        userName: inp.userName?.trim() || '',
+        planExpatExit: inp.planExpatExit ?? Boolean(inp.expat?.planToEmigrate),
+        isMarried: inp.maritalStatus === 'married',
+        hasDebts: dFlags.hasDebtModule,
+        isFutureOnlyDebtMode: dFlags.isFutureOnlyDebtMode,
+        housingStatus: hStatus,
+        showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome)
+      };
+    })
+  );
+
   const readinessScore = useSimulationStore((state) => state.optimisticSummary.readinessScore);
   const netWorthAtRetirement = useSimulationStore((state) => state.optimisticSummary.netWorthAtRetirement);
   const history = useSimulationStore(useShallow((state) => state.history));
@@ -81,27 +120,6 @@ export const Sidebar: React.FC = () => {
   const isExportingPdf = useSimulationStore((state) => state.isExportingPdf);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
   const isMac = React.useMemo(() => isMacPlatform(), []);
-
-  const planExpatExit = inputs.planExpatExit ?? Boolean(inputs.expat?.planToEmigrate);
-  const isMarried = inputs.maritalStatus === 'married';
-  const debtFlags = getDebtQualifierFlags(inputs);
-  const hasDebts = debtFlags.hasDebtModule;
-  const isFutureOnlyDebtMode = debtFlags.isFutureOnlyDebtMode;
-  const housingStatus: 'own' | 'rent' = inputs.housingStatus ?? (
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType !== 'future'
-      ? 'own'
-      : (inputs.realEstate?.purchaseType === 'future' ? 'rent' : (inputs.realEstate?.ownsHome === false ? 'rent' : 'own'))
-  );
-  const planFutureHomePurchase = inputs.planFutureHomePurchase ?? Boolean(
-    inputs.realEstate?.ownsHome && inputs.realEstate?.purchaseType === 'future'
-  );
-  const showRealEstateSection = housingStatus === 'own' || (housingStatus === 'rent' && planFutureHomePurchase);
-
-  const hasWhatIfActive =
-    whatIfSettings.isActive &&
-    (whatIfSettings.returnDelta !== 0 ||
-      whatIfSettings.appreciationDelta !== 0 ||
-      whatIfSettings.inflationDelta !== 0);
 
   const DASHBOARD_SUBTABS: Array<{
     id: DashboardTab;
@@ -698,14 +716,27 @@ export const Sidebar: React.FC = () => {
               type="button"
               onClick={exportPdf}
               disabled={isExportingPdf}
-              title={isSidebarCollapsed ? 'Export Executive PDF Plan' : undefined}
-              className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:translate-x-1 transition-all duration-150 ease-out cursor-pointer disabled:opacity-50 ${
+              aria-busy={isExportingPdf}
+              title={
+                isExportingPdf
+                  ? 'Generating Executive PDF Plan...'
+                  : isSidebarCollapsed
+                  ? 'Export Executive PDF Plan'
+                  : undefined
+              }
+              className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/90 dark:hover:bg-slate-800/70 hover:translate-x-1 transition-all duration-150 ease-out cursor-pointer disabled:opacity-60 disabled:cursor-wait ${
                 isSidebarCollapsed ? 'justify-center px-0' : ''
               }`}
             >
-              <FileDown className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-emerald-500 group-hover:scale-110 transition-all duration-150 shrink-0" />
+              {isExportingPdf ? (
+                <Loader2 className="w-4 h-4 text-emerald-500 animate-spin shrink-0" />
+              ) : (
+                <FileDown className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-emerald-500 group-hover:scale-110 transition-all duration-150 shrink-0" />
+              )}
               {!isSidebarCollapsed && (
-                <span className="group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{isExportingPdf ? 'Exporting PDF...' : 'Export PDF Plan'}</span>
+                <span className="group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                  {isExportingPdf ? 'Generating...' : 'Export PDF Plan'}
+                </span>
               )}
             </button>
 
@@ -797,7 +828,7 @@ export const Sidebar: React.FC = () => {
 
           {/* User Account / Planner Profile Card (Bottom Left Corner) */}
           <div className="pt-2 border-t border-slate-200/80 dark:border-slate-800">
-            {inputs.userName?.trim() ? (
+            {userName ? (
               <button
                 type="button"
                 onClick={() => {
@@ -807,15 +838,14 @@ export const Sidebar: React.FC = () => {
                 className={`group/user flex items-center gap-2.5 p-2 rounded-xl bg-white dark:bg-slate-800/80 hover:bg-emerald-50/70 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-500/40 dark:hover:border-emerald-500/40 transition-all duration-200 cursor-pointer shadow-2xs w-full text-left ${
                   isSidebarCollapsed ? 'justify-center p-1.5' : ''
                 }`}
-                title={`${inputs.userName.trim()} (Primary Planner) — Click to view profile`}
-                aria-label={`Logged in as ${inputs.userName.trim()}. Click to manage profile.`}
+                title={`${userName} (Primary Planner) — Click to view profile`}
+                aria-label={`Logged in as ${userName}. Click to manage profile.`}
               >
                 {/* Avatar with Initials and Active Online Dot */}
                 <div className="relative shrink-0">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 flex items-center justify-center text-white font-bold text-xs shadow-xs group-hover/user:scale-105 transition-transform">
                     {(() => {
-                      const trimmed = inputs.userName.trim();
-                      const parts = trimmed.split(/\s+/).filter(Boolean);
+                      const parts = userName.split(/\s+/).filter(Boolean);
                       if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
                       return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
                     })()}
@@ -832,7 +862,7 @@ export const Sidebar: React.FC = () => {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1">
                         <span className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover/user:text-emerald-700 dark:group-hover/user:text-emerald-300 transition-colors">
-                          {inputs.userName.trim()}
+                          {userName}
                         </span>
                         <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
                       </div>
@@ -840,7 +870,7 @@ export const Sidebar: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Active</span>
                         <span>•</span>
-                        <span>Age {inputs.currentAge}</span>
+                        <span>Age {currentAge}</span>
                         <span>•</span>
                         <span className="uppercase">{province}</span>
                       </div>
