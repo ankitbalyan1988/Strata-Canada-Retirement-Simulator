@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { 
   CalendarClock,
   Flag, 
@@ -13,14 +13,9 @@ import {
   Clock, 
   AlertTriangle, 
   Info, 
-  Layers,
-  CheckCircle2,
   Calendar,
-  Wallet,
-  DollarSign,
-  ChevronLeft,
-  ChevronRight,
-  CreditCard
+  CreditCard,
+  X
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -49,50 +44,26 @@ export interface TimelineMilestone {
   planningTakeaway: string;
 }
 
-export const RetirementMilestoneTimeline: React.FC = () => {
+interface PopupLayout {
+  left: number;
+  top: number;
+  width: number;
+  arrowLeft: number;
+  placement: 'bottom' | 'top';
+}
+
+export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
   const inputs = useSimulationStore(useShallow((state) => state.inputs));
   const summary = useSimulationStore(useShallow((state) => state.summary));
   const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
 
   const [activeCategory, setActiveCategory] = useState<MilestoneCategory>('all');
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
-  const [hoveredMilestoneId, setHoveredMilestoneId] = useState<string | null>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [openPopupAge, setOpenPopupAge] = useState<number | null>(null);
+  const [popupLayout, setPopupLayout] = useState<PopupLayout | null>(null);
 
-  const updateScrollButtons = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 6);
-    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
-  }, []);
-
-  const handleSelectMilestone = (id: string) => {
-    setSelectedMilestoneId(id);
-    const cardEl = cardRefs.current[id];
-    if (cardEl && scrollContainerRef.current) {
-      cardEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    }
-  };
-
-  const scrollByAmount = (direction: 'left' | 'right') => {
-    if (!scrollContainerRef.current) return;
-    const amount = direction === 'left' ? -280 : 280;
-    scrollContainerRef.current.scrollBy({ left: amount, behavior: 'smooth' });
-    setTimeout(updateScrollButtons, 350);
-  };
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY !== 0 && scrollContainerRef.current) {
-      const container = scrollContainerRef.current;
-      if (container.scrollWidth > container.clientWidth) {
-        container.scrollLeft += e.deltaY;
-        updateScrollButtons();
-      }
-    }
-  };
+  const timelineSectionRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const pinRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const currentAge = inputs.currentAge;
   const retirementAge = inputs.retirementAge;
@@ -511,36 +482,6 @@ export const RetirementMilestoneTimeline: React.FC = () => {
     return allMilestones;
   }, [allMilestones, activeCategory]);
 
-  useEffect(() => {
-    updateScrollButtons();
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', updateScrollButtons, { passive: true });
-    window.addEventListener('resize', updateScrollButtons);
-    return () => {
-      el.removeEventListener('scroll', updateScrollButtons);
-      window.removeEventListener('resize', updateScrollButtons);
-    };
-  }, [filteredMilestones, updateScrollButtons]);
-
-  // Default selected milestone: Target Retirement Day or first available
-  const activeMilestone = useMemo(() => {
-    if (selectedMilestoneId) {
-      const found = allMilestones.find((m) => m.id === selectedMilestoneId);
-      if (found) return found;
-    }
-    // Default to retirement day if present, otherwise first milestone
-    return allMilestones.find((m) => m.id === 'retirement_day') || allMilestones[0];
-  }, [allMilestones, selectedMilestoneId]);
-
-  // Calculate percentage along track (0% to 100%)
-  const getPercentPosition = (age: number) => {
-    const clamped = Math.max(currentAge, Math.min(lifeExpectancy, age));
-    return ((clamped - currentAge) / totalYears) * 100;
-  };
-
-  const retirementPercent = getPercentPosition(retirementAge);
-
   // Group milestones that fall on the exact same age for the timeline track
   const groupedMilestonesByAge = useMemo(() => {
     const groups: { [age: number]: TimelineMilestone[] } = {};
@@ -550,6 +491,53 @@ export const RetirementMilestoneTimeline: React.FC = () => {
     });
     return groups;
   }, [filteredMilestones]);
+
+  // Close open popup if its age is filtered out when switching category tabs
+  useEffect(() => {
+    if (openPopupAge !== null && !groupedMilestonesByAge[openPopupAge]) {
+      setOpenPopupAge(null);
+    }
+  }, [groupedMilestonesByAge, openPopupAge]);
+
+  // Close popup on Escape key or click/tap outside popup & pin triggers
+  useEffect(() => {
+    if (openPopupAge === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpenPopupAge(null);
+      }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (popupRef.current && popupRef.current.contains(target)) return;
+      const activePinEl = pinRefs.current[openPopupAge];
+      if (activePinEl && activePinEl.contains(target)) return;
+      const clickedAnotherPin = Object.values(pinRefs.current).some(
+        (el) => el && el.contains(target)
+      );
+      if (!clickedAnotherPin) {
+        setOpenPopupAge(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [openPopupAge]);
+
+  // Calculate percentage along track (0% to 100%)
+  const getPercentPosition = (age: number) => {
+    const clamped = Math.max(currentAge, Math.min(lifeExpectancy, age));
+    return ((clamped - currentAge) / totalYears) * 100;
+  };
+
+  const retirementPercent = getPercentPosition(retirementAge);
 
   // Anti-collision / vertical tier staggering for timeline milestone pins
   // When pins are closer than 5.5% (~45-55px), they are staggered across vertical tiers
@@ -582,6 +570,83 @@ export const RetirementMilestoneTimeline: React.FC = () => {
 
     return { pinTiers: tiers, maxTier: highestTier };
   }, [groupedMilestonesByAge, currentAge, lifeExpectancy, totalYears]);
+
+  // Dynamically compute and clamp popup position against both container and viewport edges
+  const computePopupPosition = useCallback(() => {
+    if (openPopupAge === null) {
+      setPopupLayout(null);
+      return;
+    }
+    const containerEl = timelineSectionRef.current;
+    const pinEl = pinRefs.current[openPopupAge];
+    if (!containerEl || !pinEl) return;
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const pinRect = pinEl.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const edgePadding = 12;
+
+    const maxAllowedWidth = Math.max(240, viewportWidth - edgePadding * 2);
+    const width = Math.min(384, maxAllowedWidth);
+
+    const pinCenterX = pinRect.left + pinRect.width / 2;
+    const idealViewportLeft = pinCenterX - width / 2;
+
+    const containerSafeLeft = Math.max(edgePadding, containerRect.left + 4);
+    const containerSafeRight = Math.min(viewportWidth - edgePadding, containerRect.right - 4);
+
+    let minLeft = edgePadding;
+    let maxLeft = viewportWidth - edgePadding - width;
+    if (containerSafeRight - containerSafeLeft >= width) {
+      minLeft = containerSafeLeft;
+      maxLeft = containerSafeRight - width;
+    }
+
+    const clampedViewportLeft = Math.max(minLeft, Math.min(maxLeft, idealViewportLeft));
+    const relativeLeft = clampedViewportLeft - containerRect.left;
+    const arrowLeft = Math.max(18, Math.min(width - 18, pinCenterX - clampedViewportLeft));
+
+    const measuredHeight = popupRef.current?.offsetHeight || 280;
+    const gap = 10;
+    const spaceBelow = viewportHeight - pinRect.bottom - edgePadding - gap;
+    const spaceAbove = pinRect.top - edgePadding - gap;
+    const placement: 'bottom' | 'top' =
+      spaceBelow < measuredHeight && spaceAbove > spaceBelow ? 'top' : 'bottom';
+
+    const idealViewportTop =
+      placement === 'bottom'
+        ? pinRect.bottom + gap
+        : pinRect.top - measuredHeight - gap;
+    const minViewportTop = edgePadding;
+    const maxViewportTop = Math.max(edgePadding, viewportHeight - edgePadding - measuredHeight);
+    const clampedViewportTop = Math.max(minViewportTop, Math.min(maxViewportTop, idealViewportTop));
+    const top = clampedViewportTop - containerRect.top;
+
+    setPopupLayout({
+      left: relativeLeft,
+      top,
+      width,
+      arrowLeft,
+      placement
+    });
+  }, [openPopupAge]);
+
+  useLayoutEffect(() => {
+    computePopupPosition();
+  }, [computePopupPosition, filteredMilestones, maxTier]);
+
+  useEffect(() => {
+    if (openPopupAge === null) return;
+    window.addEventListener('resize', computePopupPosition);
+    window.addEventListener('scroll', computePopupPosition, { passive: true });
+    return () => {
+      window.removeEventListener('resize', computePopupPosition);
+      window.removeEventListener('scroll', computePopupPosition);
+    };
+  }, [openPopupAge, computePopupPosition]);
+
+  const openMilestonesAtAge = openPopupAge !== null ? groupedMilestonesByAge[openPopupAge] || [] : [];
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 sm:p-6 transition-colors duration-200">
@@ -662,10 +727,10 @@ export const RetirementMilestoneTimeline: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. Visual Horizontal Interactive Progress Bar & Phase Segments */}
-      <div className="pt-6 pb-4">
+      {/* 2. Visual Horizontal Interactive Progress Bar & Phase Segments + Anchored Age Popups */}
+      <div ref={timelineSectionRef} className="relative pt-6 pb-2">
         {/* Phase Track Labels */}
-        <div className="flex items-center justify-between text-xs font-medium pb-2 px-1">
+        <div className="flex items-center justify-between text-xs font-medium pb-2 px-1 gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span>
             <span className="text-slate-700 dark:text-slate-300 font-semibold">
@@ -737,7 +802,7 @@ export const RetirementMilestoneTimeline: React.FC = () => {
             const pct = getPercentPosition(age);
             const safePct = Math.max(2, Math.min(98, pct));
             const tier = pinTiers[age] || 0;
-            const isContainsActive = milestonesAtAge.some((m) => m.id === activeMilestone.id);
+            const isPopupOpenForAge = openPopupAge === age;
             const primaryMilestone = milestonesAtAge[0];
             const isRetirement = milestonesAtAge.some((m) => m.isKeyTurningPoint);
             const isWarning = milestonesAtAge.some((m) => m.isWarning);
@@ -746,23 +811,19 @@ export const RetirementMilestoneTimeline: React.FC = () => {
             return (
               <div
                 key={age}
-                style={{ left: `${safePct}%` }}
-                className="absolute -translate-x-1/2 top-0 z-10 flex flex-col items-center cursor-pointer group"
-                onClick={() => {
-                  const currentIndex = milestonesAtAge.findIndex((m) => m.id === activeMilestone.id);
-                  const nextMilestone = currentIndex >= 0 
-                    ? milestonesAtAge[(currentIndex + 1) % milestonesAtAge.length]
-                    : primaryMilestone;
-                  handleSelectMilestone(nextMilestone.id);
+                ref={(el) => {
+                  pinRefs.current[age] = el;
                 }}
-                onMouseEnter={() => setHoveredMilestoneId(primaryMilestone.id)}
-                onMouseLeave={() => setHoveredMilestoneId(null)}
+                style={{ left: `${safePct}%` }}
+                className={`absolute -translate-x-1/2 top-0 flex flex-col items-center group ${
+                  isPopupOpenForAge ? 'z-30' : 'z-10'
+                }`}
               >
                 {/* Connecting Pin Stalk with Dynamic Anti-Collision Staggering */}
                 <div
                   style={{ height: tier === 2 ? '48px' : tier === 1 ? '26px' : '10px' }}
                   className={`w-0.5 transition-all duration-200 ${
-                    isContainsActive
+                    isPopupOpenForAge
                       ? 'bg-indigo-600 dark:bg-indigo-400'
                       : isRetirement
                       ? 'bg-amber-500'
@@ -772,179 +833,184 @@ export const RetirementMilestoneTimeline: React.FC = () => {
                   }`}
                 />
 
-                {/* Pin Head Button */}
+                {/* Clickable Pin + Age Label Trigger */}
                 <button
                   type="button"
-                  className={`relative flex items-center justify-center rounded-xl p-1.5 transition-all shadow-xs cursor-pointer ${
-                    isContainsActive
-                      ? 'bg-indigo-600 text-white ring-4 ring-indigo-200 dark:ring-indigo-900/60 scale-110 z-20'
-                      : isRetirement
-                      ? 'bg-amber-500 text-white ring-2 ring-amber-200 dark:ring-amber-900/60 hover:scale-105'
-                      : isWarning
-                      ? 'bg-rose-500 text-white ring-2 ring-rose-200 dark:ring-rose-900/60 hover:scale-105'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 hover:border-indigo-500 dark:hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300 hover:scale-105'
-                  }`}
-                  title={`${milestonesAtAge.map((m) => m.title).join(' • ')} (Age ${age})`}
+                  onClick={() => setOpenPopupAge((prev) => (prev === age ? null : age))}
+                  aria-expanded={isPopupOpenForAge}
+                  aria-haspopup="dialog"
+                  aria-label={`Age ${age} milestones: ${milestonesAtAge.map((m) => m.title).join(', ')}. Click to ${isPopupOpenForAge ? 'hide' : 'view'} details.`}
+                  className="flex flex-col items-center cursor-pointer focus:outline-none"
                 >
-                  <IconComponent className="w-3.5 h-3.5" />
+                  {/* Pin Head */}
+                  <span
+                    className={`relative flex items-center justify-center rounded-xl p-1.5 transition-all shadow-xs ${
+                      isPopupOpenForAge
+                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-200 dark:ring-indigo-900/60 scale-110'
+                        : isRetirement
+                        ? 'bg-amber-500 text-white ring-2 ring-amber-200 dark:ring-amber-900/60 group-hover:scale-105'
+                        : isWarning
+                        ? 'bg-rose-500 text-white ring-2 ring-rose-200 dark:ring-rose-900/60 group-hover:scale-105'
+                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 group-hover:scale-105'
+                    }`}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" />
 
-                  {/* Multi-milestone badge counter if >=2 events at this age */}
-                  {milestonesAtAge.length > 1 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-900">
-                      {milestonesAtAge.length}
-                    </span>
-                  )}
+                    {/* Multi-milestone badge counter if >=2 events at this age */}
+                    {milestonesAtAge.length > 1 && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-900">
+                        {milestonesAtAge.length}
+                      </span>
+                    )}
+                  </span>
+
+                  {/* Anti-collision Clickable Age Pill */}
+                  <span
+                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-2xs whitespace-nowrap transition-all border mt-1 select-none ${
+                      isPopupOpenForAge
+                        ? 'text-indigo-700 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950/90 border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-300/40 dark:ring-indigo-500/30'
+                        : isRetirement
+                        ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/90 border-amber-200 dark:border-amber-800 group-hover:border-amber-400'
+                        : isWarning
+                        ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800 group-hover:border-rose-400'
+                        : 'text-slate-700 dark:text-slate-300 bg-white/95 dark:bg-slate-800/95 border-slate-200/90 dark:border-slate-700 group-hover:border-indigo-400 dark:group-hover:border-indigo-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-300'
+                    }`}
+                  >
+                    Age {age}
+                  </span>
                 </button>
-
-                {/* Anti-collision Floating Pill Label */}
-                <span
-                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-2xs whitespace-nowrap transition-all border mt-1 select-none ${
-                    isContainsActive
-                      ? 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/90 border-indigo-200 dark:border-indigo-800 ring-1 ring-indigo-300/40'
-                      : isRetirement
-                      ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/90 border-amber-200 dark:border-amber-800'
-                      : isWarning
-                      ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800'
-                      : 'text-slate-700 dark:text-slate-300 bg-white/95 dark:bg-slate-800/95 border-slate-200/90 dark:border-slate-700 group-hover:border-indigo-400 dark:group-hover:border-indigo-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-300'
-                  }`}
-                >
-                  Age {age}
-                </span>
               </div>
             );
           })}
         </div>
-      </div>
 
-      {/* 3. Horizontal Scrollable Milestone Quick Cards Strip */}
-      <div className="pt-3 pb-1">
-        {/* Strip Header with Controls */}
-        <div className="flex items-center justify-between pb-2 px-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-              Milestone Schedule
-            </span>
-            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-              {filteredMilestones.length}
-            </span>
-            <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
-              • Scroll horizontally or use arrows to explore all milestones
-            </span>
-          </div>
-
-          {/* Quick Arrow Scroll Navigation Buttons */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => scrollByAmount('left')}
-              disabled={!canScrollLeft}
-              className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-2xs"
-              title="Scroll left to earlier milestones"
-              aria-label="Scroll left to earlier milestones"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollByAmount('right')}
-              disabled={!canScrollRight}
-              className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer border border-slate-200/80 dark:border-slate-700 shadow-2xs"
-              title="Scroll right to later milestones"
-              aria-label="Scroll right to later milestones"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Scroll Container with Floating Arrow Overlays */}
-        <div className="relative group/scroll">
-          {/* Floating Left Arrow Overlay */}
-          {canScrollLeft && (
-            <button
-              type="button"
-              onClick={() => scrollByAmount('left')}
-              className="absolute -left-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-white/95 dark:bg-slate-800/95 text-slate-700 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105 transition cursor-pointer"
-              title="Scroll left"
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          )}
-
+        {/* Edge-Aware Interactive Milestone Detail Tooltip Popup */}
+        {openPopupAge !== null && openMilestonesAtAge.length > 0 && (
           <div
-            ref={scrollContainerRef}
-            onWheel={handleWheel}
-            className="flex items-stretch gap-3 overflow-x-auto pb-3 pt-1 scroll-smooth"
-            style={{ scrollbarWidth: 'thin' }}
+            ref={popupRef}
+            role="dialog"
+            aria-label={`Milestones at Age ${openPopupAge}`}
+            style={{
+              left: popupLayout ? `${popupLayout.left}px` : '0px',
+              top: popupLayout ? `${popupLayout.top}px` : '100%',
+              width: popupLayout
+                ? `${popupLayout.width}px`
+                : `${typeof window !== 'undefined' ? Math.min(384, Math.max(240, window.innerWidth - 24)) : 360}px`,
+              visibility: popupLayout ? 'visible' : 'hidden'
+            }}
+            className="absolute z-40 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/90 shadow-xl dark:shadow-2xl ring-1 ring-slate-900/5 dark:ring-white/10 text-left animate-in fade-in duration-150"
           >
-            {filteredMilestones.map((m) => {
-              const isSelected = m.id === activeMilestone.id;
-              const Icon = m.icon;
-              const yearsUntil = m.age - currentAge;
+            {/* Dynamic Pointer Caret Aligned to Clicked Age Pin */}
+            {popupLayout && (
+              <span
+                aria-hidden="true"
+                style={{ left: `${popupLayout.arrowLeft}px` }}
+                className={`absolute w-3 h-3 -translate-x-1/2 rotate-45 border-slate-200 dark:border-slate-700/90 ${
+                  popupLayout.placement === 'bottom'
+                    ? '-top-1.5 border-t border-l bg-slate-50 dark:bg-slate-800'
+                    : '-bottom-1.5 border-b border-r bg-white dark:bg-slate-900'
+                }`}
+              />
+            )}
 
-              return (
-                <button
-                  key={m.id}
-                  ref={(el) => {
-                    cardRefs.current[m.id] = el;
-                  }}
-                  type="button"
-                  onClick={() => handleSelectMilestone(m.id)}
-                  className={`flex-shrink-0 w-64 p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-500 dark:border-indigo-500 ring-2 ring-indigo-200/70 dark:ring-indigo-900/60 shadow-xs'
-                      : m.isKeyTurningPoint
-                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-700/60 hover:bg-amber-50/70 dark:hover:bg-amber-950/30'
-                      : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/80 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <div className={`p-1 rounded-lg shrink-0 ${m.iconBg}`}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                        Age {m.age} ({m.year})
+            {/* Popup Header */}
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800 rounded-t-2xl">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-900 dark:text-slate-50">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>Age {openPopupAge} ({openMilestonesAtAge[0].year})</span>
+                </span>
+                {(() => {
+                  const yearsUntil = openPopupAge - currentAge;
+                  return (
+                    <span
+                      className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                        yearsUntil === 0
+                          ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                          : yearsUntil > 0
+                          ? 'bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {yearsUntil === 0 ? 'Today' : yearsUntil > 0 ? `In ${yearsUntil} yrs` : `${Math.abs(yearsUntil)} yrs ago`}
+                    </span>
+                  );
+                })()}
+                {openMilestonesAtAge.length > 1 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900">
+                    {openMilestonesAtAge.length} events
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setOpenPopupAge(null)}
+                aria-label="Close milestone popup"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-700/60 transition cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Popup Body: Scrollable list of milestone details at this age */}
+            <div className="p-4 flex flex-col gap-3.5 max-h-[min(60vh,380px)] overflow-y-auto">
+              {openMilestonesAtAge.map((m, idx) => {
+                const MIcon = m.icon;
+                return (
+                  <div
+                    key={m.id}
+                    className={idx > 0 ? 'pt-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-1.5' : 'flex flex-col gap-1.5'}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${m.iconBg}`}>
+                        <MIcon className="w-3.5 h-3.5" />
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-slate-50 leading-snug">
+                          {m.title}
+                        </h4>
+                        <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5 leading-snug">
+                          {m.tagline}
+                        </p>
+                      </div>
                     </div>
 
-                    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md shrink-0 ${
-                      yearsUntil === 0 
-                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300' 
-                        : yearsUntil > 0 
-                        ? 'bg-indigo-100/70 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                    }`}>
-                      {yearsUntil === 0 ? 'Today' : `In ${yearsUntil} yrs`}
-                    </span>
-                  </div>
+                    <p className="text-[11.5px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {m.description}
+                    </p>
 
-                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate mb-1">
-                    {m.title}
+                    {m.craStatutoryRule && (
+                      <div className="p-2 rounded-lg bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/70 dark:border-purple-800/50 text-[10.5px] text-purple-900 dark:text-purple-200 leading-snug">
+                        <strong className="font-bold">CRA Rule: </strong>
+                        {m.craStatutoryRule}
+                      </div>
+                    )}
+
+                    <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/70 text-[10.5px] text-slate-600 dark:text-slate-300 leading-snug">
+                      <strong className="text-slate-800 dark:text-slate-100 font-semibold">Planning Note: </strong>
+                      {m.planningTakeaway}
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-                    {m.tagline}
-                  </p>
-                </button>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
+        )}
+      </div>
 
-          {/* Floating Right Arrow Overlay */}
-          {canScrollRight && (
-            <button
-              type="button"
-              onClick={() => scrollByAmount('right')}
-              className="absolute -right-2 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-white/95 dark:bg-slate-800/95 text-slate-700 dark:text-slate-200 shadow-md border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:scale-105 transition cursor-pointer"
-              title="Scroll right"
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+      {/* Subtle Interactive Discovery Hint */}
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
+        <span className="inline-flex items-center gap-1.5">
+          <Info className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400 shrink-0" />
+          <span>Click any age on the timeline above to inspect milestone details.</span>
+        </span>
+        <span className="font-mono text-[10.5px] text-slate-400 dark:text-slate-500">
+          {filteredMilestones.length} {filteredMilestones.length === 1 ? 'milestone' : 'milestones'} displayed
+        </span>
       </div>
     </div>
   );
-};
+});
+
+RetirementMilestoneTimeline.displayName = 'RetirementMilestoneTimeline';
