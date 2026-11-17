@@ -198,7 +198,7 @@ export const CurrencyInput: React.FC<CurrencyInputProps> = ({
     <div className={`relative ${containerClassName}`}>
       {!hidePrefix && (
         <span
-          className={`absolute left-2.5 top-2 text-xs text-slate-400 dark:text-slate-500 font-mono pointer-events-none select-none ${prefixClassName}`}
+          className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 dark:text-slate-500 font-mono pointer-events-none select-none ${prefixClassName}`}
         >
           {prefix}
         </span>

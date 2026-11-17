@@ -147,9 +147,43 @@ export interface SpouseInputs {
 
 export type RealEstatePurchaseType = 'current' | 'future';
 export type PropertyType = 'freehold' | 'condo';
+export type AdditionalPropertyTiming = 'current' | 'future';
+export type AdditionalPropertyRole = 'secondary_home' | 'investment_rental' | 'vacation_cottage';
+
+export interface AdditionalPropertyItem {
+  id: string;
+  name: string;
+  timing: AdditionalPropertyTiming; // 'current' (already owned today) | 'future' (planned future purchase)
+  role?: AdditionalPropertyRole;
+  isPaidOff?: boolean; // Fully paid off ($0 mortgage balance, or 100% all-cash future purchase)
+  purchaseAge?: number; // For 'future' properties: planned acquisition age
+  costOfHome: number; // Original purchase price ('current') or target price in today's $ ('future')
+  currentMarketValue: number; // Current estimated market value ('current')
+  downPayment: number; // Down payment paid ('current') or target down payment ('future')
+  downPaymentPercentPreset?: 5 | 10 | 15 | 20 | 100 | 'custom';
+  mortgageInterestRate: number; // Annual mortgage interest rate (%)
+  mortgageTermYears: number; // Amortization term in years
+  mortgageStartYear: number; // Year mortgage originated ('current')
+  ownershipSharePercent: number; // Household ownership percentage (0-100)
+  annualAppreciationRate: number; // Annual growth rate (%)
+  propertyType?: PropertyType;
+  annualPropertyTaxRatePercent?: number;
+  monthlyPropertyTaxOverride?: number;
+  monthlyCondoFee?: number;
+  monthlyRentalIncome?: number; // Optional gross monthly rental income offset
+  planToSellHome?: boolean;
+  sellHomeAge?: number;
+  sellingCostPercent?: number;
+  fundWithTfsa?: boolean;
+  fundWithNonReg?: boolean;
+}
 
 export interface RealEstateInputs {
   ownsHome: boolean;
+  isPaidOff?: boolean; // Primary currently owned home is fully paid off ($0 mortgage)
+  ownsMultipleProperties?: boolean; // Currently owns more than one real estate property
+  planFutureAdditionalProperties?: boolean; // Plans to buy additional properties in the future
+  additionalProperties?: AdditionalPropertyItem[]; // Additional current or future real estate properties
   purchaseType?: RealEstatePurchaseType; // 'current' (bought in past) | 'future' (renting now, buying later)
   futurePurchaseAge?: number; // Age of future home purchase (e.g. 35)
   currentRent?: number; // Monthly rent while currently renting before purchase
@@ -171,7 +205,7 @@ export interface RealEstateInputs {
   fundWithHbp?: boolean; // Use RRSP Home Buyers' Plan (HBP)
   fundWithTfsa?: boolean; // Use TFSA savings
   fundWithNonReg?: boolean; // Use Non-Registered / Taxable savings
-  downPaymentPercentPreset?: 5 | 10 | 15 | 20 | 'custom'; // Selected down payment % preset or custom
+  downPaymentPercentPreset?: 5 | 10 | 15 | 20 | 100 | 'custom'; // Selected down payment % preset or custom
   rentOverridden?: boolean; // True if user manually entered a custom rent in real estate tab
 
   // Realtor.ca Ownership & Closing Cost Modeling
@@ -352,6 +386,8 @@ export interface YearSimulationResult {
   propertyTaxPaidThisYear?: number;
   condoFeesPaidThisYear?: number;
   totalHousingCostsThisYear?: number;
+  activePropertyCount?: number;
+  rentalIncomeThisYear?: number;
 
   // Fixed-Term Debts & Liabilities
   remainingDebt: number;
@@ -483,6 +519,11 @@ export interface SimulationSummary {
   homeSoldAge: number | null;
   homeNetProceedsAtSale: number;
   liquidNetWorthAtRetirement: number;
+  totalPropertiesCount?: number;
+  currentPropertiesCount?: number;
+  futurePropertiesCount?: number;
+  hasPaidOffProperty?: boolean;
+  additionalPropertyPurchaseAges?: number[];
 
   // Couple details
   isCouple: boolean;

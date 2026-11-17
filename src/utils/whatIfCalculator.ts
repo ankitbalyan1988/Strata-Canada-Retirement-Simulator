@@ -115,7 +115,14 @@ export function calculateWhatIfSimulation(
         annualAppreciationRate: Math.max(
           -5.0,
           Number((baseAppreciation + settings.appreciationDelta).toFixed(2))
-        )
+        ),
+        additionalProperties: baseInputs.realEstate.additionalProperties?.map((prop) => ({
+          ...prop,
+          annualAppreciationRate: Math.max(
+            -5.0,
+            Number(((prop.annualAppreciationRate ?? baseAppreciation) + settings.appreciationDelta).toFixed(2))
+          )
+        }))
       }
     : undefined;
 

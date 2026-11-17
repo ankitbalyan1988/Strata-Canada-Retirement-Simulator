@@ -37,6 +37,15 @@ export interface MilestoneHousingContext {
   totalDownPaymentFunded: number;
   initialMortgagePrincipal: number;
   futureActualLoanPrincipal: number;
+  additionalInitialMortgagePrincipal?: number;
+  additionalFuturePurchases?: Array<{
+    id: string;
+    name: string;
+    age: number;
+    nominalPrice: number;
+    downPayment: number;
+    isPaidOff: boolean;
+  }>;
 }
 
 /**
@@ -203,7 +212,7 @@ export function evaluateSimulationMilestones(
     }
   }
 
-  // 4. Future Home Purchase Milestone
+  // 4. Future Home Purchase Milestones (Primary & Additional Future Properties)
   if (hc && hc.isFuturePurchase) {
     const buyRow = yearlyResults.find((r) => r.age === hc.futurePurchaseAge);
     if (buyRow) {
@@ -221,14 +230,48 @@ export function evaluateSimulationMilestones(
     }
   }
 
-  // 5. Mortgage Freedom Milestone
-  if (hc && hc.ownsHome && (hc.initialMortgagePrincipal > 0 || (hc.isFuturePurchase && hc.futureActualLoanPrincipal > 0))) {
+  if (hc?.additionalFuturePurchases && hc.additionalFuturePurchases.length > 0) {
+    hc.additionalFuturePurchases.forEach((addProp) => {
+      const addRow = yearlyResults.find((r) => r.age === addProp.age);
+      if (addRow) {
+        addRow.milestoneBadges = addRow.milestoneBadges || [];
+        addRow.milestoneBadges.push({
+          id: `add_home_purchase_${addProp.id}`,
+          label: `Property Purchase: ${addProp.name} (Age ${addProp.age})`,
+          shortLabel: `🏘️ ${addProp.name}`,
+          type: 'home_purchase',
+          icon: 'home',
+          color: 'indigo',
+          description: `Acquired additional property "${addProp.name}" for $${Math.round(addProp.nominalPrice).toLocaleString()}${addProp.isPaidOff ? ' (100% Paid Off / Cash)' : ''}`,
+          metricsSummary: addProp.isPaidOff ? 'All-Cash Purchase' : `Down Payment: $${Math.round(addProp.downPayment).toLocaleString()}`
+        });
+      }
+    });
+  }
+
+  // 5. Mortgage Freedom Milestone (across primary and all additional properties)
+  const hasAnyFutureMortgagedAddProp = Boolean(
+    hc?.additionalFuturePurchases?.some((p) => !p.isPaidOff)
+  );
+  const maxFutureMortgagePurchaseAge = Math.max(
+    hc?.isFuturePurchase ? hc.futurePurchaseAge : 0,
+    ...(hc?.additionalFuturePurchases?.filter((p) => !p.isPaidOff).map((p) => p.age) ?? [0])
+  );
+  const hadAnyMortgageLiability = Boolean(
+    hc &&
+      (hc.initialMortgagePrincipal > 0 ||
+        (hc.additionalInitialMortgagePrincipal ?? 0) > 0 ||
+        (hc.isFuturePurchase && hc.futureActualLoanPrincipal > 0) ||
+        hasAnyFutureMortgagedAddProp)
+  );
+
+  if (hc && hadAnyMortgageLiability) {
     for (const row of yearlyResults) {
       if (
         row.remainingMortgage <= 0 &&
         row.homeValue > 0 &&
         !row.homeSoldThisYear &&
-        (!hc.isFuturePurchase || row.age >= hc.futurePurchaseAge)
+        row.age >= maxFutureMortgagePurchaseAge
       ) {
         mortgagePayoffAge = row.age;
         mortgagePayoffYear = row.year;
@@ -237,14 +280,14 @@ export function evaluateSimulationMilestones(
         row.milestoneBadges.push({
           id: 'mortgage_free',
           label: 'Mortgage Freedom',
-          shortLabel: '🏡 Debt Free',
+          shortLabel: '🏡 Mortgage Free',
           type: 'mortgage_free',
           icon: 'home',
           color: 'teal',
-          description: 'Primary residence mortgage fully amortized to $0 balance',
+          description: 'All residential property mortgages fully amortized to $0 balance',
           metricsSummary: 'Mortgage: $0'
         });
-        row.notes.push(`🏡 Mortgage Freedom: Home mortgage loan fully paid off to $0 balance! Cash flow freed from loan service.`);
+        row.notes.push(`🏡 Mortgage Freedom: All property mortgages fully paid off to $0 balance! Cash flow freed from loan service.`);
         break;
       }
     }

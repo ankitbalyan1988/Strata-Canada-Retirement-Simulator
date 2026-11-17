@@ -21,6 +21,7 @@ import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { YearSimulationResult } from '../types/retirement';
 import { getEffectiveDebts, calculateDebtMonthlyPayment } from '../utils/debtCalculator';
+import { getActiveAdditionalProperties, calculateAdditionalPropertySummary } from '../utils/mortgage';
 
 export type MilestoneCategory = 'all' | 'pension' | 'cra_tax' | 'wealth' | 'lifestyle';
 
@@ -157,6 +158,35 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
         planningTakeaway: 'Home equity serves as an inflation-hedged wealth anchor that can later be tapped via downsizing or reverse mortgage.'
       });
     }
+
+    // 2B. Planned Additional Future Property Purchases
+    const activeAdditionalProps = getActiveAdditionalProperties(inputs);
+    activeAdditionalProps.forEach((prop) => {
+      if (prop.timing !== 'future') return;
+      const stats = calculateAdditionalPropertySummary(prop, currentAge, startYear);
+      const pAge = stats.purchaseAge;
+      if (pAge > currentAge && pAge <= lifeExpectancy) {
+        const cashLabel = stats.isPaidOff ? '100% Cash (Paid Off)' : `${formatCur(stats.futureMonthlyPayment)}/mo mortgage`;
+        list.push({
+          id: `add_home_purchase_${prop.id}`,
+          age: pAge,
+          year: getYear(pAge),
+          title: `Acquire: ${prop.name || 'Additional Property'}`,
+          shortTitle: prop.name ? prop.name.slice(0, 14) : 'Add\'l Home',
+          category: 'lifestyle',
+          icon: Home,
+          iconBg: 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400',
+          iconColor: 'text-indigo-600 dark:text-indigo-400',
+          pinBorderColor: 'border-indigo-500',
+          pinRingColor: 'ring-indigo-300 dark:ring-indigo-800',
+          tagline: `${formatCur(stats.projectedPurchasePrice)} projected · ${cashLabel}`,
+          description: `Planned acquisition of "${prop.name || 'Additional Property'}" at Age ${pAge} for an estimated nominal price of ${formatCur(stats.projectedPurchasePrice)} (${stats.isPaidOff ? 'all-cash purchase with $0 mortgage' : `${formatCur(stats.projectedDownPayment)} down payment + ${formatCur(stats.futureInitialLoan)} mortgage`}).`,
+          planningTakeaway: stats.isPaidOff
+            ? 'Purchasing all-cash eliminates ongoing mortgage interest drag while adding appreciating real estate equity.'
+            : 'Model ongoing property taxes, condo fees, and optional rental income offsets carefully alongside retirement cash flows.'
+        });
+      }
+    });
 
     // 3. Coast FIRE Milestone (if achieved before retirement)
     if (summary?.coastFireAge && summary.coastFireAge >= currentAge && summary.coastFireAge < retirementAge) {

@@ -15,6 +15,10 @@ import {
   calculateTotalDebtInterest,
   getEffectiveDebts
 } from './debtCalculator';
+import {
+  calculateAdditionalPropertySummary,
+  getActiveAdditionalProperties
+} from './mortgage';
 
 /**
  * AI narrative structure containing bespoke markdown advisory text for each section.
@@ -326,7 +330,10 @@ function generateDefaultNarratives(
     tfsa_first: 'TFSA-First Drawdown (liquidating tax-free assets early)'
   };
 
-  const remainingMortgage = yearlyResults?.[0]?.remainingMortgage ?? Math.max(0, (inputs.realEstate?.costOfHome ?? 0) - (inputs.realEstate?.downPayment ?? 0));
+  const remainingMortgage = inputs.realEstate?.isPaidOff
+    ? 0
+    : (yearlyResults?.[0]?.remainingMortgage ?? Math.max(0, (inputs.realEstate?.costOfHome ?? 0) - (inputs.realEstate?.downPayment ?? 0)));
+  const activeAddlProps = getActiveAdditionalProperties(inputs);
 
   return {
     executiveSummary: [
@@ -349,7 +356,10 @@ function generateDefaultNarratives(
       `### Real Estate Equity & Housing Strategy`,
       inputs.realEstate?.ownsHome
         ? [
-            `* **Primary Residence Valuation**: Your home, with a current market valuation of **${formatCur(inputs.realEstate.currentMarketValue)}** and remaining mortgage debt of **${formatCur(remainingMortgage)}**, represents a cornerstone of household equity (${inputs.realEstate.ownershipSharePercent}% ownership share).`,
+            `* **Primary Residence Valuation**: Your home, with a current market valuation of **${formatCur(inputs.realEstate.currentMarketValue)}** and ${inputs.realEstate.isPaidOff ? '**$0 remaining mortgage (100% Paid Off)**' : `remaining mortgage debt of **${formatCur(remainingMortgage)}**`}, represents a cornerstone of household equity (${inputs.realEstate.ownershipSharePercent}% ownership share).`,
+            ...(activeAddlProps.length > 0
+              ? [`* **Multi-Property Portfolio (${activeAddlProps.length + 1} Total Properties)**: Includes ${activeAddlProps.length} additional modeled ${activeAddlProps.length === 1 ? 'property' : 'properties'} (${activeAddlProps.map((p) => `${p.name || 'Property'} - ${p.timing === 'future' ? `Buy @ Age ${p.purchaseAge || inputs.currentAge + 5}` : (p.isPaidOff ? 'Paid Off' : 'Current Mortgaged')}`).join('; ')}).`]
+              : []),
             `* **Principal Residence Exemption**: Under Section 40(2)(b) of the Canadian Income Tax Act, 100% of accumulated capital gains on your primary residence remain completely tax-exempt upon eventual disposition.`,
             inputs.realEstate.planToSellHome
               ? `* **Downsizing & Liquidation Plan**: Modeling a planned disposition at Age **${inputs.realEstate.sellHomeAge}** captures an estimated net liquid proceed of **${formatCur(inputs.realEstate.currentMarketValue * Math.pow(1 + (inputs.realEstate.annualAppreciationRate || 3.2) / 100, Math.max(0, inputs.realEstate.sellHomeAge - inputs.currentAge)) * 0.955)}** (reflecting 4.5% transaction friction), reinvested directly into income-generating non-registered reserves.`
@@ -686,6 +696,11 @@ function renderCashFlowsPage(
     const pAge = inputs.realEstate.futurePurchaseAge;
     if (pAge >= minAge && pAge <= maxAge) priorityAges.add(pAge);
   }
+  getActiveAdditionalProperties(inputs).forEach((p) => {
+    if (p.timing === 'future' && p.purchaseAge && p.purchaseAge >= minAge && p.purchaseAge <= maxAge) {
+      priorityAges.add(p.purchaseAge);
+    }
+  });
   if (inputs.careerDisruption?.enabled && inputs.careerDisruption.shockAge >= minAge && inputs.careerDisruption.shockAge <= maxAge) {
     priorityAges.add(inputs.careerDisruption.shockAge);
   }
@@ -1036,10 +1051,12 @@ function renderReadinessProgressPage(
     [
       'Mortgage Freedom Milestone',
       inputs.realEstate?.ownsHome
-        ? (summary.mortgagePayoffAge ? `Age ${summary.mortgagePayoffAge} (${summary.mortgagePayoffYear})` : 'Carried Beyond Plan')
+        ? (inputs.realEstate.isPaidOff && summary.totalPropertiesCount === 1
+            ? 'Paid Off ($0 Mortgage)'
+            : (summary.mortgagePayoffAge ? `Age ${summary.mortgagePayoffAge} (${summary.mortgagePayoffYear})` : 'Carried Beyond Plan'))
         : 'Renter Profile',
       inputs.realEstate?.ownsHome ? `Retire Home Equity: ${formatCur(summary.homeEquityAtRetirement)}` : 'No Mortgage Liability',
-      inputs.realEstate?.ownsHome ? (summary.mortgagePayoffAge ? 'Scheduled' : 'Long-Term') : 'Debt-Free Shelter'
+      inputs.realEstate?.ownsHome ? (summary.mortgagePayoffAge ? 'Scheduled' : (inputs.realEstate.isPaidOff ? 'Paid Off' : 'Long-Term')) : 'Debt-Free Shelter'
     ],
     [
       'Consumer Debt Freedom',
@@ -1117,14 +1134,28 @@ function renderDebtStrategyPage(
   const futureDebts = effectiveDebts.filter((d) => (d.startAge ?? inputs.currentAge) > inputs.currentAge);
 
   const re = inputs.realEstate;
+  const activeAddlProps = getActiveAdditionalProperties(inputs);
   const maxYearlyMortgage = yearlyResults.reduce((m, yr) => Math.max(m, yr.remainingMortgage || 0), 0);
-  const initialMortgageRaw = re?.ownsHome
-    ? (yearlyResults[0]?.remainingMortgage || Math.max(0, (re.costOfHome || 0) - (re.downPayment || 0)))
+  const isPrimaryMortgaged = Boolean(re?.ownsHome) && !re?.isPaidOff &&
+    Math.max(0, (re?.costOfHome || 0) - (re?.downPayment || 0)) > 0;
+  const additionalMortgagedProps = activeAddlProps
+    .map((p) => ({ prop: p, stats: calculateAdditionalPropertySummary(p, inputs.currentAge, 2026) }))
+    .filter((x) => !x.stats.isPaidOff && (x.prop.timing === 'future' ? x.stats.futureInitialLoan > 0 : x.stats.remainingMortgageToday > 0));
+
+  const primaryMortgageRaw = isPrimaryMortgaged && re
+    ? (re.purchaseType === 'future'
+        ? Math.max(0, (re.costOfHome || 0) - (re.downPayment || 0))
+        : (yearlyResults[0]?.remainingMortgage ?? Math.max(0, (re.costOfHome || 0) - (re.downPayment || 0))))
     : 0;
-  const displayMortgagePrincipal = re?.purchaseType === 'future'
-    ? Math.max(0, (re.costOfHome || 0) - (re.downPayment || 0))
-    : (initialMortgageRaw > 0 ? initialMortgageRaw : maxYearlyMortgage);
-  const hasMortgage = Boolean(re?.ownsHome) && (displayMortgagePrincipal > 0 || maxYearlyMortgage > 0);
+  const additionalMortgagePrincipalSum = additionalMortgagedProps.reduce(
+    (s, x) => s + (x.prop.timing === 'future' ? x.stats.futureInitialLoan : x.stats.remainingMortgageToday),
+    0
+  );
+  const displayMortgagePrincipal = (isPrimaryMortgaged ? primaryMortgageRaw : 0) + additionalMortgagePrincipalSum > 0
+    ? ((re?.purchaseType === 'future' ? primaryMortgageRaw : (yearlyResults[0]?.remainingMortgage || primaryMortgageRaw)) +
+        additionalMortgagedProps.filter((x) => x.prop.timing === 'future').reduce((s, x) => s + x.stats.futureInitialLoan, 0))
+    : maxYearlyMortgage;
+  const hasMortgage = isPrimaryMortgaged || additionalMortgagedProps.length > 0 || maxYearlyMortgage > 0;
 
   const totalConsumerPrincipal = effectiveDebts.reduce((s, d) => s + (Number(d.initialBalance) || 0), 0);
   const totalEstimatedInterest = effectiveDebts.reduce(
@@ -1167,10 +1198,10 @@ function renderDebtStrategyPage(
       title: hasMortgage && re?.purchaseType === 'future' ? 'FUTURE MORTGAGE PRINCIPAL' : 'RESIDENTIAL MORTGAGE',
       value: hasMortgage ? formatCur(displayMortgagePrincipal) : '$0',
       sub: hasMortgage
-        ? (re?.purchaseType === 'future'
+        ? (re?.purchaseType === 'future' && additionalMortgagedProps.length === 0
             ? `Originates @ Age ${re.futurePurchaseAge} (${re.mortgageInterestRate}%)`
-            : `${re?.mortgageInterestRate}% APR • ${summary.mortgagePayoffAge ? `Paid Age ${summary.mortgagePayoffAge}` : 'Amortizing'}`)
-        : 'Renter / Unencumbered Home',
+            : `${additionalMortgagedProps.length > 0 ? `${additionalMortgagedProps.length + (isPrimaryMortgaged ? 1 : 0)} Mortgages • ` : `${re?.mortgageInterestRate}% APR • `}${summary.mortgagePayoffAge ? `Paid Age ${summary.mortgagePayoffAge}` : 'Amortizing'}`)
+        : 'Renter / Paid-Off Home',
       color: BRAND.amber
     },
     {
@@ -1211,7 +1242,7 @@ function renderDebtStrategyPage(
 
   curY += kpiH + 10;
 
-  // 2. Inventory Table (Consumer Debts + Mortgage capped to keep 1 page)
+  // 2. Inventory Table (Consumer Debts + Mortgages capped to keep 1 page)
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(BRAND.darkSlate[0], BRAND.darkSlate[1], BRAND.darkSlate[2]);
@@ -1219,7 +1250,7 @@ function renderDebtStrategyPage(
   curY += 6;
 
   const inventoryRows: string[][] = [];
-  const maxConsumerRows = hasMortgage ? 5 : 6;
+  const maxConsumerRows = hasMortgage ? 4 : 6;
   const displayedDebts = effectiveDebts.slice(0, maxConsumerRows);
 
   displayedDebts.forEach((d) => {
@@ -1256,21 +1287,37 @@ function renderDebtStrategyPage(
     ]);
   }
 
-  if (hasMortgage && re) {
+  if (isPrimaryMortgaged && re) {
     const isFutureRe = re.purchaseType === 'future';
     const mortRate = re.mortgageInterestRate || 4.79;
     const mortTermYrs = re.mortgageTermYears || 25;
-    const mortPmt = calculateDebtMonthlyPayment(displayMortgagePrincipal, mortRate, mortTermYrs * 12);
+    const mortPrincipal = Math.max(0, (re.costOfHome || 0) - (re.downPayment || 0));
+    const mortPmt = calculateDebtMonthlyPayment(mortPrincipal, mortRate, mortTermYrs * 12);
     inventoryRows.push([
       isFutureRe ? 'Future Home Purchase Mortgage' : 'Primary Residence Mortgage',
       isFutureRe ? `Future (Starts Age ${re.futurePurchaseAge || inputs.currentAge})` : 'Ongoing Active',
-      formatCur(displayMortgagePrincipal),
+      formatCur(primaryMortgageRaw),
       `${mortRate.toFixed(2)}%`,
       `${mortTermYrs} yrs`,
       `${formatCur(mortPmt)}/mo`,
       summary.mortgagePayoffAge ? `Age ${summary.mortgagePayoffAge}` : `Age ${(isFutureRe ? (re.futurePurchaseAge || inputs.currentAge) : inputs.currentAge) + mortTermYrs}`
     ]);
   }
+
+  additionalMortgagedProps.slice(0, 3).forEach(({ prop, stats }) => {
+    const isFutureProp = prop.timing === 'future';
+    const principal = isFutureProp ? stats.futureInitialLoan : stats.remainingMortgageToday;
+    const pmt = isFutureProp ? stats.futureMonthlyPayment : stats.monthlyPayment;
+    inventoryRows.push([
+      `${prop.name || 'Additional Property'} Mortgage`,
+      isFutureProp ? `Future (Starts Age ${stats.purchaseAge})` : 'Ongoing Active',
+      formatCur(principal),
+      `${(prop.mortgageInterestRate || 4.79).toFixed(2)}%`,
+      `${prop.mortgageTermYears || 25} yrs`,
+      `${formatCur(pmt)}/mo`,
+      `Age ${stats.mortgageFreeAge}`
+    ]);
+  });
 
   autoTable(doc, {
     startY: curY,
@@ -1339,6 +1386,11 @@ function renderDebtStrategyPage(
   if (hasMortgage && re?.purchaseType === 'future' && re.futurePurchaseAge && re.futurePurchaseAge <= maxAge) {
     trajectorySet.add(re.futurePurchaseAge);
   }
+  additionalMortgagedProps.forEach(({ prop, stats }) => {
+    if (prop.timing === 'future' && stats.purchaseAge >= minAge && stats.purchaseAge <= maxAge) {
+      trajectorySet.add(stats.purchaseAge);
+    }
+  });
   if (summary.debtPayoffAge && summary.debtPayoffAge <= maxAge) trajectorySet.add(summary.debtPayoffAge);
   if (summary.mortgagePayoffAge && summary.mortgagePayoffAge <= maxAge) trajectorySet.add(summary.mortgagePayoffAge);
   if (inputs.retirementAge <= maxAge) trajectorySet.add(inputs.retirementAge);
@@ -2183,43 +2235,70 @@ export function buildRetirementPdfDocument(
 
     const re = inputs.realEstate;
     const ownsHome = Boolean(re?.ownsHome);
-    const remainingMortgage = yearlyResults[0]?.remainingMortgage ?? Math.max(0, (re?.costOfHome || 0) - (re?.downPayment || 0));
+    const activeAddlProps = getActiveAdditionalProperties(inputs);
+    const remainingMortgage = re?.isPaidOff
+      ? 0
+      : (yearlyResults[0]?.remainingMortgage ?? Math.max(0, (re?.costOfHome || 0) - (re?.downPayment || 0)));
 
-    if (ownsHome && re) {
-      const netHomeEquity = Math.max(0, re.currentMarketValue - remainingMortgage);
+    if ((ownsHome && re) || activeAddlProps.length > 0) {
+      const currentAddlStats = activeAddlProps
+        .filter((p) => p.timing === 'current')
+        .map((p) => ({ prop: p, stats: calculateAdditionalPropertySummary(p, inputs.currentAge, 2026) }));
+
+      const primaryValueToday = re?.purchaseType === 'future' ? 0 : (re?.currentMarketValue || 0);
+      const totalValueToday = primaryValueToday + currentAddlStats.reduce((s, x) => s + x.stats.currentMarketValue, 0);
+      const netHomeEquity = Math.max(0, totalValueToday - remainingMortgage);
+
+      const reTableBody: string[][] = ownsHome && re ? [
+        [
+          re.purchaseType === 'future' ? 'Planned First Home (Target)' : 'Primary Residence Value',
+          re.purchaseType === 'future' ? formatCur(re.costOfHome) : formatCur(re.currentMarketValue),
+          `${re.ownershipSharePercent}% Household Ownership`,
+          re.purchaseType === 'future'
+            ? `Planned purchase @ Age ${re.futurePurchaseAge || inputs.currentAge + 3}`
+            : `Appreciating at modeled rate of ${re.annualAppreciationRate || 3.2}% per year`
+        ],
+        [
+          'Combined Mortgage Principal (Today)',
+          re.isPaidOff && currentAddlStats.every((x) => x.stats.isPaidOff) ? '$0 (Paid Off)' : formatCur(remainingMortgage),
+          re.isPaidOff ? 'Mortgage-Free Primary' : `Interest Rate: ${re.mortgageInterestRate}%`,
+          re.isPaidOff
+            ? 'Zero ongoing principal & interest payments on paid-off real estate'
+            : `Estimated ${re.mortgageTermYears} years amortization term`
+        ],
+        [
+          'Total Property Equity (Today)',
+          formatCur(netHomeEquity),
+          totalValueToday > 0 ? `${Math.round((netHomeEquity / totalValueToday) * 100)}% Equity Ratio` : 'Pre-Acquisition',
+          'Primary residence protected under CRA Principal Residence Exemption (PRE)'
+        ],
+        [
+          'Disposition Strategy',
+          re.planToSellHome ? `Downsize @ Age ${re.sellHomeAge}` : 'Retain Property in Retirement',
+          re.planToSellHome ? `${re.sellingCostPercent || 4.5}% Selling & Legal Friction` : 'Zero Transaction Costs',
+          re.planToSellHome
+            ? 'Proceeds liquidated and reinvested into liquid decumulation portfolio'
+            : 'Home equity preserved as long-term wealth store and estate asset'
+        ]
+      ] : [];
+
+      activeAddlProps.slice(0, 3).forEach((p) => {
+        const stats = calculateAdditionalPropertySummary(p, inputs.currentAge, 2026);
+        reTableBody.push([
+          `Additional: ${p.name || 'Property'}`,
+          p.timing === 'future' ? formatCur(stats.projectedPurchasePrice) : formatCur(stats.currentMarketValue),
+          p.timing === 'future'
+            ? `Buy @ Age ${stats.purchaseAge} (${stats.isPaidOff ? '100% Cash' : 'Mortgaged'})`
+            : `${stats.isPaidOff ? 'Paid Off ($0 Mtg)' : `Mtg: ${formatCur(stats.remainingMortgageToday)}`}`,
+          `${p.ownershipSharePercent}% share${(p.monthlyRentalIncome || 0) > 0 ? ` • +${formatCur(p.monthlyRentalIncome || 0)}/mo rent` : ''}`
+        ]);
+      });
 
       autoTable(doc, {
         startY: curY,
         margin: { left: 40, right: 40 },
         head: [['Property Dimension', 'Baseline Metrics', 'Financial Impact', 'Strategic Commentary']],
-        body: [
-          [
-            'Current Market Value',
-            formatCur(re.currentMarketValue),
-            `${re.ownershipSharePercent}% Household Ownership`,
-            `Appreciating at modeled rate of ${re.annualAppreciationRate || 3.2}% per year`
-          ],
-          [
-            'Mortgage Principal Remaining',
-            formatCur(remainingMortgage),
-            `Interest Rate: ${re.mortgageInterestRate}%`,
-            `Estimated ${re.mortgageTermYears} years remaining on current amortization`
-          ],
-          [
-            'Net Property Equity (Today)',
-            formatCur(netHomeEquity),
-            `${Math.round((netHomeEquity / (re.currentMarketValue || 1)) * 100)}% Equity Ratio`,
-            'Protected under CRA Principal Residence Exemption (PRE Section 40(2)(b))'
-          ],
-          [
-            'Disposition Strategy',
-            re.planToSellHome ? `Downsize @ Age ${re.sellHomeAge}` : 'Retain Property in Retirement',
-            re.planToSellHome ? '4.5% Selling & Legal Friction' : 'Zero Transaction Costs',
-            re.planToSellHome
-              ? `Proceeds liquidated and reinvested into liquid decumulation portfolio`
-              : 'Home equity preserved as long-term wealth store and estate asset'
-          ]
-        ],
+        body: reTableBody,
         theme: 'grid',
         headStyles: {
           fillColor: BRAND.slate800,
@@ -3097,11 +3176,13 @@ export function buildRetirementPdfDocument(
   // =========================================================================
   // CONDITIONAL SECTION 2 (1 PAGE): READINESS SCORES & PROGRESS
   // =========================================================================
+  const activeAddlProps = getActiveAdditionalProperties(inputs);
   const hasModeledGoalOrAssets =
     totalEmploymentIncome > 0 ||
     (inputs.targetRetirementSpendingToday || 0) > 0 ||
     totalCurrentLiquid > 0 ||
-    Boolean(inputs.realEstate?.ownsHome && (inputs.realEstate?.currentMarketValue || 0) > 0);
+    Boolean(inputs.realEstate?.ownsHome && (inputs.realEstate?.currentMarketValue || 0) > 0) ||
+    activeAddlProps.length > 0;
 
   if (hasModeledGoalOrAssets) {
     const pulse = options.pulse ?? calculateSavingsPulse(inputs, summary);
@@ -3116,14 +3197,16 @@ export function buildRetirementPdfDocument(
   const hasYearlyMortgage = yearlyResults.some((yr) => (yr.remainingMortgage || 0) > 0);
   const hasFutureMortgage = Boolean(
     inputs.realEstate?.ownsHome &&
+    !inputs.realEstate?.isPaidOff &&
     inputs.realEstate?.purchaseType === 'future' &&
     ((inputs.realEstate?.costOfHome || 0) > (inputs.realEstate?.downPayment || 0))
-  );
+  ) || activeAddlProps.some((p) => p.timing === 'future' && !p.isPaidOff && (p.costOfHome || 0) > (p.downPayment || 0));
   const hasCurrentMortgage = Boolean(
     inputs.realEstate?.ownsHome &&
+    !inputs.realEstate?.isPaidOff &&
     inputs.realEstate?.purchaseType !== 'future' &&
     ((yearlyResults[0]?.remainingMortgage || 0) > 0 || hasYearlyMortgage)
-  );
+  ) || activeAddlProps.some((p) => p.timing === 'current' && !p.isPaidOff && (p.costOfHome || 0) > (p.downPayment || 0));
   const isDebtApplicable = effectiveDebts.length > 0 || hasYearlyConsumerDebt || hasFutureMortgage || hasCurrentMortgage || hasYearlyMortgage;
 
   if (isDebtApplicable) {

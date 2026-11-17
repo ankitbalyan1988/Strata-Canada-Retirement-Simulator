@@ -279,9 +279,10 @@ export function calculateEstimatedCashNeededToBuy(
   customDownPayment?: number
 ): EstimatedCashNeededToBuyBreakdown {
   const homePrice = customHomePrice ?? (re?.costOfHome ?? 750000);
-  const downPayment = customDownPayment ?? (re?.downPayment ?? Math.round(homePrice * 0.20));
+  const rawDownPayment = customDownPayment ?? (re?.downPayment ?? Math.round(homePrice * 0.20));
+  const downPayment = re?.isPaidOff ? homePrice : Math.min(homePrice, rawDownPayment);
   const downPaymentPercent = homePrice > 0 ? (downPayment / homePrice) * 100 : 20;
-  const isHighRatio = downPaymentPercent < 20;
+  const isHighRatio = !re?.isPaidOff && downPaymentPercent < 20;
 
   const isFirstTime = re?.isFirstTimeHomeBuyer ?? isFuture;
   const city = re?.cityOrMunicipality ?? (province === 'ON' ? 'other_ontario' : 'other');
@@ -293,7 +294,9 @@ export function calculateEstimatedCashNeededToBuy(
   const otherClosingCosts = re?.otherClosingCosts ?? 1500;
 
   let taxOnMortgageInsurance = re?.taxOnMortgageInsurance ?? 0;
-  if (re?.taxOnMortgageInsurance === undefined || re?.taxOnMortgageInsurance === 0) {
+  if (re?.isPaidOff) {
+    taxOnMortgageInsurance = 0;
+  } else if (re?.taxOnMortgageInsurance === undefined || re?.taxOnMortgageInsurance === 0) {
     if (isHighRatio) {
       const loan = Math.max(0, homePrice - downPayment);
       let premiumRate = 0.04;
@@ -336,9 +339,11 @@ export function calculateRealtorMonthlyProjection(
   isFuture: boolean = false
 ): RealtorMonthlyCostProjection {
   const homePrice = re?.costOfHome ?? 750000;
-  const downPayment = re?.downPayment ?? Math.round(homePrice * 0.20);
+  const isPaidOff = Boolean(re?.isPaidOff);
+  const rawDownPayment = re?.downPayment ?? Math.round(homePrice * 0.20);
+  const downPayment = isPaidOff ? homePrice : Math.min(homePrice, rawDownPayment);
   const downPaymentPercent = homePrice > 0 ? Math.round((downPayment / homePrice) * 100) : 20;
-  const loanPrincipal = Math.max(0, homePrice - downPayment);
+  const loanPrincipal = isPaidOff ? 0 : Math.max(0, homePrice - downPayment);
   const interestRate = re?.mortgageInterestRate ?? 5.5;
   const amortizationYears = re?.mortgageTermYears ?? 25;
 
@@ -347,7 +352,7 @@ export function calculateRealtorMonthlyProjection(
   const monthlyRate = interestRate > 0 ? Math.pow(1 + semiAnnual, 2 / 12) - 1 : 0;
   const totalMonths = amortizationYears * 12;
 
-  const mortgageMonthly = (loanPrincipal > 0 && totalMonths > 0)
+  const mortgageMonthly = (!isPaidOff && loanPrincipal > 0 && totalMonths > 0)
     ? (monthlyRate > 0
         ? Math.round((loanPrincipal * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1))
         : Math.round(loanPrincipal / totalMonths))

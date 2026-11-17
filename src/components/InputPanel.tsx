@@ -61,10 +61,12 @@ import { PROVINCIAL_BRACKETS } from '../utils/canadianTax';
 import { calculateAdjustedServiceCanadaCpp, getCppTimingFactor } from '../utils/cppCalculator';
 import { calculateEmployerRrspMatch } from '../utils/employerMatch';
 import { getDebtQualifierFlags, getEffectiveDebts } from '../utils/debtCalculator';
+import { getActiveAdditionalProperties, calculateAdditionalPropertySummary } from '../utils/mortgage';
 import { CurrencyInput } from './CurrencyInput';
 import { NonRegAccountsManager } from './NonRegAccountsManager';
 import { MonthlyExpenseEstimator } from './MonthlyExpenseEstimator';
 import { DebtsManager } from './DebtsManager';
+import { AdditionalPropertiesManager, createDefaultAdditionalProperty } from './AdditionalPropertiesManager';
 import { CashFlowContributionStressTest } from './CashFlowContributionStressTest';
 import { RealtorHomeCostCard } from './RealtorHomeCostCard';
 import { TaxRuleTooltip } from './TaxRuleTooltip';
@@ -1251,25 +1253,149 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                   </div>
                 </div>
 
-                {/* If user selected "Own": Current homeownership status banner */}
-                {housingStatus === 'own' && (
-                  <div className="pt-2.5 border-t border-amber-200/70 dark:border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 animate-in fade-in duration-200 text-xs">
-                    <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
-                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                      <span className="font-semibold">
-                        Owns home today: Real Estate section is active with your current property, mortgage balance & accumulated equity.
-                      </span>
+                {/* If user selected "Own": Primary mortgage status + multi-property onboarding */}
+                {housingStatus === 'own' && (() => {
+                  const isPrimaryPaidOff = Boolean(inputs.realEstate?.isPaidOff);
+                  const ownsMultiple = Boolean(inputs.realEstate?.ownsMultipleProperties);
+                  const plansFutureExtra = Boolean(inputs.realEstate?.planFutureAdditionalProperties);
+                  const existingAdditional = inputs.realEstate?.additionalProperties || [];
+
+                  return (
+                    <div className="pt-3 border-t border-amber-200/70 dark:border-amber-500/20 flex flex-col gap-3 animate-in fade-in duration-200 text-xs">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                          <span className="font-semibold">
+                            Owns home today: Real Estate section is active with your property & accumulated equity.
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('realestate')}
+                          className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer shrink-0"
+                        >
+                          <span>Configure Real Estate</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Primary Mortgage Status & Multi-Property Follow-ups */}
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2.5">
+                        {/* Primary Home: Mortgage vs Paid Off */}
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/80 dark:border-amber-500/25 flex flex-col justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            Is your primary home paid off?
+                          </span>
+                          <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => updateRealEstateField('isPaidOff', false)}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                !isPrimaryPaidOff
+                                  ? 'bg-amber-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Has Mortgage
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateRealEstate({
+                                isPaidOff: true,
+                                ...(inputs.monthlyExpenses ? {} : {})
+                              })}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                isPrimaryPaidOff
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Paid Off ($0)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Currently owns >1 property? */}
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/80 dark:border-amber-500/25 flex flex-col justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            Do you currently own &gt;1 property?
+                          </span>
+                          <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => updateRealEstateField('ownsMultipleProperties', false)}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                !ownsMultiple
+                                  ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              No (1 Home)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const hasCurrentAddl = existingAdditional.some((p) => p.timing === 'current');
+                                updateRealEstate({
+                                  ownsMultipleProperties: true,
+                                  additionalProperties: hasCurrentAddl
+                                    ? existingAdditional
+                                    : [...existingAdditional, createDefaultAdditionalProperty('current', inputs, existingAdditional.length)]
+                                });
+                              }}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                ownsMultiple
+                                  ? 'bg-amber-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Yes (2+ Props)
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Plans to buy additional properties in future? */}
+                        <div className="p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-amber-200/80 dark:border-amber-500/25 flex flex-col justify-between gap-2">
+                          <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                            Buy an additional property later?
+                          </span>
+                          <div className="grid grid-cols-2 gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
+                            <button
+                              type="button"
+                              onClick={() => updateRealEstateField('planFutureAdditionalProperties', false)}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                !plansFutureExtra
+                                  ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              No
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const hasFutureAddl = existingAdditional.some((p) => p.timing === 'future');
+                                updateRealEstate({
+                                  planFutureAdditionalProperties: true,
+                                  additionalProperties: hasFutureAddl
+                                    ? existingAdditional
+                                    : [...existingAdditional, createDefaultAdditionalProperty('future', inputs, existingAdditional.length)]
+                                });
+                              }}
+                              className={`py-1 px-2 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                plansFutureExtra
+                                  ? 'bg-blue-600 text-white shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                              }`}
+                            >
+                              Yes (Future)
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('realestate')}
-                      className="text-xs font-bold text-amber-800 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-                    >
-                      <span>Configure Current Home & Mortgage</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* If user selected "Rent": Follow-up question appears */}
                 {housingStatus === 'rent' && (
@@ -1337,7 +1463,8 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           onClick={() => {
                             updateField('planFutureHomePurchase', false);
                             updateRealEstate({
-                              ownsHome: false
+                              ownsHome: false,
+                              planFutureAdditionalProperties: false
                             });
                           }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
@@ -1352,25 +1479,75 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       </div>
                     </div>
 
-                    {/* Feedback based on choice */}
-                    {planFutureHomePurchase ? (
-                      <div className="pt-2 border-t border-blue-200/60 dark:border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
-                          <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-                          <span className="font-semibold">
-                            Future Home Purchase Simulator enabled: Real Estate section shows only the future home purchase simulator.
-                          </span>
+                    {/* Feedback & Additional Future Property Question based on choice */}
+                    {planFutureHomePurchase ? (() => {
+                      const plansFutureExtra = Boolean(inputs.realEstate?.planFutureAdditionalProperties);
+                      const existingAdditional = inputs.realEstate?.additionalProperties || [];
+
+                      return (
+                        <div className="pt-2.5 border-t border-blue-200/60 dark:border-blue-500/20 flex flex-col gap-2.5 text-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-xl border border-blue-200/70 dark:border-blue-500/25">
+                            <div>
+                              <span className="text-[11px] font-bold text-slate-900 dark:text-slate-100 block">
+                                Do you also plan to buy an additional property in the future?
+                              </span>
+                              <span className="text-[10.5px] text-slate-500 dark:text-slate-400">
+                                Model buying a second home, cottage, or rental property after your first home purchase.
+                              </span>
+                            </div>
+                            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg shrink-0 self-start sm:self-auto">
+                              <button
+                                type="button"
+                                onClick={() => updateRealEstateField('planFutureAdditionalProperties', false)}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                  !plansFutureExtra
+                                    ? 'bg-slate-700 dark:bg-slate-600 text-white shadow-2xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                              >
+                                No (1 Home)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const hasFutureAddl = existingAdditional.some((p) => p.timing === 'future');
+                                  updateRealEstate({
+                                    planFutureAdditionalProperties: true,
+                                    additionalProperties: hasFutureAddl
+                                      ? existingAdditional
+                                      : [...existingAdditional, createDefaultAdditionalProperty('future', inputs, existingAdditional.length)]
+                                  });
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition cursor-pointer ${
+                                  plansFutureExtra
+                                    ? 'bg-indigo-600 text-white shadow-2xs'
+                                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                                }`}
+                              >
+                                Yes (2+ Props)
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
+                              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                              <span className="font-semibold">
+                                Future Home Purchase Simulator enabled{plansFutureExtra ? ' (including additional future properties)' : ''}.
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab('realestate')}
+                              className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
+                            >
+                              <span>Open Real Estate Simulator</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('realestate')}
-                          className="text-xs font-bold text-blue-700 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-                        >
-                          <span>Open Future Home Purchase Simulator</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ) : (
+                      );
+                    })() : (
                       <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/40 text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                         <span>
@@ -1651,25 +1828,25 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
               onNavigateToTab={(tab) => setActiveTab(tab as any)}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               
               {/* RRSP */}
-              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/10 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/10 flex flex-col gap-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shrink-0"></span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-50">RRSP</span>
                     <TaxRuleTooltip ruleId="rrsp_annual" />
                   </div>
-                  <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-500/20 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-blue-700 dark:text-blue-300 bg-blue-100/80 dark:bg-blue-500/20 px-2 py-0.5 rounded shrink-0">
                     Tax-Deductible
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Current Balance</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">Current Balance</label>
                       <TaxRuleTooltip ruleId="rrsp_balance" size="xs" />
                     </div>
                     <CurrencyInput
@@ -1677,13 +1854,14 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       onChange={(val) => updateField('rrspBalance', val)}
                       min={0}
                       step={1000}
+                      className="h-[34px]"
                       aria-label="RRSP Current Balance"
                     />
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Annual Contributions Target</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">Annual Contributions Target</label>
                       <TaxRuleTooltip ruleId="rrsp_annual" size="xs" />
                     </div>
                     <CurrencyInput
@@ -1691,12 +1869,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       onChange={(val) => updateField('rrspAnnualContribution', val)}
                       min={0}
                       step={500}
+                      className="h-[34px]"
                       aria-label="RRSP Annual Contributions Target"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-medium text-blue-800 dark:text-blue-300 block mb-1 font-semibold">Expected Return</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <label className="text-[11px] font-medium text-blue-800 dark:text-blue-300 leading-tight font-semibold">Expected Return</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -1705,9 +1884,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                         step={0.1}
                         value={inputs.accountReturns?.rrspReturn ?? 6.5}
                         onChange={(e) => updateAccountReturn('rrspReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-blue-700 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950"
+                        className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-blue-700 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-500/40 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:outline-none transition"
                       />
-                      <span className="absolute right-2.5 top-2 text-xs text-blue-500 dark:text-blue-400 font-bold">%</span>
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-blue-500 dark:text-blue-400 font-bold">%</span>
                     </div>
                   </div>
                 </div>
@@ -1739,7 +1918,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-500/10 border border-blue-200/80 dark:border-blue-500/25 space-y-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Match Formula:</span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => updateEmployerMatch({ matchType: 'percent_of_salary' })}
@@ -1905,22 +2084,22 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
               </div>
 
               {/* TFSA */}
-              <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/10 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <div className="p-4 rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-500/10 flex flex-col gap-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
                     <span className="text-sm font-bold text-slate-900 dark:text-slate-50">TFSA</span>
                     <TaxRuleTooltip ruleId="tfsa_annual" />
                   </div>
-                  <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-500/20 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-500/20 px-2 py-0.5 rounded shrink-0">
                     100% Tax-Free
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Current Balance</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">Current Balance</label>
                       <TaxRuleTooltip ruleId="tfsa_balance" size="xs" />
                     </div>
                     <CurrencyInput
@@ -1928,13 +2107,14 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       onChange={(val) => updateField('tfsaBalance', val)}
                       min={0}
                       step={1000}
+                      className="h-[34px]"
                       aria-label="TFSA Current Balance"
                     />
                   </div>
 
-                  <div>
-                    <div className="flex items-center gap-1 mb-1">
-                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400">Annual Contributions Target</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <div className="flex items-center gap-1">
+                      <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-tight">Annual Contributions Target</label>
                       <TaxRuleTooltip ruleId="tfsa_annual" size="xs" />
                     </div>
                     <CurrencyInput
@@ -1943,12 +2123,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       min={0}
                       max={15000}
                       step={500}
+                      className="h-[34px]"
                       aria-label="TFSA Annual Contributions Target"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 block mb-1 font-semibold">Expected Return</label>
+                  <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                    <label className="text-[11px] font-medium text-emerald-800 dark:text-emerald-300 leading-tight font-semibold">Expected Return</label>
                     <div className="relative">
                       <input
                         type="number"
@@ -1957,23 +2138,23 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                         step={0.1}
                         value={inputs.accountReturns?.tfsaReturn ?? 7.0}
                         onChange={(e) => updateAccountReturn('tfsaReturn', Number(e.target.value))}
-                        className="w-full pl-2.5 pr-6 py-1.5 text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-500/40 bg-white dark:bg-slate-950"
+                        className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400 rounded-lg border border-emerald-200 dark:border-emerald-500/40 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none transition"
                       />
-                      <span className="absolute right-2.5 top-2 text-xs text-emerald-600 dark:text-emerald-400 font-bold">%</span>
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600 dark:text-emerald-400 font-bold">%</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* FHSA */}
-              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/10 flex flex-col gap-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                    <span className="text-sm font-bold text-slate-900 dark:text-slate-50">FHSA (First Home Savings Account)</span>
+              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/10 flex flex-col gap-3.5 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                    <span className="text-sm font-bold text-slate-900 dark:text-slate-50 leading-snug">FHSA (First Home Savings Account)</span>
                     <TaxRuleTooltip ruleId="fhsa_annual" />
                   </div>
-                  <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-500/20 px-2 py-0.5 rounded">
+                  <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-500/20 px-2 py-0.5 rounded shrink-0">
                     Deductible + Tax-Free
                   </span>
                 </div>
@@ -1986,15 +2167,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
 
                   return (
                     <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 items-end">
-                        {/* Column 1: Current Balance */}
-                        <div className="flex flex-col justify-end">
-                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
-                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
-                              Current Balance
-                              <TaxRuleTooltip ruleId="fhsa_balance" size="xs" />
-                            </label>
-                          </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {/* Current Balance */}
+                        <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                          <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
+                            <span>Current Balance</span>
+                            <TaxRuleTooltip ruleId="fhsa_balance" size="xs" />
+                          </label>
                           <CurrencyInput
                             value={inputs.fhsaBalance}
                             onChange={(val) => updateField('fhsaBalance', val)}
@@ -2005,18 +2184,16 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           />
                         </div>
 
-                        {/* Column 2: Remaining Room */}
-                        <div className="flex flex-col justify-end">
-                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
-                            <div className="flex items-baseline justify-between gap-1">
-                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
-                                Remaining Room
-                                <TaxRuleTooltip ruleId="fhsa_room" size="xs" />
-                              </label>
-                              <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">
-                                Max $40k
-                              </span>
-                            </div>
+                        {/* Remaining Room */}
+                        <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
+                              <span>Remaining Room</span>
+                              <TaxRuleTooltip ruleId="fhsa_room" size="xs" />
+                            </label>
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">
+                              Max $40k
+                            </span>
                           </div>
                           <CurrencyInput
                             value={remainingRoom}
@@ -2032,18 +2209,16 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           />
                         </div>
 
-                        {/* Column 3: Annual Contributions Target */}
-                        <div className="flex flex-col justify-end">
-                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
-                            <div className="flex items-baseline justify-between gap-1">
-                              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
-                                Annual Contributions Target
-                                <TaxRuleTooltip ruleId="fhsa_annual" size="xs" />
-                              </label>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0">
-                                Max $8k/yr
-                              </span>
-                            </div>
+                        {/* Annual Contributions Target */}
+                        <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
+                              <span>Annual Contributions Target</span>
+                              <TaxRuleTooltip ruleId="fhsa_annual" size="xs" />
+                            </label>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono shrink-0">
+                              Max $8k/yr
+                            </span>
                           </div>
                           <CurrencyInput
                             value={inputs.fhsaAnnualContribution}
@@ -2056,13 +2231,11 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           />
                         </div>
 
-                        {/* Column 4: Expected Return */}
-                        <div className="flex flex-col justify-end">
-                          <div className="min-h-[48px] flex flex-col justify-end pb-1.5">
-                            <label className="text-[11px] font-medium text-amber-800 dark:text-amber-300 block leading-tight font-semibold">
-                              Expected Return
-                            </label>
-                          </div>
+                        {/* Expected Return */}
+                        <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                          <label className="text-[11px] font-medium text-amber-800 dark:text-amber-300 leading-tight font-semibold">
+                            Expected Return
+                          </label>
                           <div className="relative">
                             <input
                               type="number"
@@ -2073,23 +2246,23 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               onChange={(e) => updateAccountReturn('fhsaReturn', Number(e.target.value))}
                               className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-amber-700 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-500/40 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:outline-none transition"
                             />
-                            <span className="absolute right-2.5 top-2 text-xs text-amber-600 dark:text-amber-400 font-bold">%</span>
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-amber-600 dark:text-amber-400 font-bold">%</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Remaining Contribution Room Status & Quick Presets */}
-                      <div className="p-2.5 rounded-xl bg-amber-100/60 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="p-3 rounded-xl bg-amber-100/60 dark:bg-amber-500/10 border border-amber-200/80 dark:border-amber-500/20 text-xs flex flex-col gap-2 min-w-0">
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                           <span className="font-bold text-amber-950 dark:text-amber-200 text-[11px] flex items-center gap-1">
                             <span>🍁</span> CRA Lifetime Limit ($40k):
                           </span>
-                          <span className="font-mono text-amber-900 dark:text-amber-200 text-xs">
-                            <strong className="font-bold text-amber-950 dark:text-amber-100">${contributedSoFar.toLocaleString()}</strong> contributed • <strong className="font-bold text-amber-950 dark:text-amber-100">${remainingRoom.toLocaleString()}</strong> room left to invest
+                          <span className="font-mono text-amber-900 dark:text-amber-200 text-[11px] sm:text-xs">
+                            <strong className="font-bold text-amber-950 dark:text-amber-100">${contributedSoFar.toLocaleString()}</strong> contributed • <strong className="font-bold text-amber-950 dark:text-amber-100">${remainingRoom.toLocaleString()}</strong> room left
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1 shrink-0 self-start sm:self-auto">
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-amber-200/70 dark:border-amber-500/20">
                           <span className="text-[10px] text-amber-800/80 dark:text-amber-300/80 font-medium mr-0.5">Quick set room:</span>
                           {[40000, 32000, 24000, 16000, 8000, 0].map((amt) => (
                             <button
@@ -2124,7 +2297,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                    <div className="flex flex-wrap items-center gap-1.5 self-start sm:self-auto shrink-0">
                       {[2023, 2024, 2025, 2026].map((yr) => (
                         <button
                           key={yr}
@@ -2178,7 +2351,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                   {/* FHSA Intent Switcher */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Account Intent:</span>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => updateField('fhsaIntent', 'rollover_to_rrsp')}
@@ -2318,6 +2491,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
           const fundWithNonReg = re.fundWithNonReg !== false;
           const useHbp = fundWithHbp;
 
+          const isPrimaryPaidOff = Boolean(re.isPaidOff);
+          const effectiveDownPayment = isPrimaryPaidOff ? costOfHome : downPayment;
+
           const currentCalendarYear = 2026;
           const yearsToPurchase = Math.max(1, futurePurchaseAge - inputs.currentAge);
           const futurePurchaseYear = currentCalendarYear + yearsToPurchase;
@@ -2328,31 +2504,52 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
           const totalMonths = mortgageTermYears * 12;
 
           // Current Homeowner calculations
-          const initialLoan = Math.max(0, costOfHome - downPayment);
-          const monthlyPayment = (initialLoan > 0 && totalMonths > 0)
+          const initialLoan = isPrimaryPaidOff ? 0 : Math.max(0, costOfHome - effectiveDownPayment);
+          const monthlyPayment = (!isPrimaryPaidOff && initialLoan > 0 && totalMonths > 0)
             ? (monthlyRate > 0
                 ? (initialLoan * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
                 : initialLoan / totalMonths)
             : 0;
 
           const elapsedMonthsToday = Math.max(0, (currentCalendarYear - mortgageStartYear) * 12);
-          const remainingMortgageToday = (initialLoan <= 0 || elapsedMonthsToday >= totalMonths)
+          const remainingMortgageToday = (isPrimaryPaidOff || initialLoan <= 0 || elapsedMonthsToday >= totalMonths)
             ? 0
             : Math.max(0, initialLoan * Math.pow(1 + monthlyRate, elapsedMonthsToday) - monthlyPayment * ((Math.pow(1 + monthlyRate, elapsedMonthsToday) - 1) / (monthlyRate || 1)));
 
           const totalEquityToday = Math.max(0, currentMarketValue - remainingMortgageToday);
           const userEquityToday = totalEquityToday * (ownershipSharePercent / 100);
+          const primaryCurrentMortgageFreeAge = isPrimaryPaidOff || remainingMortgageToday <= 0
+            ? inputs.currentAge
+            : inputs.currentAge + Math.max(0, mortgageStartYear + mortgageTermYears - currentCalendarYear);
 
           // Future Purchase calculations
           const projectedPurchasePrice = Math.round(costOfHome * Math.pow(1 + annualAppreciationRate / 100, yearsToPurchase));
-          const projectedDownPayment = Math.round(projectedPurchasePrice * (downPaymentPct / 100));
-          const futureInitialLoan = Math.max(0, projectedPurchasePrice - projectedDownPayment);
-          const futureMonthlyPayment = (futureInitialLoan > 0 && totalMonths > 0)
+          const projectedDownPayment = isPrimaryPaidOff
+            ? projectedPurchasePrice
+            : Math.round(projectedPurchasePrice * (downPaymentPct / 100));
+          const futureInitialLoan = isPrimaryPaidOff ? 0 : Math.max(0, projectedPurchasePrice - projectedDownPayment);
+          const futureMonthlyPayment = (!isPrimaryPaidOff && futureInitialLoan > 0 && totalMonths > 0)
             ? (monthlyRate > 0
                 ? (futureInitialLoan * monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
                 : futureInitialLoan / totalMonths)
             : 0;
-          const mortgageFreeAge = futurePurchaseAge + mortgageTermYears;
+          const mortgageFreeAge = isPrimaryPaidOff ? futurePurchaseAge : futurePurchaseAge + mortgageTermYears;
+
+          // Combined Multi-Property Portfolio totals
+          const activeAdditionalProps = getActiveAdditionalProperties(inputs);
+          const additionalSummaries = activeAdditionalProps.map((p) => ({
+            prop: p,
+            stats: calculateAdditionalPropertySummary(p, inputs.currentAge, currentCalendarYear)
+          }));
+          const additionalCurrentProps = additionalSummaries.filter((x) => x.prop.timing === 'current');
+          const additionalFutureProps = additionalSummaries.filter((x) => x.prop.timing === 'future');
+          const combinedCurrentValueToday = (isFuturePurchase ? 0 : currentMarketValue) +
+            additionalCurrentProps.reduce((s, x) => s + x.stats.currentMarketValue, 0);
+          const combinedCurrentMortgageToday = (isFuturePurchase ? 0 : remainingMortgageToday) +
+            additionalCurrentProps.reduce((s, x) => s + x.stats.remainingMortgageToday, 0);
+          const combinedUserEquityToday = (isFuturePurchase ? 0 : userEquityToday) +
+            additionalCurrentProps.reduce((s, x) => s + x.stats.userEquityToday, 0);
+          const totalActivePropertiesCount = (re.ownsHome ? 1 : 0) + activeAdditionalProps.length;
 
           // Projected sale calculation
           const effectiveBasePrice = isFuturePurchase ? projectedPurchasePrice : currentMarketValue;
@@ -2364,7 +2561,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
             : Math.max(0, (currentCalendarYear + yearsToSale - mortgageStartYear) * 12);
           const saleLoan = isFuturePurchase ? futureInitialLoan : initialLoan;
           const saleMonthlyPmt = isFuturePurchase ? futureMonthlyPayment : monthlyPayment;
-          const remainingMortgageAtSale = elapsedMonthsAtSale >= totalMonths
+          const remainingMortgageAtSale = (isPrimaryPaidOff || elapsedMonthsAtSale >= totalMonths)
             ? 0
             : Math.max(0, saleLoan * Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - saleMonthlyPmt * ((Math.pow(1 + monthlyRate, elapsedMonthsAtSale) - 1) / (monthlyRate || 1)));
           const netProceedsAtSale = Math.max(0, (projectedValueAtSale * (1 - sellingCostPercent / 100)) - remainingMortgageAtSale) * (ownershipSharePercent / 100);
@@ -2628,10 +2825,10 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">${downPayment.toLocaleString()} ({downPaymentPct}%)</span>
                         </div>
 
-                        {/* Percentage Preset Pill Buttons: 5%, 10%, 15%, 20%, Custom */}
-                        <div className="flex items-center gap-1.5 mb-2">
+                        {/* Percentage Preset Pill Buttons: 5%, 10%, 15%, 20%, 100% Cash, Custom */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
                           {[5, 10, 15, 20].map((pct) => {
-                            const isSelected = downPaymentPreset === pct;
+                            const isSelected = !isPrimaryPaidOff && downPaymentPreset === pct;
                             return (
                               <button
                                 key={pct}
@@ -2639,6 +2836,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                                 onClick={() => {
                                   const autoAmount = Math.round(costOfHome * (pct / 100));
                                   updateRealEstate({
+                                    isPaidOff: false,
                                     downPayment: autoAmount,
                                     downPaymentPercentPreset: pct as any
                                   });
@@ -2656,10 +2854,30 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <button
                             type="button"
                             onClick={() => {
-                              updateRealEstateField('downPaymentPercentPreset', 'custom');
+                              updateRealEstate({
+                                isPaidOff: true,
+                                downPayment: costOfHome,
+                                downPaymentPercentPreset: 100
+                              });
                             }}
                             className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                              downPaymentPreset === 'custom'
+                              isPrimaryPaidOff || downPaymentPreset === 100
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            100% Cash
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateRealEstate({
+                                isPaidOff: false,
+                                downPaymentPercentPreset: 'custom'
+                              });
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                              !isPrimaryPaidOff && downPaymentPreset === 'custom'
                                 ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
                                 : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                             }`}
@@ -2669,12 +2887,14 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                         </div>
 
                         <CurrencyInput
-                          value={downPayment}
+                          value={isPrimaryPaidOff ? costOfHome : downPayment}
                           onChange={(val) => {
                             const matchedPreset = [5, 10, 15, 20].find(p => Math.abs(Math.round(costOfHome * (p / 100)) - val) < 100);
+                            const isFullCash = val >= costOfHome;
                             updateRealEstate({
+                              isPaidOff: isFullCash,
                               downPayment: val,
-                              downPaymentPercentPreset: matchedPreset ? (matchedPreset as any) : 'custom'
+                              downPaymentPercentPreset: isFullCash ? 100 : (matchedPreset ? (matchedPreset as any) : 'custom')
                             });
                           }}
                           min={0}
@@ -2683,7 +2903,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           aria-label="Target Down Payment"
                         />
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">
-                          Projected down payment at purchase: ~${Math.round(projectedDownPayment).toLocaleString()}.
+                          {isPrimaryPaidOff
+                            ? `All-cash purchase (~$${Math.round(projectedDownPayment).toLocaleString()}): $0 mortgage debt taken.`
+                            : `Projected down payment at purchase: ~$${Math.round(projectedDownPayment).toLocaleString()}.`}
                         </span>
                       </div>
 
@@ -3037,6 +3259,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     )}
                   </div>
 
+                  {/* Additional Future Properties Section (Renting -> Buying First + Additional) */}
+                  <AdditionalPropertiesManager
+                    inputs={inputs}
+                    mode="future_only"
+                    onUpdateRealEstate={updateRealEstate}
+                  />
+
                 </div>
               )}
 
@@ -3044,22 +3273,59 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
               {re.ownsHome && !isFuturePurchase && (
                 <div className="flex flex-col gap-6">
 
+                  {/* Combined Portfolio Strip (shown when owning/planning multiple properties) */}
+                  {activeAdditionalProps.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-500/30 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="font-bold text-indigo-950 dark:text-indigo-100">
+                          Household Real Estate Portfolio ({totalActivePropertiesCount} Properties)
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 font-mono">
+                        <span>
+                          <strong className="text-slate-600 dark:text-slate-400 font-sans text-[10px] uppercase mr-1">Value Today:</strong>
+                          <strong className="text-slate-900 dark:text-white">${Math.round(combinedCurrentValueToday).toLocaleString()}</strong>
+                        </span>
+                        <span>
+                          <strong className="text-slate-600 dark:text-slate-400 font-sans text-[10px] uppercase mr-1">Combined Debt:</strong>
+                          <strong className={combinedCurrentMortgageToday > 0 ? 'text-rose-700 dark:text-rose-400' : 'text-emerald-700 dark:text-emerald-400'}>
+                            ${Math.round(combinedCurrentMortgageToday).toLocaleString()}
+                          </strong>
+                        </span>
+                        <span>
+                          <strong className="text-slate-600 dark:text-slate-400 font-sans text-[10px] uppercase mr-1">Your Total Equity:</strong>
+                          <strong className="text-emerald-700 dark:text-emerald-400">${Math.round(combinedUserEquityToday).toLocaleString()}</strong>
+                        </span>
+                        {additionalFutureProps.length > 0 && (
+                          <span className="font-sans text-[11px] font-bold text-blue-700 dark:text-blue-400">
+                            +{additionalFutureProps.length} Future {additionalFutureProps.length === 1 ? 'Buy' : 'Buys'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Top Live Real Estate Badge */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-amber-100/30 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-900/30 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-500/30">
                     <div>
-                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">Estimated Home Value</span>
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider block">Primary Home Value</span>
                       <span className="text-lg font-extrabold text-slate-900 dark:text-slate-50 font-mono">${Math.round(currentMarketValue).toLocaleString()}</span>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Cost: ${costOfHome.toLocaleString()}</span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider block">Remaining Mortgage</span>
-                      <span className="text-lg font-extrabold text-rose-700 dark:text-rose-400 font-mono">${Math.round(remainingMortgageToday).toLocaleString()}</span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">Pmt: ${Math.round(monthlyPayment).toLocaleString()}/mo</span>
+                      <span className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider block">Primary Mortgage</span>
+                      <span className={`text-lg font-extrabold font-mono ${isPrimaryPaidOff || remainingMortgageToday <= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        {isPrimaryPaidOff || remainingMortgageToday <= 0 ? '$0 (Paid Off)' : `$${Math.round(remainingMortgageToday).toLocaleString()}`}
+                      </span>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                        {isPrimaryPaidOff || remainingMortgageToday <= 0 ? 'Mortgage-Free' : `Pmt: $${Math.round(monthlyPayment).toLocaleString()}/mo`}
+                      </span>
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">Total Home Equity</span>
+                      <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">Primary Home Equity</span>
                       <span className="text-lg font-extrabold text-emerald-700 dark:text-emerald-400 font-mono">${Math.round(totalEquityToday).toLocaleString()}</span>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 block">{Math.round((totalEquityToday / (currentMarketValue || 1)) * 100)}% equity built</span>
                     </div>
@@ -3182,87 +3448,122 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
 
                     {/* Mortgage Terms & Amortization */}
                     <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/40 dark:bg-slate-800/40 flex flex-col gap-3.5">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                           <Key className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
-                          Mortgage Terms & Amortization
+                          Mortgage Status & Amortization
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                          Initial Loan: ${initialLoan.toLocaleString()}
-                        </span>
-                      </div>
-
-                      {/* Mortgage Interest Rate */}
-                      <div>
-                        <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700 dark:text-slate-300">Mortgage Interest Rate (Semi-Annual Compounding):</span>
-                          <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={2.0}
-                          max={9.0}
-                          step={0.05}
-                          value={mortgageInterestRate}
-                          onChange={(e) => updateRealEstateField('mortgageInterestRate', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
-                        />
-                      </div>
-
-                      {/* Mortgage Amortization Term */}
-                      <div>
-                        <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700 dark:text-slate-300">Amortization Term:</span>
-                          <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">{mortgageTermYears} Years</span>
-                        </div>
-                        <div className="grid grid-cols-4 gap-1.5 mb-1.5">
-                          {[15, 20, 25, 30].map(term => (
-                            <button
-                              key={term}
-                              type="button"
-                              onClick={() => updateRealEstateField('mortgageTermYears', term)}
-                              className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
-                                mortgageTermYears === term
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                              }`}
-                            >
-                              {term} yrs
-                            </button>
-                          ))}
+                        <div className="flex items-center bg-white dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => updateRealEstateField('isPaidOff', false)}
+                            className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${
+                              !isPrimaryPaidOff
+                                ? 'bg-amber-600 text-white shadow-2xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Active Mortgage
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateRealEstateField('isPaidOff', true)}
+                            className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${
+                              isPrimaryPaidOff
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            Fully Paid Off ($0)
+                          </button>
                         </div>
                       </div>
 
-                      {/* Year Mortgage Started */}
-                      <div>
-                        <div className="flex justify-between text-[11px] font-semibold mb-1">
-                          <span className="text-slate-700 dark:text-slate-300">Year Mortgage Started:</span>
-                          <span className="text-slate-900 dark:text-slate-100 font-bold font-mono">{mortgageStartYear} ({currentCalendarYear - mortgageStartYear} yrs elapsed)</span>
+                      {isPrimaryPaidOff ? (
+                        <div className="p-4 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 flex flex-col gap-2 my-auto">
+                          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-xs">
+                            <ShieldCheck className="w-4 h-4 shrink-0" />
+                            <span>Primary Residence is 100% Paid Off ($0 Mortgage)</span>
+                          </div>
+                          <p className="text-[11.5px] text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                            Your primary home carries <strong>$0 mortgage debt</strong> and <strong>$0 monthly P&amp;I outflow</strong>. Only ongoing ownership costs (property taxes and condo/strata fees if applicable) are modeled in your cash flow ledger, and 100% of your ownership share (${Math.round(userEquityToday).toLocaleString()}) counts toward net worth.
+                          </p>
                         </div>
-                        <input
-                          type="range"
-                          min={2005}
-                          max={2026}
-                          step={1}
-                          value={mortgageStartYear}
-                          onChange={(e) => updateRealEstateField('mortgageStartYear', Number(e.target.value))}
-                          className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-slate-800 dark:accent-slate-400"
-                        />
-                      </div>
+                      ) : (
+                        <>
+                          {/* Mortgage Interest Rate */}
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold mb-1">
+                              <span className="text-slate-700 dark:text-slate-300">Mortgage Interest Rate (Semi-Annual Compounding):</span>
+                              <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={2.0}
+                              max={9.0}
+                              step={0.05}
+                              value={mortgageInterestRate}
+                              onChange={(e) => updateRealEstateField('mortgageInterestRate', Number(e.target.value))}
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-rose-600"
+                            />
+                          </div>
 
-                      {/* Monthly Payment Summary Box */}
-                      <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                        <div>
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Estimated Monthly Payment</span>
-                          <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">${Math.round(monthlyPayment).toLocaleString()} / mo</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mortgage-Free By</span>
-                          <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono">
-                            Year {mortgageStartYear + mortgageTermYears} (Age {inputs.currentAge + (mortgageStartYear + mortgageTermYears - currentCalendarYear)})
-                          </span>
-                        </div>
-                      </div>
+                          {/* Mortgage Amortization Term */}
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold mb-1">
+                              <span className="text-slate-700 dark:text-slate-300">Amortization Term:</span>
+                              <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">{mortgageTermYears} Years</span>
+                            </div>
+                            <div className="grid grid-cols-4 gap-1.5 mb-1.5">
+                              {[15, 20, 25, 30].map(term => (
+                                <button
+                                  key={term}
+                                  type="button"
+                                  onClick={() => updateRealEstateField('mortgageTermYears', term)}
+                                  className={`py-1 text-[11px] font-bold rounded-lg border transition cursor-pointer ${
+                                    mortgageTermYears === term
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                      : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                  }`}
+                                >
+                                  {term} yrs
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Year Mortgage Started */}
+                          <div>
+                            <div className="flex justify-between text-[11px] font-semibold mb-1">
+                              <span className="text-slate-700 dark:text-slate-300">Year Mortgage Started:</span>
+                              <span className="text-slate-900 dark:text-slate-100 font-bold font-mono">{mortgageStartYear} ({currentCalendarYear - mortgageStartYear} yrs elapsed)</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={2005}
+                              max={2026}
+                              step={1}
+                              value={mortgageStartYear}
+                              onChange={(e) => updateRealEstateField('mortgageStartYear', Number(e.target.value))}
+                              className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-slate-800 dark:accent-slate-400"
+                            />
+                          </div>
+
+                          {/* Monthly Payment Summary Box */}
+                          <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <div>
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Estimated Monthly Payment</span>
+                              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-mono">${Math.round(monthlyPayment).toLocaleString()} / mo</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 block">Mortgage-Free By</span>
+                              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 font-mono">
+                                Year {mortgageStartYear + mortgageTermYears} (Age {primaryCurrentMortgageFreeAge})
+                              </span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -3353,6 +3654,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Additional Real Estate Properties (Current Paid-Off / Mortgaged & Future Acquisitions) */}
+                  <AdditionalPropertiesManager
+                    inputs={inputs}
+                    mode="all"
+                    onUpdateRealEstate={updateRealEstate}
+                  />
 
                 </div>
               )}
@@ -3451,7 +3759,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
             </div>
 
             {/* Spouse Accounts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               
               {/* Spouse RRSP */}
               <div className="p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 bg-blue-50/20 dark:bg-blue-500/10 flex flex-col gap-3">
@@ -3677,10 +3985,10 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
               </div>
 
               {/* Spouse FHSA */}
-              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/10 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
+              <div className="p-4 rounded-xl border border-amber-100 dark:border-amber-500/20 bg-amber-50/20 dark:bg-amber-500/10 flex flex-col gap-3 min-w-0">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-bold text-slate-900 dark:text-slate-50">Spouse FHSA</span>
-                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded">Home / RRSP Roll</span>
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-500/20 px-2 py-0.5 rounded shrink-0">Home / RRSP Roll</span>
                 </div>
                 {(() => {
                   const sRemainingRoom = inputs.spouse?.fhsaRemainingContributionRoom !== undefined
@@ -3688,11 +3996,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     : Math.max(0, 40000 - Math.min(40000, inputs.spouse?.fhsaBalance || 0));
 
                   return (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
-                      <div className="flex flex-col justify-end">
-                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
-                          <label className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">Current Balance</label>
-                        </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                        <label className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">Current Balance</label>
                         <CurrencyInput
                           value={inputs.spouse.fhsaBalance}
                           onChange={(val) => updateSpouseField('fhsaBalance', val)}
@@ -3702,12 +4008,10 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           aria-label="Spouse FHSA Current Balance"
                         />
                       </div>
-                      <div className="flex flex-col justify-end">
-                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
-                          <div className="flex items-baseline justify-between gap-1">
-                            <label className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Remaining Room</label>
-                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">Max $40k</span>
-                          </div>
+                      <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Remaining Room</label>
+                          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-mono font-semibold shrink-0">Max $40k</span>
                         </div>
                         <CurrencyInput
                           value={sRemainingRoom}
@@ -3722,9 +4026,10 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           aria-label="Spouse FHSA Remaining Contribution Room"
                         />
                       </div>
-                      <div className="flex flex-col justify-end">
-                        <div className="min-h-[34px] flex flex-col justify-end pb-1.5">
-                          <label className="text-[11px] text-slate-500 dark:text-slate-400 block leading-tight">Annual Contrib Target</label>
+                      <div className="flex flex-col justify-between h-full min-w-0 gap-1.5 sm:col-span-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">Annual Contrib Target</label>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono shrink-0">Max $8k/yr</span>
                         </div>
                         <CurrencyInput
                           value={inputs.spouse.fhsaAnnualContribution}
@@ -4632,7 +4937,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                 </div>
               </div>
 
-              {inputs.realEstate?.ownsHome ? (
+              {(inputs.realEstate?.ownsHome || getActiveAdditionalProperties(inputs).length > 0) ? (
                 <div className="bg-slate-50/60 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/80 flex flex-col gap-4">
                   <h5 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">Property Appreciation</h5>
                   <div>
@@ -4641,14 +4946,14 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                         <Home className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         Real Estate Annual Appreciation Rate:
                       </span>
-                      <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">{inputs.realEstate.annualAppreciationRate}%</span>
+                      <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">{inputs.realEstate?.annualAppreciationRate ?? 3.2}%</span>
                     </div>
                     <input
                       type="range"
                       min={1.0}
                       max={7.0}
                       step={0.1}
-                      value={inputs.realEstate.annualAppreciationRate}
+                      value={inputs.realEstate?.annualAppreciationRate ?? 3.2}
                       onChange={(e) => updateRealEstateField('annualAppreciationRate', Number(e.target.value))}
                       className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer accent-amber-600"
                     />

@@ -9,7 +9,7 @@ import { calculateEmployerRrspMatch } from './employerMatch';
 import {
   initializeMortgageAndHousingParams,
   calculateMortgageAndHousingForYear,
-  HousingYearState
+  createInitialHousingState
 } from './engine/calculateMortgageAndHousing';
 import {
   calculateContributionsForYear,
@@ -252,21 +252,7 @@ export function runRetirementSimulation(
   const sFhsaActive = isCouple && spouse ? (balances.sFhsa > 0 || (spouse.fhsaAnnualContribution > 0 && spouse.currentAge < 71)) : false;
 
   // 3. Engine States
-  const housingState: HousingYearState = {
-    homeSold: false,
-    homeSoldAge: null,
-    homeNetProceedsAtSale: 0,
-    futurePurchaseExecuted: false,
-    futureActualLoanPrincipal: housingParams.targetFutureDownPayment > 0
-      ? Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
-      : 0,
-    futureActualMonthlyPmt: housingParams.calcMonthlyPmtForLoan(
-      Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
-    ),
-    totalDownPaymentFunded: 0,
-    pFhsaActive,
-    sFhsaActive
-  };
+  const housingState = createInitialHousingState(housingParams, pFhsaActive, sFhsaActive);
 
   const pRemainingFhsa = inputs.fhsaRemainingContributionRoom !== undefined
     ? Math.min(40000, Math.max(0, inputs.fhsaRemainingContributionRoom))
@@ -386,24 +372,22 @@ export function runRetirementSimulation(
     }
 
     // Sub-Routine 4: Separate Cash Outflows (Living Expenses, Rent/Mortgage, Debts)
-    let rentOrMortgagePayment = 0;
-    let housingCostType: 'rent' | 'mortgage' | 'none' = 'none';
-    if (housingResult.rentPaidThisYear > 0) {
-      rentOrMortgagePayment = Math.round(housingResult.rentPaidThisYear * inflationFactor);
-      housingCostType = 'rent';
-    } else if (housingResult.mortgagePaidThisYear > 0) {
-      // Fixed-rate Canadian mortgage P&I remains nominal across its amortization term
-      rentOrMortgagePayment = Math.round(housingResult.mortgagePaidThisYear);
-      housingCostType = 'mortgage';
-    }
+    const rentPaymentNominal = housingResult.rentPaidThisYear > 0 ? Math.round(housingResult.rentPaidThisYear * inflationFactor) : 0;
+    const mortgagePaymentNominal = housingResult.mortgagePaidThisYear > 0 ? Math.round(housingResult.mortgagePaidThisYear) : 0;
+    const rentOrMortgagePayment = rentPaymentNominal + mortgagePaymentNominal;
+    const housingCostType: 'rent' | 'mortgage' | 'none' =
+      mortgagePaymentNominal > 0 ? 'mortgage' : (rentPaymentNominal > 0 ? 'rent' : 'none');
 
     const fixedOwnershipNominal = (housingResult.propertyTaxPaidThisYear + housingResult.condoFeesPaidThisYear) * inflationFactor;
+    const rentalIncomeNominal = Math.round((housingResult.rentalIncomeThisYear || 0) * inflationFactor);
     let livingExpensesNominal = 0;
 
     if (isRetired) {
       const retireBaseNominal = targetRetirementSpendingToday * inflationFactor;
-      if (housingCostType === 'rent') {
+      if (rentPaymentNominal > 0 && mortgagePaymentNominal === 0) {
         livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentOrMortgagePayment));
+      } else if (rentPaymentNominal > 0) {
+        livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentPaymentNominal + fixedOwnershipNominal));
       } else {
         livingExpensesNominal = Math.round(retireBaseNominal + fixedOwnershipNominal);
       }
@@ -424,7 +408,9 @@ export function runRetirementSimulation(
     }
 
     const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
-    const totalOutflows = targetSpendingNominal + debtResult.totalAnnualPayment;
+    // Net any optional gross rental income against non-living property carrying outflows so surplus sweep reflects rental cashflow
+    const totalOutflowsBeforeRental = targetSpendingNominal + debtResult.totalAnnualPayment;
+    const totalOutflows = Math.max(0, totalOutflowsBeforeRental - rentalIncomeNominal);
 
     // Sub-Routine 5: Pre-Retirement Outflow Reconciliation & Surplus-to-Savings Sweep
     const sweepResult = reconcilePreRetirementOutflowsAndSurplus(
@@ -805,6 +791,8 @@ export function runRetirementSimulation(
       propertyTaxPaidThisYear: Math.round(housingResult.propertyTaxPaidThisYear),
       condoFeesPaidThisYear: Math.round(housingResult.condoFeesPaidThisYear),
       totalHousingCostsThisYear: Math.round(housingResult.yearHousingCost),
+      activePropertyCount: housingResult.activePropertyCount,
+      rentalIncomeThisYear: rentalIncomeNominal,
       remainingDebt: debtResult.totalRemainingBalance,
       debtPayment: debtResult.totalAnnualPayment,
       debtPrincipalPaid: debtResult.totalPrincipalPaid,
@@ -860,6 +848,21 @@ export function runRetirementSimulation(
   const yearsFunded = depletionAge !== null ? (depletionAge - retirementAge) : totalYearsInRetirement;
   const readinessScore = Math.min(100, Math.max(0, Math.round((yearsFunded / totalYearsInRetirement) * 100)));
 
+  const additionalCurrentCount = housingParams.additionalProperties.filter((p) => p.timing === 'current').length;
+  const additionalFutureCount = housingParams.additionalProperties.filter((p) => p.timing === 'future').length;
+  const primaryCurrentCount = housingParams.ownsHome && !housingParams.isFuturePurchase ? 1 : 0;
+  const primaryFutureCount = housingParams.ownsHome && housingParams.isFuturePurchase ? 1 : 0;
+  const currentPropertiesCount = primaryCurrentCount + additionalCurrentCount;
+  const futurePropertiesCount = primaryFutureCount + additionalFutureCount;
+  const totalPropertiesCount = currentPropertiesCount + futurePropertiesCount;
+  const hasPaidOffProperty = Boolean(
+    (primaryCurrentCount > 0 && housingParams.isPaidOff) ||
+    housingParams.additionalProperties.some((p) => p.isPaidOff)
+  );
+  const additionalPropertyPurchaseAges = housingParams.additionalProperties
+    .filter((p) => p.timing === 'future')
+    .map((p) => p.purchaseAge);
+
   // 5. Evaluate Strategic Simulation Milestones via Analyzer Sub-Routine
   const milestoneResults = evaluateSimulationMilestones(
     yearlyResults,
@@ -868,13 +871,29 @@ export function runRetirementSimulation(
     stressTest,
     peakNetWorthAge,
     {
-      ownsHome: housingParams.ownsHome,
+      ownsHome: housingParams.ownsHome || totalPropertiesCount > 0,
       isFuturePurchase: housingParams.isFuturePurchase,
       futurePurchaseAge: housingParams.futurePurchaseAge,
       nominalPurchasePrice: housingParams.nominalPurchasePrice,
       totalDownPaymentFunded: housingState.totalDownPaymentFunded,
       initialMortgagePrincipal: housingParams.initialMortgagePrincipal,
-      futureActualLoanPrincipal: housingState.futureActualLoanPrincipal
+      futureActualLoanPrincipal: housingState.futureActualLoanPrincipal,
+      additionalInitialMortgagePrincipal: housingParams.additionalProperties
+        .filter((p) => p.timing === 'current')
+        .reduce((sum, p) => sum + p.initialMortgagePrincipal, 0),
+      additionalFuturePurchases: housingParams.additionalProperties
+        .filter((p) => p.timing === 'future')
+        .map((p, idx) => {
+          const stIdx = housingParams.additionalProperties.indexOf(p);
+          return {
+            id: p.id,
+            name: p.name,
+            age: p.purchaseAge,
+            nominalPrice: p.nominalPurchasePrice,
+            downPayment: housingState.additionalStates[stIdx]?.totalDownPaymentFunded || p.targetFutureDownPayment,
+            isPaidOff: p.isPaidOff
+          };
+        })
     },
     runRetirementSimulation
   );
@@ -889,7 +908,7 @@ export function runRetirementSimulation(
     netWorthAtLifeExpectancy: Math.round(netWorthAtLifeExpectancy),
     peakNetWorth: Math.round(peakNetWorth),
     peakNetWorthAge,
-    ownsHome: housingParams.ownsHome,
+    ownsHome: housingParams.ownsHome || totalPropertiesCount > 0,
     isFutureHomeBuyer: housingParams.isFuturePurchase,
     futurePurchaseAge: housingParams.isFuturePurchase ? housingParams.futurePurchaseAge : null,
     futurePurchaseYear: housingParams.isFuturePurchase ? housingParams.futurePurchaseYear : null,
@@ -897,6 +916,11 @@ export function runRetirementSimulation(
     homeSoldAge: housingState.homeSoldAge,
     homeNetProceedsAtSale: Math.round(housingState.homeNetProceedsAtSale),
     liquidNetWorthAtRetirement: Math.round(liquidNetWorthAtRetirement),
+    totalPropertiesCount,
+    currentPropertiesCount,
+    futurePropertiesCount,
+    hasPaidOffProperty,
+    additionalPropertyPurchaseAges,
     lifetimeEmploymentIncome: Math.round(contributionState.lifetimeEmploymentIncome),
     lifetimeCppReceived: Math.round(lifetimeCppReceived),
     lifetimeOasReceived: Math.round(lifetimeOasReceived),

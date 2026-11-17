@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { ScenarioPreset } from '../types/retirement';
 import { PRESETS } from '../utils/presets';
+import { getActiveAdditionalProperties } from '../utils/mortgage';
 
 interface PersonaHoverCardProps {
   currentPresetId: string;
@@ -167,11 +168,15 @@ export const PersonaHoverCard: React.FC<PersonaHoverCardProps> = ({
             <div className="bg-amber-50/60 dark:bg-amber-500/10 p-2 rounded-lg border border-amber-200/70 dark:border-amber-500/20 text-[11px] flex items-center justify-between">
               <span className="flex items-center gap-1 font-semibold text-amber-950 dark:text-amber-200">
                 <span>🏡</span>
-                {inp.realEstate?.ownsHome
-                  ? (inp.realEstate.purchaseType === 'future'
-                      ? `Renting (Planning Home Purchase @ Age ${inp.realEstate.futurePurchaseAge || 'Future'})`
-                      : `Owns Home (${formatCur(inp.realEstate.currentMarketValue || 750000)} | ${inp.realEstate.ownershipSharePercent ?? 100}% share)`)
-                  : 'Renting (No Real Estate Asset)'}
+                {(() => {
+                  const extraCount = getActiveAdditionalProperties(inp).length;
+                  const extraSuffix = extraCount > 0 ? ` + ${extraCount} add'l` : '';
+                  if (!inp.realEstate?.ownsHome) return 'Renting (No Real Estate Asset)';
+                  if (inp.realEstate.purchaseType === 'future') {
+                    return `Renting (Buy @ Age ${inp.realEstate.futurePurchaseAge || 'Future'}${extraSuffix})`;
+                  }
+                  return `Owns Home (${formatCur(inp.realEstate.currentMarketValue || 750000)}${inp.realEstate.isPaidOff ? ', Paid Off' : ''} | ${inp.realEstate.ownershipSharePercent ?? 100}%${extraSuffix})`;
+                })()}
               </span>
               <span className="text-[10px] text-amber-800 dark:text-amber-300 font-mono font-bold">
                 {`RRSP ${inp.accountReturns?.rrspReturn ?? 6.5}% · TFSA ${inp.accountReturns?.tfsaReturn ?? 7.0}%`}

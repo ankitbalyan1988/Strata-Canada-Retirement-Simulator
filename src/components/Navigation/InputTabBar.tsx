@@ -14,6 +14,7 @@ import {
   Globe
 } from 'lucide-react';
 import { getDebtQualifierFlags, getEffectiveDebts } from '../../utils/debtCalculator';
+import { getActiveAdditionalProperties } from '../../utils/mortgage';
 
 interface TabItem {
   id: InputTab;
@@ -36,12 +37,15 @@ export const InputTabBar: React.FC = React.memo(() => {
     housingStatus,
     showRealEstateSection,
     futurePurchaseDisplayAge,
+    propertyCount,
+    additionalPropertiesCount,
     planExpatExit
   } = useSimulationStore(
     useShallow((state) => {
       const inp = state.inputs;
       const debtFlags = getDebtQualifierFlags(inp);
       const effectiveDebts = getEffectiveDebts(inp);
+      const activeAdditional = getActiveAdditionalProperties(inp);
       const hStatus: 'own' | 'rent' = inp.housingStatus ?? (
         inp.realEstate?.ownsHome && inp.realEstate?.purchaseType !== 'future'
           ? 'own'
@@ -50,6 +54,8 @@ export const InputTabBar: React.FC = React.memo(() => {
       const planFutureHome: boolean = inp.planFutureHomePurchase ?? Boolean(
         inp.realEstate?.ownsHome && inp.realEstate?.purchaseType === 'future'
       );
+      const primaryCount = (hStatus === 'own' || (hStatus === 'rent' && planFutureHome)) ? 1 : 0;
+      const totalProps = primaryCount + activeAdditional.length;
       return {
         isMarried: inp.maritalStatus === 'married',
         hasDebts: debtFlags.hasDebtModule,
@@ -59,8 +65,10 @@ export const InputTabBar: React.FC = React.memo(() => {
           ? Math.min(...effectiveDebts.map((d) => d.startAge ?? inp.currentAge + 1))
           : undefined,
         housingStatus: hStatus,
-        showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome),
+        showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome) || activeAdditional.length > 0,
         futurePurchaseDisplayAge: inp.realEstate?.futurePurchaseAge || inp.currentAge + 3,
+        propertyCount: totalProps,
+        additionalPropertiesCount: activeAdditional.length,
         planExpatExit: inp.planExpatExit ?? Boolean(inp.expat?.planToEmigrate)
       };
     })
@@ -100,10 +108,13 @@ export const InputTabBar: React.FC = React.memo(() => {
     },
     {
       id: 'realestate',
-      title: housingStatus === 'rent' ? 'Future Home' : 'Real Estate',
-      badge: housingStatus === 'rent' ? `Buy @ ${futurePurchaseDisplayAge}` : 'Property & Equity',
+      title: housingStatus === 'rent' ? (additionalPropertiesCount > 0 ? 'Real Estate' : 'Future Home') : 'Real Estate',
+      badge: housingStatus === 'rent'
+        ? (additionalPropertiesCount > 0 ? `Buy @ ${futurePurchaseDisplayAge} + ${additionalPropertiesCount}` : `Buy @ ${futurePurchaseDisplayAge}`)
+        : (propertyCount > 1 ? `${propertyCount} Properties` : 'Property & Equity'),
       icon: Home,
-      show: showRealEstateSection
+      show: showRealEstateSection,
+      extraBadge: propertyCount > 1 ? propertyCount : undefined
     },
     {
       id: 'spouse',
@@ -150,7 +161,7 @@ export const InputTabBar: React.FC = React.memo(() => {
       aria-label="Profile and plan input horizontal navigation"
       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xs transition-colors"
     >
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {visibleTabs.map((tab) => {
           const isActive = activeInputTab === tab.id;
           const Icon = tab.icon;
@@ -164,7 +175,7 @@ export const InputTabBar: React.FC = React.memo(() => {
               aria-controls={`input-tabpanel-${tab.id}`}
               type="button"
               onClick={() => setActiveInputTab(tab.id)}
-              className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all duration-150 cursor-pointer select-none group relative ${
+              className={`flex-1 min-w-[155px] sm:min-w-max max-w-full flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all duration-150 cursor-pointer select-none group relative ${
                 isActive
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
@@ -181,12 +192,12 @@ export const InputTabBar: React.FC = React.memo(() => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs sm:text-sm font-bold truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold leading-snug whitespace-normal sm:whitespace-nowrap">
                     {tab.title}
                   </span>
                   {tab.extraBadge !== undefined && (
-                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 leading-none ${
                       isActive
                         ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
                         : 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
@@ -197,7 +208,7 @@ export const InputTabBar: React.FC = React.memo(() => {
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
-                    className={`text-[10px] font-semibold truncate ${
+                    className={`text-[10px] font-semibold leading-tight whitespace-normal sm:whitespace-nowrap ${
                       isActive
                         ? 'text-slate-300 dark:text-slate-600'
                         : 'text-slate-400 dark:text-slate-500'

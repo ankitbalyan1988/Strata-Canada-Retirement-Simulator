@@ -81,8 +81,8 @@ export const DashboardTabBar: React.FC = () => {
       aria-label="Dashboard horizontal views"
       className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xs transition-colors"
     >
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-1.5 sm:gap-2">
-        {TABS.map((tab, idx) => {
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+        {TABS.map((tab) => {
           const isActive = activeDashboardTab === tab.id;
           const Icon = tab.icon;
 
@@ -95,7 +95,7 @@ export const DashboardTabBar: React.FC = () => {
               aria-controls={`dashboard-tabpanel-${tab.id}`}
               type="button"
               onClick={() => setActiveDashboardTab(tab.id)}
-              className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all duration-150 cursor-pointer select-none group relative ${
+              className={`flex-1 min-w-[165px] sm:min-w-max max-w-full flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-left transition-all duration-150 cursor-pointer select-none group relative ${
                 isActive
                   ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
                   : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-800/60'
@@ -112,8 +112,8 @@ export const DashboardTabBar: React.FC = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-xs sm:text-sm font-bold truncate">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs sm:text-sm font-bold leading-snug whitespace-normal sm:whitespace-nowrap">
                     {tab.title}
                   </span>
                   {tab.id === 'stresstest' && isStressTestActive && (
@@ -125,7 +125,7 @@ export const DashboardTabBar: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
-                    className={`text-[10px] font-semibold truncate ${
+                    className={`text-[10px] font-semibold leading-tight whitespace-normal sm:whitespace-nowrap ${
                       isActive
                         ? 'text-slate-300 dark:text-slate-600'
                         : 'text-slate-400 dark:text-slate-500'

@@ -3,7 +3,7 @@ import { calculateCanadianTax } from '../canadianTax';
 import {
   initializeMortgageAndHousingParams,
   calculateMortgageAndHousingForYear,
-  HousingYearState
+  createInitialHousingState
 } from './calculateMortgageAndHousing';
 import {
   calculateContributionsForYear,
@@ -118,21 +118,7 @@ export function fastSimulateEndNetWorth(
   const pFhsaActive = balances.pFhsa > 0 || (inputs.fhsaAnnualContribution > 0 && currentAge < 71);
   const sFhsaActive = isCouple && spouse ? (balances.sFhsa > 0 || (spouse.fhsaAnnualContribution > 0 && spouse.currentAge < 71)) : false;
 
-  const housingState: HousingYearState = {
-    homeSold: false,
-    homeSoldAge: null,
-    homeNetProceedsAtSale: 0,
-    futurePurchaseExecuted: false,
-    futureActualLoanPrincipal: housingParams.targetFutureDownPayment > 0
-      ? Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
-      : 0,
-    futureActualMonthlyPmt: housingParams.calcMonthlyPmtForLoan(
-      Math.max(0, housingParams.nominalPurchasePrice - housingParams.targetFutureDownPayment)
-    ),
-    totalDownPaymentFunded: 0,
-    pFhsaActive,
-    sFhsaActive
-  };
+  const housingState = createInitialHousingState(housingParams, pFhsaActive, sFhsaActive);
 
   const pRemainingFhsa = inputs.fhsaRemainingContributionRoom !== undefined
     ? Math.min(40000, Math.max(0, inputs.fhsaRemainingContributionRoom))
@@ -218,20 +204,20 @@ export function fastSimulateEndNetWorth(
     }
 
     // 4. Separate Cash Outflows: Living Expenses, Rent/Mortgage, Debts
-    let rentOrMortgagePayment = 0;
-    if (housingResult.rentPaidThisYear > 0) {
-      rentOrMortgagePayment = Math.round(housingResult.rentPaidThisYear * inflationFactor);
-    } else if (housingResult.mortgagePaidThisYear > 0) {
-      rentOrMortgagePayment = Math.round(housingResult.mortgagePaidThisYear);
-    }
+    const rentPaymentNominal = housingResult.rentPaidThisYear > 0 ? Math.round(housingResult.rentPaidThisYear * inflationFactor) : 0;
+    const mortgagePaymentNominal = housingResult.mortgagePaidThisYear > 0 ? Math.round(housingResult.mortgagePaidThisYear) : 0;
+    const rentOrMortgagePayment = rentPaymentNominal + mortgagePaymentNominal;
 
     const fixedOwnershipNominal = (housingResult.propertyTaxPaidThisYear + housingResult.condoFeesPaidThisYear) * inflationFactor;
+    const rentalIncomeNominal = Math.round((housingResult.rentalIncomeThisYear || 0) * inflationFactor);
     let livingExpensesNominal = 0;
 
     if (isRetired) {
       const retireBaseNominal = targetRetirementSpendingToday * inflationFactor;
-      if (housingResult.rentPaidThisYear > 0) {
+      if (rentPaymentNominal > 0 && mortgagePaymentNominal === 0) {
         livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentOrMortgagePayment));
+      } else if (rentPaymentNominal > 0) {
+        livingExpensesNominal = Math.max(0, Math.round(retireBaseNominal - rentPaymentNominal + fixedOwnershipNominal));
       } else {
         livingExpensesNominal = Math.round(retireBaseNominal + fixedOwnershipNominal);
       }
@@ -243,7 +229,7 @@ export function fastSimulateEndNetWorth(
     }
 
     const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
-    const totalOutflows = targetSpendingNominal + debtResult.totalAnnualPayment;
+    const totalOutflows = Math.max(0, targetSpendingNominal + debtResult.totalAnnualPayment - rentalIncomeNominal);
 
     // 5. Pre-Retirement Cashflow Reconciliation & Surplus-to-Savings Sweep
     reconcilePreRetirementOutflowsAndSurplus(

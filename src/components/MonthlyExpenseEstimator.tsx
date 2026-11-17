@@ -185,11 +185,17 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Home className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                {realEstate?.purchaseType === 'future' ? 'Current Rent' : (realEstate?.ownsHome ? 'Mortgage' : 'Monthly Rent')}
+                {realEstate?.purchaseType === 'future'
+                  ? 'Current Rent'
+                  : (realEstate?.ownsHome ? (realEstate?.isPaidOff ? 'Housing (Paid Off)' : 'Mortgage') : 'Monthly Rent')}
               </label>
               {realEstate?.purchaseType === 'future' ? (
                 <span className="text-[9px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-500/30">
                   Renting (Buys @ {realEstate.futurePurchaseAge || 'Future'})
+                </span>
+              ) : realEstate?.ownsHome && realEstate?.isPaidOff ? (
+                <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30">
+                  Paid Off ($0 Mortgage)
                 </span>
               ) : hasMortgage && (
                 <span className="text-[9px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30">
@@ -206,7 +212,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
             />
           </div>
           <div className="mt-1.5 text-[10px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>Primary housing cost</span>
+            <span>{realEstate?.ownsHome && realEstate?.isPaidOff ? 'No primary mortgage P&I' : 'Primary housing cost'}</span>
             {hasMortgage && !currentExpenses.autoSyncMortgage && (
               <button
                 type="button"

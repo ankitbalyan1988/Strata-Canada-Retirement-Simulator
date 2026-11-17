@@ -154,18 +154,18 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
   return (
     <div className="p-4 rounded-xl border border-purple-100 dark:border-slate-700/80 bg-purple-50/30 dark:bg-slate-800/40 flex flex-col gap-3.5 transition-all">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
-          <div>
-            <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-purple-600 shrink-0 mt-1.5"></span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span className="text-sm font-bold text-slate-900 dark:text-slate-100">Non-Registered (SA / Taxable)</span>
               <TaxRuleTooltip ruleId="nonreg_balance" />
-              <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/90 dark:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 px-2 py-0.5 rounded-full">
-                Unified Non - Reg Bucket
+              <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-100/90 dark:bg-purple-500/20 border border-purple-200 dark:border-purple-500/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                Unified Non-Reg Bucket
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
               Taxable money outside RRSP/TFSA. All sub-accounts roll cumulatively into this single bucket.
             </p>
           </div>
@@ -186,9 +186,9 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
 
       {/* Cumulative Bucket Badge when Custom Accounts Exist */}
       {hasCustom && (
-        <div className="p-3 bg-purple-100/60 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl grid grid-cols-3 gap-2 text-center items-end">
+        <div className="p-3 bg-purple-100/60 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
           <div className="flex flex-col justify-between h-full">
-            <div className="min-h-[28px] flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
                 Total Balance
               </span>
@@ -198,7 +198,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
             </span>
           </div>
           <div className="flex flex-col justify-between h-full">
-            <div className="min-h-[28px] flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
                 Total Annual Contributions Target
               </span>
@@ -208,7 +208,7 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
             </span>
           </div>
           <div className="flex flex-col justify-between h-full">
-            <div className="min-h-[28px] flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <span className="text-[10px] text-purple-900 dark:text-purple-300 font-semibold uppercase leading-tight">
                 Blended Return
               </span>
@@ -223,14 +223,12 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
       {/* Simple View (No Custom Sub-accounts yet) */}
       {!hasCustom ? (
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
-            <div className="flex flex-col justify-end">
-              <div className="min-h-[32px] flex flex-col justify-end pb-1">
-                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
-                  Current Balance
-                  <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
-                </label>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
+                <span>Current Balance</span>
+                <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
+              </label>
               <CurrencyInput
                 value={baseBalance}
                 onChange={(val) => onClearToSimple(val, baseAnnualContribution)}
@@ -241,13 +239,11 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
               />
             </div>
 
-            <div className="flex flex-col justify-end">
-              <div className="min-h-[32px] flex flex-col justify-end pb-1">
-                <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
-                  Annual Contributions Target
-                  <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
-                </label>
-              </div>
+            <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+              <label className="text-[11px] font-medium text-slate-600 dark:text-slate-400 flex items-center gap-1 leading-tight">
+                <span>Annual Contributions Target</span>
+                <TaxRuleTooltip ruleId="nonreg_balance" size="xs" />
+              </label>
               <CurrencyInput
                 value={baseAnnualContribution}
                 onChange={(val) => onClearToSimple(baseBalance, val)}
@@ -258,12 +254,10 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
               />
             </div>
 
-            <div className="flex flex-col justify-end">
-              <div className="min-h-[32px] flex flex-col justify-end pb-1">
-                <label className="text-[11px] font-medium text-purple-800 dark:text-purple-300 block leading-tight font-semibold">
-                  Expected Return
-                </label>
-              </div>
+            <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+              <label className="text-[11px] font-medium text-purple-800 dark:text-purple-300 leading-tight font-semibold">
+                Expected Return
+              </label>
               <div className="relative">
                 <input
                   type="number"
@@ -274,17 +268,17 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                   onChange={(e) => onUpdate([], baseBalance, baseAnnualContribution, Number(e.target.value))}
                   className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-purple-700 dark:text-purple-300 rounded-lg border border-purple-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:outline-none transition"
                 />
-                <span className="absolute right-2.5 top-2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
               </div>
             </div>
           </div>
 
           {/* Quick-add Custom Accounts Action Button */}
-          <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
+          <div className="pt-2.5 border-t border-purple-100 dark:border-slate-700 flex flex-col gap-2">
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
               Hold a mix of high-interest savings, investment portfolios, or locked GICs?
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => handleAddAccount('savings')}
@@ -375,14 +369,12 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                   </div>
 
                   {/* Account Inputs Grid */}
-                  <div className={`grid grid-cols-1 sm:grid-cols-3 ${isGic ? 'lg:grid-cols-4' : ''} gap-2.5 items-end`}>
+                  <div className={`grid grid-cols-1 ${isGic ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2.5`}>
                     {/* Current Balance */}
-                    <div className="flex flex-col justify-end">
-                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
-                        <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
-                          Current Balance
-                        </label>
-                      </div>
+                    <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                      <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
+                        Current Balance
+                      </label>
                       <CurrencyInput
                         value={acc.balance}
                         onChange={(val) => handleUpdateAccount(acc.id, { balance: val })}
@@ -394,12 +386,10 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                     </div>
 
                     {/* Annual Contribution */}
-                    <div className="flex flex-col justify-end">
-                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
-                        <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
-                          {isGic ? 'Annual Addition' : 'Annual Contributions Target'}
-                        </label>
-                      </div>
+                    <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                      <label className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block leading-tight">
+                        {isGic ? 'Annual Addition' : 'Annual Contributions Target'}
+                      </label>
                       <CurrencyInput
                         value={acc.annualContribution}
                         onChange={(val) => handleUpdateAccount(acc.id, { annualContribution: val })}
@@ -411,12 +401,10 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                     </div>
 
                     {/* Expected Return */}
-                    <div className="flex flex-col justify-end">
-                      <div className="min-h-[34px] flex flex-col justify-end pb-1">
-                        <label className="text-[10px] font-medium text-purple-800 dark:text-purple-300 block leading-tight font-semibold">
-                          {isGic ? 'GIC Annual Return' : 'Expected Return'}
-                        </label>
-                      </div>
+                    <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                      <label className="text-[10px] font-medium text-purple-800 dark:text-purple-300 block leading-tight font-semibold">
+                        {isGic ? 'GIC Annual Return' : 'Expected Return'}
+                      </label>
                       <div className="relative">
                         <input
                           type="number"
@@ -429,19 +417,17 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
                           }
                           className="w-full pl-2.5 pr-6 h-[34px] text-xs font-mono font-bold text-purple-800 dark:text-purple-300 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 focus:outline-none transition"
                         />
-                        <span className="absolute right-2.5 top-2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-purple-600 dark:text-purple-400 font-bold">%</span>
                       </div>
                     </div>
 
                     {/* GIC Specific Close Date / Maturity Year */}
                     {isGic && (
-                      <div className="flex flex-col justify-end">
-                        <div className="min-h-[34px] flex flex-col justify-end pb-1">
-                          <label className="text-[10px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1 leading-tight">
-                            <Calendar className="w-3 h-3 text-amber-700 dark:text-amber-400" />
-                            GIC Maturity Year
-                          </label>
-                        </div>
+                      <div className="flex flex-col justify-between h-full min-w-0 gap-1.5">
+                        <label className="text-[10px] font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1 leading-tight">
+                          <Calendar className="w-3 h-3 text-amber-700 dark:text-amber-400" />
+                          GIC Maturity Year
+                        </label>
                         <select
                           value={acc.gicCloseYear || 2028}
                           onChange={(e) => {
@@ -470,10 +456,10 @@ export const NonRegAccountsManager: React.FC<NonRegAccountsManagerProps> = ({
           {/* Add More Sub-accounts buttons */}
           <div className="pt-2 border-t border-purple-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-              Compounded independently & automatically summed into the Non - Reg bucket.
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400 shrink-0" />
+              Compounded independently & automatically summed into the Non-Reg bucket.
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => handleAddAccount('savings')}
