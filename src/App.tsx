@@ -10,6 +10,7 @@ import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
 import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
 import { InputPanel } from './components/InputPanel';
 import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
+import { ToastBanner } from './components/ToastBanner';
 import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
 import { useSimulationStore } from './store/useSimulationStore';
 import { 
@@ -231,6 +232,9 @@ export default function App() {
 
         {/* Simulation Version History Side-Panel Drawer */}
         <SimulationHistoryPanel />
+
+        {/* Global Toast Notification Banner (PDF Export start / completion) */}
+        <ToastBanner />
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-slate-500 dark:text-slate-400 text-xs transition-colors mt-auto">

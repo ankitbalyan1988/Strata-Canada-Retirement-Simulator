@@ -423,7 +423,7 @@ export function StressTestHealthCard() {
                   <div className="flex items-center gap-4">
                     <span className="text-[11px] text-slate-400 font-mono">Age {inputs.currentAge}</span>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={inputs.currentAge}
                       max={Math.min(95, Math.max(inputs.lifeExpectancy, 85))}
                       step={1}

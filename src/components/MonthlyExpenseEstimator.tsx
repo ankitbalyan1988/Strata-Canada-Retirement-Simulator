@@ -367,7 +367,7 @@ export const MonthlyExpenseEstimator: React.FC<MonthlyExpenseEstimatorProps> = (
 
           <div className="relative py-1">
             <input
-              type="range"
+              type="range" inputMode="none"
               min={-50}
               max={50}
               step={1}

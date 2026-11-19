@@ -449,7 +449,7 @@ export const DebtsManager: React.FC<DebtsManagerProps> = React.memo(({
                   </div>
                   <div className="flex items-center gap-2">
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={currentAge + 1}
                       max={Math.min(75, Math.max(currentAge + 10, retirementAge + 5))}
                       value={currentStrategy.targetPayoffAge || currentAge + 5}

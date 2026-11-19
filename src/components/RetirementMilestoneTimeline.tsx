@@ -61,8 +61,10 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
   const [activeCategory, setActiveCategory] = useState<MilestoneCategory>('all');
   const [openPopupAge, setOpenPopupAge] = useState<number | null>(null);
   const [popupLayout, setPopupLayout] = useState<PopupLayout | null>(null);
+  const [trackWidthPx, setTrackWidthPx] = useState<number>(760);
 
   const timelineSectionRef = useRef<HTMLDivElement>(null);
+  const pinsTrackRef = useRef<HTMLDivElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
   const pinRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -561,45 +563,101 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
     };
   }, [openPopupAge]);
 
+  // Measure actual timeline track pixel width across screen resolutions so pin anti-collision adapts dynamically
+  useLayoutEffect(() => {
+    const el = pinsTrackRef.current;
+    if (!el) return;
+
+    const updateWidth = () => {
+      const nextWidth = el.clientWidth;
+      if (nextWidth > 0) {
+        setTrackWidthPx((prev) => (Math.abs(prev - nextWidth) > 1 ? nextWidth : prev));
+      }
+    };
+
+    updateWidth();
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(updateWidth);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
   // Calculate percentage along track (0% to 100%)
-  const getPercentPosition = (age: number) => {
-    const clamped = Math.max(currentAge, Math.min(lifeExpectancy, age));
-    return ((clamped - currentAge) / totalYears) * 100;
-  };
+  const getPercentPosition = useCallback(
+    (age: number) => {
+      const clamped = Math.max(currentAge, Math.min(lifeExpectancy, age));
+      return ((clamped - currentAge) / totalYears) * 100;
+    },
+    [currentAge, lifeExpectancy, totalYears]
+  );
 
   const retirementPercent = getPercentPosition(retirementAge);
 
-  // Anti-collision / vertical tier staggering for timeline milestone pins
-  // When pins are closer than 5.5% (~45-55px), they are staggered across vertical tiers
-  // so stalks, pin icons, and age labels never collide or obscure each other.
-  const { pinTiers, maxTier } = useMemo(() => {
+  // Pixel-based greedy multi-lane interval packing for milestone pins.
+  // Guarantees zero horizontal or vertical overlap between adjacent pin icons, count badges, and Age labels
+  // across mobile portrait (~320px), landscape/tablet, and wide desktop resolutions.
+  const { pinLayouts, trackHeightPx, maxLane } = useMemo(() => {
     const sortedAges = Object.keys(groupedMilestonesByAge)
       .map(Number)
       .sort((a, b) => a - b);
 
-    const tiers: { [age: number]: number } = {};
-    let currentTier = 0;
-    let lastPct = -100;
-    let highestTier = 0;
+    const isCompactViewport = trackWidthPx < 480;
+    const edgeMarginPx = isCompactViewport ? 24 : 28;
+    const minHorizontalSpacingPx = isCompactViewport ? 58 : 70;
+    const baseTopOffsetPx = 10;
+    const laneHeightPx = isCompactViewport ? 60 : 66;
+    const pinBlockHeightPx = isCompactViewport ? 54 : 58;
+
+    const layouts: Record<number, { leftPx: number; lane: number; topPx: number }> = {};
+    const laneLastCenterX: number[] = [];
+    let highestLane = 0;
 
     sortedAges.forEach((age) => {
       const pct = getPercentPosition(age);
-      // Distance threshold: if within 5.5% of previous pin
-      if (pct - lastPct < 5.5) {
-        currentTier = (currentTier + 1) % 3;
+      const rawX = (pct / 100) * trackWidthPx;
+      const safeLeftPx = Math.max(
+        edgeMarginPx,
+        Math.min(Math.max(edgeMarginPx, trackWidthPx - edgeMarginPx), rawX)
+      );
+
+      let assignedLane = laneLastCenterX.findIndex(
+        (lastX) => safeLeftPx - lastX >= minHorizontalSpacingPx
+      );
+
+      if (assignedLane === -1) {
+        assignedLane = laneLastCenterX.length;
+        laneLastCenterX.push(safeLeftPx);
       } else {
-        currentTier = 0;
+        laneLastCenterX[assignedLane] = safeLeftPx;
       }
 
-      tiers[age] = currentTier;
-      if (currentTier > highestTier) {
-        highestTier = currentTier;
+      if (assignedLane > highestLane) {
+        highestLane = assignedLane;
       }
-      lastPct = pct;
+
+      layouts[age] = {
+        leftPx: safeLeftPx,
+        lane: assignedLane,
+        topPx: baseTopOffsetPx + assignedLane * laneHeightPx
+      };
     });
 
-    return { pinTiers: tiers, maxTier: highestTier };
-  }, [groupedMilestonesByAge, currentAge, lifeExpectancy, totalYears]);
+    const totalHeight =
+      sortedAges.length > 0
+        ? baseTopOffsetPx + highestLane * laneHeightPx + pinBlockHeightPx + 8
+        : 68;
+
+    return {
+      pinLayouts: layouts,
+      trackHeightPx: totalHeight,
+      maxLane: highestLane
+    };
+  }, [groupedMilestonesByAge, getPercentPosition, trackWidthPx]);
 
   // Dynamically compute and clamp popup position against both container and viewport edges
   const computePopupPosition = useCallback(() => {
@@ -664,7 +722,7 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
 
   useLayoutEffect(() => {
     computePopupPosition();
-  }, [computePopupPosition, filteredMilestones, maxTier]);
+  }, [computePopupPosition, filteredMilestones, maxLane, trackWidthPx]);
 
   useEffect(() => {
     if (openPopupAge === null) return;
@@ -681,21 +739,21 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 sm:p-6 transition-colors duration-200">
       {/* 1. Header Bar: Title, Context Metrics, Category Segmented Control */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100/60 dark:border-indigo-800/60 shadow-xs">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100/60 dark:border-indigo-800/60 shadow-xs shrink-0">
               <CalendarClock className="w-5 h-5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-2 flex-wrap">
-                Interactive Retirement Roadmap & Milestones
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                <span>Interactive Retirement Roadmap &amp; Milestones</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 whitespace-nowrap">
                   {allMilestones.length} Key Milestones
                 </span>
               </h3>
               {/* Clean unboxed metadata with subtle typographic separators */}
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
+              <div className="flex items-center gap-x-2 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
                 <span>Simulation Span: Age {currentAge} ({startYear}) – Age {lifeExpectancy} ({endYear})</span>
                 <span aria-hidden="true" className="text-slate-300 dark:text-slate-600">·</span>
                 <span className="font-medium text-slate-700 dark:text-slate-300">{totalYears} Years Modeled</span>
@@ -709,11 +767,11 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
         </div>
 
         {/* Category Filter Buttons */}
-        <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs overflow-x-auto scrollbar-none w-full lg:w-auto">
+        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs w-full xl:w-auto xl:shrink-0">
           <button
             type="button"
             onClick={() => setActiveCategory('all')}
-            className={`px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'all'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -724,35 +782,35 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
           <button
             type="button"
             onClick={() => setActiveCategory('pension')}
-            className={`px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'pension'
                 ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Govt & Pensions
+            Govt &amp; Pensions
           </button>
           <button
             type="button"
             onClick={() => setActiveCategory('cra_tax')}
-            className={`px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'cra_tax'
                 ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-xs font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            CRA & Tax Rules
+            CRA &amp; Tax Rules
           </button>
           <button
             type="button"
             onClick={() => setActiveCategory('wealth')}
-            className={`px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
               activeCategory === 'wealth'
                 ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs font-semibold'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Wealth & Freedom
+            Wealth &amp; Freedom
           </button>
         </div>
       </div>
@@ -826,90 +884,109 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
         </div>
 
         {/* Milestone Interactive Pin Nodes Placed on Timeline */}
-        <div className={`relative w-full mt-2 transition-all duration-300 ${maxTier >= 2 ? 'h-32' : maxTier === 1 ? 'h-24 sm:h-26' : 'h-16 sm:h-18'}`}>
+        <div
+          ref={pinsTrackRef}
+          style={{ height: `${trackHeightPx}px` }}
+          className="relative w-full mt-2 transition-[height] duration-300"
+        >
           {Object.entries(groupedMilestonesByAge).map(([ageStr, milestonesAtAge]) => {
             const age = Number(ageStr);
-            const pct = getPercentPosition(age);
-            const safePct = Math.max(2, Math.min(98, pct));
-            const tier = pinTiers[age] || 0;
+            const layout = pinLayouts[age] || {
+              leftPx: (getPercentPosition(age) / 100) * trackWidthPx,
+              lane: 0,
+              topPx: 10
+            };
             const isPopupOpenForAge = openPopupAge === age;
             const primaryMilestone = milestonesAtAge[0];
             const isRetirement = milestonesAtAge.some((m) => m.isKeyTurningPoint);
             const isWarning = milestonesAtAge.some((m) => m.isWarning);
             const IconComponent = primaryMilestone.icon;
 
+            const stalkColorClass = isPopupOpenForAge
+              ? 'bg-indigo-600 dark:bg-indigo-400'
+              : isRetirement
+              ? 'bg-amber-500/80 dark:bg-amber-400/80'
+              : isWarning
+              ? 'bg-rose-500/80 dark:bg-rose-400/80'
+              : 'bg-slate-300 dark:bg-slate-600';
+
             return (
-              <div
-                key={age}
-                ref={(el) => {
-                  pinRefs.current[age] = el;
-                }}
-                style={{ left: `${safePct}%` }}
-                className={`absolute -translate-x-1/2 top-0 flex flex-col items-center group ${
-                  isPopupOpenForAge ? 'z-30' : 'z-10'
-                }`}
-              >
-                {/* Connecting Pin Stalk with Dynamic Anti-Collision Staggering */}
+              <React.Fragment key={age}>
+                {/* Connecting Vertical Stalk Rendered Below Pin Layer So It Never Cuts Over Upper-Lane Pins */}
                 <div
-                  style={{ height: tier === 2 ? '48px' : tier === 1 ? '26px' : '10px' }}
-                  className={`w-0.5 transition-all duration-200 ${
-                    isPopupOpenForAge
-                      ? 'bg-indigo-600 dark:bg-indigo-400'
-                      : isRetirement
-                      ? 'bg-amber-500'
-                      : isWarning
-                      ? 'bg-rose-500'
-                      : 'bg-slate-300 dark:bg-slate-600 group-hover:bg-slate-400 dark:group-hover:bg-slate-500'
-                  }`}
-                />
-
-                {/* Clickable Pin + Age Label Trigger */}
-                <button
-                  type="button"
-                  onClick={() => setOpenPopupAge((prev) => (prev === age ? null : age))}
-                  aria-expanded={isPopupOpenForAge}
-                  aria-haspopup="dialog"
-                  aria-label={`Age ${age} milestones: ${milestonesAtAge.map((m) => m.title).join(', ')}. Click to ${isPopupOpenForAge ? 'hide' : 'view'} details.`}
-                  className="flex flex-col items-center cursor-pointer focus:outline-none"
+                  aria-hidden="true"
+                  style={{
+                    left: `${layout.leftPx}px`,
+                    top: 0,
+                    height: `${layout.topPx}px`
+                  }}
+                  className={`absolute -translate-x-1/2 w-[1.5px] pointer-events-none z-0 transition-all duration-200 ${stalkColorClass}`}
                 >
-                  {/* Pin Head */}
                   <span
-                    className={`relative flex items-center justify-center rounded-xl p-1.5 transition-all shadow-xs ${
-                      isPopupOpenForAge
-                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-200 dark:ring-indigo-900/60 scale-110'
-                        : isRetirement
-                        ? 'bg-amber-500 text-white ring-2 ring-amber-200 dark:ring-amber-900/60 group-hover:scale-105'
-                        : isWarning
-                        ? 'bg-rose-500 text-white ring-2 ring-rose-200 dark:ring-rose-900/60 group-hover:scale-105'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 group-hover:scale-105'
-                    }`}
-                  >
-                    <IconComponent className="w-3.5 h-3.5" />
+                    className={`absolute -top-[2px] left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${stalkColorClass}`}
+                  />
+                </div>
 
-                    {/* Multi-milestone badge counter if >=2 events at this age */}
-                    {milestonesAtAge.length > 1 && (
-                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-900">
-                        {milestonesAtAge.length}
-                      </span>
-                    )}
-                  </span>
-
-                  {/* Anti-collision Clickable Age Pill */}
-                  <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-2xs whitespace-nowrap transition-all border mt-1 select-none ${
-                      isPopupOpenForAge
-                        ? 'text-indigo-700 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950/90 border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-300/40 dark:ring-indigo-500/30'
-                        : isRetirement
-                        ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/90 border-amber-200 dark:border-amber-800 group-hover:border-amber-400'
-                        : isWarning
-                        ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/90 border-rose-200 dark:border-rose-800 group-hover:border-rose-400'
-                        : 'text-slate-700 dark:text-slate-300 bg-white/95 dark:bg-slate-800/95 border-slate-200/90 dark:border-slate-700 group-hover:border-indigo-400 dark:group-hover:border-indigo-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-300'
-                    }`}
+                {/* Clickable Pin + Age Label Node in Non-Overlapping Lane */}
+                <div
+                  ref={(el) => {
+                    pinRefs.current[age] = el;
+                  }}
+                  style={{
+                    left: `${layout.leftPx}px`,
+                    top: `${layout.topPx}px`
+                  }}
+                  className={`absolute -translate-x-1/2 flex flex-col items-center group transition-all duration-200 ${
+                    isPopupOpenForAge ? 'z-30' : 'z-10 hover:z-20'
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenPopupAge((prev) => (prev === age ? null : age))}
+                    aria-expanded={isPopupOpenForAge}
+                    aria-haspopup="dialog"
+                    aria-label={`Age ${age} milestones: ${milestonesAtAge.map((m) => m.title).join(', ')}. Click to ${isPopupOpenForAge ? 'hide' : 'view'} details.`}
+                    className="flex flex-col items-center cursor-pointer focus:outline-none"
                   >
-                    Age {age}
-                  </span>
-                </button>
-              </div>
+                    {/* Pin Head */}
+                    <span
+                      className={`relative flex items-center justify-center rounded-xl p-1 sm:p-1.5 transition-all shadow-xs ${
+                        isPopupOpenForAge
+                          ? 'bg-indigo-600 text-white ring-4 ring-indigo-200 dark:ring-indigo-900/60 scale-110'
+                          : isRetirement
+                          ? 'bg-amber-500 text-white ring-2 ring-amber-200 dark:ring-amber-900/60 group-hover:scale-105'
+                          : isWarning
+                          ? 'bg-rose-500 text-white ring-2 ring-rose-200 dark:ring-rose-900/60 group-hover:scale-105'
+                          : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 group-hover:scale-105'
+                      }`}
+                    >
+                      <IconComponent className="w-3.5 h-3.5" />
+
+                      {/* Multi-milestone badge counter if >=2 events at this age */}
+                      {milestonesAtAge.length > 1 && (
+                        <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-[9px] font-bold flex items-center justify-center border border-white dark:border-slate-900">
+                          {milestonesAtAge.length}
+                        </span>
+                      )}
+                    </span>
+
+                    {/* Anti-collision Clickable Age Pill */}
+                    <span
+                      className={`text-[9.5px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-2xs whitespace-nowrap transition-all border mt-1 select-none ${
+                        isPopupOpenForAge
+                          ? 'text-indigo-700 dark:text-indigo-200 bg-indigo-50 dark:bg-indigo-950 border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-300/40 dark:ring-indigo-500/30'
+                          : isRetirement
+                          ? 'text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800 group-hover:border-amber-400'
+                          : isWarning
+                          ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950 border-rose-200 dark:border-rose-800 group-hover:border-rose-400'
+                          : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 group-hover:border-indigo-400 dark:group-hover:border-indigo-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-300'
+                      }`}
+                    >
+                      Age {age}
+                    </span>
+                  </button>
+                </div>
+              </React.Fragment>
             );
           })}
         </div>

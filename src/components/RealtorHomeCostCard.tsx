@@ -320,7 +320,7 @@ export const RealtorHomeCostCard: React.FC<RealtorHomeCostCardProps> = ({
                       <span className="text-teal-700 dark:text-teal-400 font-bold font-mono">{sqft} sq ft</span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={400}
                       max={2000}
                       step={25}
@@ -352,7 +352,7 @@ export const RealtorHomeCostCard: React.FC<RealtorHomeCostCardProps> = ({
                       <span className="text-teal-700 dark:text-teal-400 font-bold font-mono">${feeRate.toFixed(2)} / sq ft</span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={0.30}
                       max={1.20}
                       step={0.02}
@@ -403,7 +403,7 @@ export const RealtorHomeCostCard: React.FC<RealtorHomeCostCardProps> = ({
                     </span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={0.20}
                     max={1.50}
                     step={0.01}

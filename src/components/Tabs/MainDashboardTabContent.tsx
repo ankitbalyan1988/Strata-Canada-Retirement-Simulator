@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { RetirementMilestoneTimeline } from '../RetirementMilestoneTimeline';
 import { RetirementScorecard } from '../RetirementScorecard';
 import { SavingsRateIndicator } from '../SavingsRateIndicator';
+import { RetirementAgeOptimizer } from '../RetirementAgeOptimizer';
 import { RetirementProgress } from '../RetirementProgress';
 import { HeroRetirementSlider } from '../HeroRetirementSlider';
 import { SavingsPulse } from '../SavingsPulse';
@@ -30,6 +31,9 @@ export const MainDashboardTabContent: React.FC = () => {
 
       {/* 1b. Savings Rate Indicator benchmarked against Canadian retirement guidelines */}
       <SavingsRateIndicator />
+
+      {/* 1c. Monte Carlo Retirement Age Optimizer */}
+      <RetirementAgeOptimizer />
 
       {/* 2. Retirement Progress Circular Gauge & Real-time Readiness Today */}
       <RetirementProgress />

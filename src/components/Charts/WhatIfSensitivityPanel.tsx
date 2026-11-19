@@ -248,7 +248,7 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
           </div>
 
           <input
-            type="range"
+            type="range" inputMode="none"
             min="-2.0"
             max="2.0"
             step="0.25"
@@ -291,7 +291,7 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
           </div>
 
           <input
-            type="range"
+            type="range" inputMode="none"
             min="-2.0"
             max="2.0"
             step="0.25"
@@ -334,7 +334,7 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
           </div>
 
           <input
-            type="range"
+            type="range" inputMode="none"
             min="-2.0"
             max="2.0"
             step="0.25"

@@ -515,7 +515,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                   </div>
 
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={retirementInputs.currentAge}
                     max={retirementInputs.lifeExpectancy - 2}
                     step={1}
@@ -561,7 +561,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                   </div>
 
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={5}
                     max={50}
                     step={1}
@@ -1153,7 +1153,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       </strong>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={Math.round(destinationCountry.exchangeRateToCAD * 0.7 * 10) / 10}
                       max={Math.round(destinationCountry.exchangeRateToCAD * 1.3 * 10) / 10}
                       step={destinationCountry.exchangeRateToCAD > 10 ? 0.5 : 0.02}
@@ -1171,7 +1171,7 @@ export const ExpatRetirementModule: React.FC<ExpatRetirementModuleProps> = (prop
                       </strong>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={0.25}
                       max={1.30}
                       step={0.05}

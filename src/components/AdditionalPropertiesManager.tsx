@@ -485,7 +485,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                           </span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={currentAge + 1}
                           max={Math.min(75, lifeExpectancy - 1)}
                           step={1}
@@ -571,7 +571,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                         <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{prop.ownershipSharePercent}%</span>
                       </div>
                       <input
-                        type="range"
+                        type="range" inputMode="none"
                         min={10}
                         max={100}
                         step={5}
@@ -586,7 +586,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                         <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{prop.annualAppreciationRate}%/yr</span>
                       </div>
                       <input
-                        type="range"
+                        type="range" inputMode="none"
                         min={0.5}
                         max={7.0}
                         step={0.1}
@@ -626,7 +626,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                       ) : (
                         <div className="flex items-center gap-2">
                           <input
-                            type="range"
+                            type="range" inputMode="none"
                             min={0.2}
                             max={2.0}
                             step={0.05}
@@ -703,7 +703,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                           <span className="font-mono font-bold text-rose-700 dark:text-rose-400">{prop.mortgageInterestRate}%</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={2.0}
                           max={9.0}
                           step={0.05}
@@ -737,7 +737,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                             <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{prop.mortgageStartYear}</span>
                           </div>
                           <input
-                            type="range"
+                            type="range" inputMode="none"
                             min={2005}
                             max={2026}
                             step={1}
@@ -826,7 +826,7 @@ export const AdditionalPropertiesManager: React.FC<AdditionalPropertiesManagerPr
                           </span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={isCurrent ? currentAge + 1 : pAge + 1}
                           max={Math.max(isCurrent ? currentAge + 2 : pAge + 2, lifeExpectancy - 1)}
                           step={1}

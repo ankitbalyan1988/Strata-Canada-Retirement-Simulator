@@ -164,7 +164,7 @@ export const HeroRetirementSlider: React.FC<HeroRetirementSliderProps> = (props)
               {/* Range Slider Track */}
               <div className="relative pt-1 pb-2">
                 <input
-                  type="range"
+                  type="range" inputMode="none"
                   min={Math.max(45, currentAge)}
                   max={75}
                   step={1}

@@ -68,6 +68,12 @@ export interface SimulationState {
   theme: 'light' | 'dark';
   activeChartTab: 'networth' | 'cashflow' | 'taxbracket';
   isExportingPdf: boolean;
+  toastNotification: {
+    id: number;
+    status: 'loading' | 'success' | 'error';
+    title: string;
+    message?: string;
+  } | null;
   isCompareModalOpen: boolean;
   isSnapshotCompareModalOpen: boolean;
   selectedCompareSnapshotIds: string[];
@@ -134,6 +140,7 @@ export interface SimulationState {
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
+  dismissToast: () => void;
 
   // History Actions
   setIsHistoryPanelOpen: (open: boolean) => void;
@@ -481,6 +488,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   theme: getInitialTheme(),
   activeChartTab: 'networth',
   isExportingPdf: false,
+  toastNotification: null,
   isCompareModalOpen: false,
   isSnapshotCompareModalOpen: false,
   selectedCompareSnapshotIds: [],
@@ -492,6 +500,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     personaSelection: false,
     aiPersona: false,
     planning: false,
+    retirementAgeOptimizer: false,
     retirementAgeSimulator: false,
     stressTest: false,
     pulse: false,
@@ -902,7 +911,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       const activeView = state.activeView;
       const viewSectionsMap: Record<AppView, string[]> = {
         inputs: ['planning'],
-        dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
+        dashboard: ['retirementAgeOptimizer', 'retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
         estate: ['estate'],
         expat: ['expat']
       };
@@ -919,6 +928,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     });
   },
 
+  dismissToast: () => set({ toastNotification: null }),
+
   exportPdf: async () => {
     const {
       inputs,
@@ -932,8 +943,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       stressSimulation,
       history
     } = get();
+    const toastId = Date.now();
     try {
-      set({ isExportingPdf: true });
+      set({
+        isExportingPdf: true,
+        toastNotification: {
+          id: toastId,
+          status: 'loading',
+          title: 'Generating Executive PDF Plan...',
+          message: 'Loading PDF engine and building your retirement report.'
+        }
+      });
       const [{ generateRetirementPdfReport }] = await Promise.all([
         import('../utils/pdfExport'),
         new Promise<void>((resolve) => {
@@ -944,7 +964,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           }
         })
       ]);
-      generateRetirementPdfReport(inputs, summary, yearlyResults, {
+      const fileName = generateRetirementPdfReport(inputs, summary, yearlyResults, {
         pulse,
         whatIfSettings,
         stressTest: isStressTestActive
@@ -959,8 +979,39 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           : undefined,
         savedScenarios: history
       });
+
+      set({
+        toastNotification: {
+          id: toastId,
+          status: 'success',
+          title: 'PDF Export Complete',
+          message: fileName ? `Saved ${fileName}` : 'Your executive PDF report has finished generating.'
+        }
+      });
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          if (get().toastNotification?.id === toastId) {
+            set({ toastNotification: null });
+          }
+        }, 4500);
+      }
     } catch (err) {
       console.error('PDF export error:', err);
+      set({
+        toastNotification: {
+          id: toastId,
+          status: 'error',
+          title: 'PDF Export Failed',
+          message: 'Something went wrong while generating your PDF. Please try again.'
+        }
+      });
+      if (typeof window !== 'undefined') {
+        window.setTimeout(() => {
+          if (get().toastNotification?.id === toastId) {
+            set({ toastNotification: null });
+          }
+        }, 5000);
+      }
     } finally {
       set({ isExportingPdf: false });
     }

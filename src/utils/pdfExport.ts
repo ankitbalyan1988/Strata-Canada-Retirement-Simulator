@@ -3292,5 +3292,7 @@ export function generateRetirementPdfReport(
 
   // Save PDF with descriptive filename
   const cleanClient = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');
-  doc.save(`Strata_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`);
+  const fileName = `Strata_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`;
+  doc.save(fileName);
+  return fileName;
 }

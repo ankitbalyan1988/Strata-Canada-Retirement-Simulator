@@ -739,7 +739,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.currentAge} years old</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={20}
                     max={inputs.retirementAge - 1}
                     value={inputs.currentAge}
@@ -758,7 +758,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{inputs.lifeExpectancy} years old</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={Math.max(75, inputs.retirementAge + 5)}
                     max={100}
                     value={inputs.lifeExpectancy}
@@ -811,7 +811,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </div>
 
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={-5.0}
                       max={8.0}
                       step={0.1}
@@ -877,7 +877,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                             <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">Age {inputs.careerDisruption.shockAge}</span>
                           </div>
                           <input
-                            type="range"
+                            type="range" inputMode="none"
                             min={inputs.currentAge + 1}
                             max={Math.max(inputs.currentAge + 2, inputs.retirementAge - 1)}
                             step={1}
@@ -916,7 +916,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                             ))}
                           </div>
                           <input
-                            type="range"
+                            type="range" inputMode="none"
                             min={10}
                             max={70}
                             step={5}
@@ -2382,7 +2382,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       <span className="text-slate-600 dark:text-slate-400">Planned Home Purchase Age:</span>
                       <div className="flex items-center gap-2">
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={inputs.currentAge + 1}
                           max={Math.min(71, inputs.currentAge + ((inputs.fhsaOpenYear || 2023) + 15 - 2026))}
                           value={inputs.fhsaHomePurchaseAge || inputs.currentAge + 3}
@@ -2734,7 +2734,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-blue-700 dark:text-blue-400 font-bold font-mono">Age {futurePurchaseAge} (in {yearsToPurchase} yrs)</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={inputs.currentAge + 1}
                           max={Math.min(75, inputs.retirementAge + 5)}
                           step={1}
@@ -3079,7 +3079,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={2.0}
                           max={9.0}
                           step={0.05}
@@ -3120,7 +3120,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">{annualAppreciationRate}% / yr</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={1.0}
                           max={7.0}
                           step={0.1}
@@ -3137,7 +3137,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-blue-800 dark:text-blue-300 font-bold font-mono">{ownershipSharePercent}%</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={10}
                           max={100}
                           step={5}
@@ -3205,7 +3205,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-indigo-700 dark:text-indigo-400 font-bold font-mono">Age {sellHomeAge}</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={futurePurchaseAge + 1}
                               max={inputs.lifeExpectancy - 1}
                               step={1}
@@ -3224,7 +3224,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-slate-800 dark:text-slate-200 font-bold font-mono">{sellingCostPercent}%</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={2.0}
                               max={7.0}
                               step={0.5}
@@ -3414,7 +3414,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-amber-800 dark:text-amber-300 font-bold font-mono">{ownershipSharePercent}%</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={10}
                           max={100}
                           step={5}
@@ -3435,7 +3435,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           <span className="text-emerald-700 dark:text-emerald-400 font-bold font-mono">{annualAppreciationRate}% / yr</span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={1.0}
                           max={7.0}
                           step={0.1}
@@ -3498,7 +3498,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-rose-700 dark:text-rose-400 font-bold font-mono">{mortgageInterestRate}%</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={2.0}
                               max={9.0}
                               step={0.05}
@@ -3539,7 +3539,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-slate-900 dark:text-slate-100 font-bold font-mono">{mortgageStartYear} ({currentCalendarYear - mortgageStartYear} yrs elapsed)</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={2005}
                               max={2026}
                               step={1}
@@ -3601,7 +3601,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-indigo-700 dark:text-indigo-400 font-bold font-mono">Age {sellHomeAge}</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={inputs.currentAge + 1}
                               max={inputs.lifeExpectancy - 1}
                               step={1}
@@ -3620,7 +3620,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                               <span className="text-slate-800 dark:text-slate-200 font-bold font-mono">{sellingCostPercent}%</span>
                             </div>
                             <input
-                              type="range"
+                              type="range" inputMode="none"
                               min={2.0}
                               max={7.0}
                               step={0.5}
@@ -4180,7 +4180,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.spouse.cppStartAge} yrs</span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={60}
                       max={70}
                       step={1}
@@ -4207,7 +4207,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                           </span>
                         </div>
                         <input
-                          type="range"
+                          type="range" inputMode="none"
                           min={30}
                           max={100}
                           step={5}
@@ -4405,7 +4405,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.spouse.oasStartAge} yrs</span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={65}
                       max={70}
                       step={1}
@@ -4426,7 +4426,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       </span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={10}
                       max={40}
                       step={1}
@@ -4512,7 +4512,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-blue-700 dark:text-blue-400 font-bold">{inputs.cppStartAge} yrs</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={60}
                     max={70}
                     step={1}
@@ -4537,7 +4537,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                         <span className="text-blue-700 dark:text-blue-400 font-mono font-bold">{inputs.cppEstimatedPercentOfMax}% of Maximum</span>
                       </div>
                       <input
-                        type="range"
+                        type="range" inputMode="none"
                         min={30}
                         max={100}
                         step={5}
@@ -4741,7 +4741,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-sky-700 dark:text-sky-400 font-bold">{inputs.oasStartAge} yrs</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={65}
                     max={70}
                     step={1}
@@ -4760,7 +4760,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-sky-700 dark:text-sky-400 font-mono font-bold">{inputs.oasEligibleYearsInCanada} / 40 yrs</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={10}
                     max={40}
                     step={1}
@@ -4809,7 +4809,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={2.0}
                     max={12.0}
                     step={0.1}
@@ -4832,7 +4832,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={2.0}
                     max={12.0}
                     step={0.1}
@@ -4855,7 +4855,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={2.0}
                     max={12.0}
                     step={0.1}
@@ -4885,7 +4885,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </div>
                   ) : (
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={2.0}
                       max={12.0}
                       step={0.1}
@@ -4908,7 +4908,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-rose-700 dark:text-rose-400 font-mono font-bold">{inputs.inflationRate}%</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={1.0}
                     max={5.0}
                     step={0.1}
@@ -4925,7 +4925,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     <span className="text-purple-700 dark:text-purple-400 font-mono font-bold">{inputs.nonRegYieldTaxRate}%</span>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={0.2}
                     max={3.0}
                     step={0.1}
@@ -4949,7 +4949,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                       <span className="text-amber-700 dark:text-amber-400 font-mono font-bold">{inputs.realEstate?.annualAppreciationRate ?? 3.2}%</span>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={1.0}
                       max={7.0}
                       step={0.1}
@@ -5262,7 +5262,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </div>
 
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={inputs.currentAge}
                       max={inputs.lifeExpectancy - 2}
                       step={1}
@@ -5297,7 +5297,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
                     </div>
 
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={5}
                       max={50}
                       step={1}

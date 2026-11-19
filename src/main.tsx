@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { installMobileSliderKeyboardGuard } from './utils/mobileSliderGuard';
 
 // Suppress benign browser ResizeObserver notification loop warnings
 if (typeof window !== 'undefined') {
@@ -39,6 +40,8 @@ if (typeof document !== 'undefined') {
     // ignore
   }
 }
+
+installMobileSliderKeyboardGuard();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

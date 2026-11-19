@@ -444,7 +444,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
             </div>
 
             <input
-              type="range"
+              type="range" inputMode="none"
               min={yearlyResults[0].age}
               max={yearlyResults[yearlyResults.length - 1].age}
               step={1}
@@ -724,7 +724,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                       </strong>
                     </div>
                     <input
-                      type="range"
+                      type="range" inputMode="none"
                       min={5}
                       max={50}
                       step={5}
@@ -847,7 +847,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     <strong className="font-mono text-emerald-800 dark:text-emerald-300 font-bold">{estateInputs.charityAllocationPercent}%</strong>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={0}
                     max={100}
                     step={5}
@@ -876,7 +876,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     <strong className="font-mono text-indigo-800 dark:text-indigo-300 font-bold">{estateInputs.namedFriendsAllocationPercent}%</strong>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={0}
                     max={100 - estateInputs.charityAllocationPercent}
                     step={5}
@@ -903,7 +903,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                     <strong className="font-mono text-purple-800 dark:text-purple-300 font-bold">{estateInputs.endowmentAllocationPercent}%</strong>
                   </div>
                   <input
-                    type="range"
+                    type="range" inputMode="none"
                     min={0}
                     max={100}
                     disabled
@@ -1016,7 +1016,7 @@ export const EstatePlanningModule: React.FC<EstatePlanningModuleProps> = (props)
                   </div>
                 </div>
                 <input
-                  type="range"
+                  type="range" inputMode="none"
                   min={0}
                   max={30000}
                   step={1000}
