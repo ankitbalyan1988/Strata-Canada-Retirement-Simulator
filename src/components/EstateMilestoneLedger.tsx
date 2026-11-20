@@ -27,6 +27,7 @@ import {
   EstateFilterMode 
 } from '../types/estate';
 import { generateEstateMilestoneLedger } from '../utils/estatePlanning';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 
 export interface EstateMilestoneLedgerProps {
   estateInputs: EstatePlanningInputs;
@@ -101,16 +102,25 @@ export const EstateMilestoneLedger: React.FC<EstateMilestoneLedgerProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const { exportEstateLedgerToExcel } = await import('../utils/excelExport');
-      await exportEstateLedgerToExcel({
-        data: filteredData,
-        filterMode,
-        passingAge: estateInputs.passingAge,
-        retirementAge: retirementInputs.retirementAge || 65,
-        province: retirementInputs.province || 'ON',
-        inputs: retirementInputs,
-        estateInputs
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Estate Succession Ledger',
+          processingSubtitle:
+            'Compiling CRA Sec. 70(5) deemed disposition taxes, provincial probate fees, and net bequest schedules...',
+          successMessage: 'Your Estate Succession Ledger (.xlsx) has started downloading.'
+        },
+        async ({ exportEstateLedgerToExcel }) => {
+          await exportEstateLedgerToExcel({
+            data: filteredData,
+            filterMode,
+            passingAge: estateInputs.passingAge,
+            retirementAge: retirementInputs.retirementAge || 65,
+            province: retirementInputs.province || 'ON',
+            inputs: retirementInputs,
+            estateInputs
+          });
+        }
+      );
     } catch (err) {
       console.error('Failed to export Estate Milestone Ledger to Excel:', err);
     } finally {

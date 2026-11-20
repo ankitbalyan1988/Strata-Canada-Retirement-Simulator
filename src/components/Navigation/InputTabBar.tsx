@@ -28,6 +28,8 @@ interface TabItem {
 export const InputTabBar: React.FC = React.memo(() => {
   const activeInputTab = useSimulationStore((state) => state.activeInputTab);
   const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
+  const isFocusMode = useSimulationStore((state) => state.isFocusMode);
+  const focusModeZone = useSimulationStore((state) => state.focusModeZone);
   const {
     isMarried,
     hasDebts,
@@ -159,7 +161,12 @@ export const InputTabBar: React.FC = React.memo(() => {
     <div
       role="tablist"
       aria-label="Profile and plan input horizontal navigation"
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xs transition-colors"
+      data-focus-zone="input-tabs"
+      className={`bg-white dark:bg-slate-900 border rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xs transition-colors ${
+        isFocusMode && focusModeZone === 'tabs'
+          ? 'border-emerald-500/70 dark:border-emerald-400/70 ring-2 ring-emerald-500/15'
+          : 'border-slate-200 dark:border-slate-800'
+      }`}
     >
       <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {visibleTabs.map((tab) => {

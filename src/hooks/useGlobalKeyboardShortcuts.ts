@@ -18,6 +18,7 @@ export function useGlobalKeyboardShortcuts() {
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
   const setIsSnapshotCompareModalOpen = useSimulationStore((state) => state.setIsSnapshotCompareModalOpen);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
+  const toggleFocusMode = useSimulationStore((state) => state.toggleFocusMode);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -59,6 +60,23 @@ export function useGlobalKeyboardShortcuts() {
         e.preventDefault();
         setIsHelpGuideModalOpen(true);
         return;
+      }
+
+      // 4b. Quick 'f' key to toggle Keyboard Focus Mode (only when not typing in an input or modal)
+      if (!isInputFocused && !isModifier && !e.altKey && (e.key === 'f' || e.key === 'F')) {
+        const s = useSimulationStore.getState();
+        const hasOpenModal =
+          s.isCommandPaletteOpen ||
+          s.isHelpGuideModalOpen ||
+          s.isCompareModalOpen ||
+          s.isSnapshotCompareModalOpen ||
+          s.isAIPersonaModalOpen ||
+          s.isWealthGuideModalOpen;
+        if (!hasOpenModal) {
+          e.preventDefault();
+          toggleFocusMode();
+          return;
+        }
       }
 
       // 5. Modifier Shortcuts (Cmd on Mac, Ctrl on Win/Linux)
@@ -167,6 +185,13 @@ export function useGlobalKeyboardShortcuts() {
             setIsAIPersonaModalOpen(true);
             return;
           }
+
+          // Toggle Keyboard Focus Mode (Cmd+Shift+F / Ctrl+Shift+F)
+          if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            toggleFocusMode();
+            return;
+          }
         }
       }
     };
@@ -187,6 +212,7 @@ export function useGlobalKeyboardShortcuts() {
     setIsHelpGuideModalOpen,
     setIsCompareModalOpen,
     setIsSnapshotCompareModalOpen,
-    setIsAIPersonaModalOpen
+    setIsAIPersonaModalOpen,
+    toggleFocusMode
   ]);
 }

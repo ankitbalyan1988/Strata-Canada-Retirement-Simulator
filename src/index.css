@@ -40,3 +40,26 @@
   }
 }
 
+/* Focus Mode: high-contrast keyboard navigation indicator for tabs and input sub-components */
+.focus-mode-active [data-focus-zone] button:focus,
+.focus-mode-active [data-focus-zone] input:focus,
+.focus-mode-active [data-focus-zone] select:focus,
+.focus-mode-active [data-focus-zone] textarea:focus,
+.focus-mode-active [data-focus-zone] [tabindex]:focus {
+  outline: 2.5px solid #10b981 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22) !important;
+  border-radius: 0.75rem;
+}
+
+.dark.focus-mode-active [data-focus-zone] button:focus,
+.dark.focus-mode-active [data-focus-zone] input:focus,
+.dark.focus-mode-active [data-focus-zone] select:focus,
+.dark.focus-mode-active [data-focus-zone] textarea:focus,
+.dark.focus-mode-active [data-focus-zone] [tabindex]:focus {
+  outline: 2.5px solid #34d399 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.28) !important;
+}
+
+

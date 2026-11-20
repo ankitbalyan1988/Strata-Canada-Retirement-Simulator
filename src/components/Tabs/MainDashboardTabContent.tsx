@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useSimulationStore } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { RetirementMilestoneTimeline } from '../RetirementMilestoneTimeline';
 import { RetirementScorecard } from '../RetirementScorecard';
 import { SavingsRateIndicator } from '../SavingsRateIndicator';
-import { RetirementAgeOptimizer } from '../RetirementAgeOptimizer';
+import { ModuleLoadingFallback } from '../ModuleLoadingFallback';
 import { RetirementProgress } from '../RetirementProgress';
 import { HeroRetirementSlider } from '../HeroRetirementSlider';
 import { SavingsPulse } from '../SavingsPulse';
@@ -14,6 +14,10 @@ import { MarginalTaxBracketChart } from '../Charts/MarginalTaxBracketChart';
 import {
   Sparkles
 } from 'lucide-react';
+
+const RetirementAgeOptimizer = React.lazy(() =>
+  import('../RetirementAgeOptimizer').then((m) => ({ default: m.RetirementAgeOptimizer }))
+);
 
 export const MainDashboardTabContent: React.FC = () => {
   const retirementAge = useSimulationStore((state) => state.inputs.retirementAge);
@@ -32,8 +36,18 @@ export const MainDashboardTabContent: React.FC = () => {
       {/* 1b. Savings Rate Indicator benchmarked against Canadian retirement guidelines */}
       <SavingsRateIndicator />
 
-      {/* 1c. Monte Carlo Retirement Age Optimizer */}
-      <RetirementAgeOptimizer />
+      {/* 1c. Monte Carlo Retirement Age Optimizer (Lazy Loaded) */}
+      <Suspense
+        fallback={
+          <ModuleLoadingFallback
+            moduleName="Retirement Age Optimizer"
+            subtitle="Loading Monte Carlo stochastic simulation engine and interactive probability charts..."
+            themeColor="emerald"
+          />
+        }
+      >
+        <RetirementAgeOptimizer />
+      </Suspense>
 
       {/* 2. Retirement Progress Circular Gauge & Real-time Readiness Today */}
       <RetirementProgress />

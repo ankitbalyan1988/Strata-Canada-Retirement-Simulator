@@ -3,14 +3,10 @@ import { Sidebar } from './components/Navigation/Sidebar';
 import { Header } from './components/Header';
 import { DashboardTabBar } from './components/Navigation/DashboardTabBar';
 import { InputTabBar } from './components/Navigation/InputTabBar';
-import { LedgerTabContent } from './components/Tabs/LedgerTabContent';
-import { CashFlowTabContent } from './components/Tabs/CashFlowTabContent';
 import { MainDashboardTabContent } from './components/Tabs/MainDashboardTabContent';
-import { StressTestTabContent } from './components/Tabs/StressTestTabContent';
-import { WhatIfTabContent } from './components/Tabs/WhatIfTabContent';
-import { InputPanel } from './components/InputPanel';
-import { SimulationHistoryPanel } from './components/SimulationHistoryPanel';
 import { ToastBanner } from './components/ToastBanner';
+import { ExcelExportOverlay } from './components/ExcelExportOverlay';
+import { FocusModeHUD } from './components/FocusModeHUD';
 import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
 import { useSimulationStore } from './store/useSimulationStore';
 import { 
@@ -28,7 +24,22 @@ import {
   ShieldCheck 
 } from 'lucide-react';
 
-// Dynamic route-level code-split modules and modals to optimize critical rendering path
+// Dynamic route-level code-split modules, secondary tabs, and modals to optimize critical rendering path
+const LedgerTabContent = React.lazy(() =>
+  import('./components/Tabs/LedgerTabContent').then((m) => ({ default: m.LedgerTabContent }))
+);
+const CashFlowTabContent = React.lazy(() =>
+  import('./components/Tabs/CashFlowTabContent').then((m) => ({ default: m.CashFlowTabContent }))
+);
+const StressTestTabContent = React.lazy(() =>
+  import('./components/Tabs/StressTestTabContent').then((m) => ({ default: m.StressTestTabContent }))
+);
+const WhatIfTabContent = React.lazy(() =>
+  import('./components/Tabs/WhatIfTabContent').then((m) => ({ default: m.WhatIfTabContent }))
+);
+const InputPanel = React.lazy(() =>
+  import('./components/InputPanel').then((m) => ({ default: m.InputPanel }))
+);
 const EstatePlanningModule = React.lazy(() =>
   import('./components/EstatePlanningModule').then((m) => ({ default: m.EstatePlanningModule }))
 );
@@ -53,10 +64,15 @@ const ApplicationHelpGuideModal = React.lazy(() =>
 const CommandPaletteModal = React.lazy(() =>
   import('./components/CommandPaletteModal').then((m) => ({ default: m.CommandPaletteModal }))
 );
+const SimulationHistoryPanel = React.lazy(() =>
+  import('./components/SimulationHistoryPanel').then((m) => ({ default: m.SimulationHistoryPanel }))
+);
 import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
+import { useFocusModeNavigation } from './hooks/useFocusModeNavigation';
 
 export default function App() {
   useGlobalKeyboardShortcuts();
+  useFocusModeNavigation();
 
   const isCommandPaletteOpen = useSimulationStore((state) => state.isCommandPaletteOpen);
   const isCompareModalOpen = useSimulationStore((state) => state.isCompareModalOpen);
@@ -65,6 +81,7 @@ export default function App() {
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
   const isWealthGuideModalOpen = useSimulationStore((state) => state.isWealthGuideModalOpen);
   const isHelpGuideModalOpen = useSimulationStore((state) => state.isHelpGuideModalOpen);
+  const isHistoryPanelOpen = useSimulationStore((state) => state.isHistoryPanelOpen);
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
@@ -110,35 +127,35 @@ export default function App() {
 
               {/* Tab 1: Main Dashboard (KPIs until savings pulse + dedicated portlets) */}
               {activeDashboardTab === 'dashboard' && (
-                <div role="tabpanel" id="dashboard-tabpanel-dashboard" aria-labelledby="dashboard-tab-dashboard">
+                <div role="tabpanel" id="dashboard-tabpanel-dashboard" aria-labelledby="dashboard-tab-dashboard" data-focus-zone="dashboard-content">
                   <MainDashboardTabContent />
                 </div>
               )}
 
               {/* Tab 2: Annual Simulation Ledger & Milestone Schedule (with RRSP/RRIF break-even below it) */}
               {activeDashboardTab === 'ledger' && (
-                <div role="tabpanel" id="dashboard-tabpanel-ledger" aria-labelledby="dashboard-tab-ledger">
+                <div role="tabpanel" id="dashboard-tabpanel-ledger" aria-labelledby="dashboard-tab-ledger" data-focus-zone="dashboard-content">
                   <LedgerTabContent />
                 </div>
               )}
 
               {/* Tab 3: Current and Projected Cash Flows (Visualizer & Ledger Table) */}
               {activeDashboardTab === 'cashflows' && (
-                <div role="tabpanel" id="dashboard-tabpanel-cashflows" aria-labelledby="dashboard-tab-cashflows">
+                <div role="tabpanel" id="dashboard-tabpanel-cashflows" aria-labelledby="dashboard-tab-cashflows" data-focus-zone="dashboard-content">
                   <CashFlowTabContent />
                 </div>
               )}
 
               {/* Tab 4: Plan Stress Test & Economic Resilience */}
               {activeDashboardTab === 'stresstest' && (
-                <div role="tabpanel" id="dashboard-tabpanel-stresstest" aria-labelledby="dashboard-tab-stresstest">
+                <div role="tabpanel" id="dashboard-tabpanel-stresstest" aria-labelledby="dashboard-tab-stresstest" data-focus-zone="dashboard-content">
                   <StressTestTabContent />
                 </div>
               )}
 
-              {/* Tab 4: What-If Analysis */}
+              {/* Tab 5: What-If Analysis */}
               {activeDashboardTab === 'whatif' && (
-                <div role="tabpanel" id="dashboard-tabpanel-whatif" aria-labelledby="dashboard-tab-whatif">
+                <div role="tabpanel" id="dashboard-tabpanel-whatif" aria-labelledby="dashboard-tab-whatif" data-focus-zone="dashboard-content">
                   <WhatIfTabContent />
                 </div>
               )}
@@ -162,7 +179,7 @@ export default function App() {
           {/* SECTION 3: ESTATE PLANNING MODULE                         */}
           {/* ========================================================= */}
           {activeView === 'estate' && (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6" data-focus-zone="view-content">
               <Suspense
                 fallback={
                   <ModuleLoadingFallback
@@ -182,7 +199,7 @@ export default function App() {
           {/* SECTION 4: EXPAT PLANNING MODULE                          */}
           {/* ========================================================= */}
           {activeView === 'expat' && (
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-6" data-focus-zone="view-content">
               <Suspense
                 fallback={
                   <ModuleLoadingFallback
@@ -230,11 +247,19 @@ export default function App() {
           {isCommandPaletteOpen && <CommandPaletteModal />}
         </Suspense>
 
-        {/* Simulation Version History Side-Panel Drawer */}
-        <SimulationHistoryPanel />
+        {/* Simulation Version History Side-Panel Drawer (Lazy Loaded) */}
+        <Suspense fallback={null}>
+          {isHistoryPanelOpen && <SimulationHistoryPanel />}
+        </Suspense>
 
-        {/* Global Toast Notification Banner (PDF Export start / completion) */}
+        {/* Global Toast Notification Banner (Export start / completion) */}
         <ToastBanner />
+
+        {/* Global Excel Export Loading Overlay (Chunk loading & workbook processing) */}
+        <ExcelExportOverlay />
+
+        {/* Floating Keyboard Focus Mode Navigation HUD */}
+        <FocusModeHUD />
 
         {/* Footer */}
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-slate-500 dark:text-slate-400 text-xs transition-colors mt-auto">

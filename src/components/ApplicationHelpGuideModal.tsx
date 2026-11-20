@@ -28,9 +28,11 @@ import {
   Sparkles,
   HelpCircle,
   ExternalLink,
-  Zap
+  Zap,
+  Keyboard
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { isMacPlatform } from '../utils/keyboardShortcuts';
 
 export interface ApplicationHelpGuideModalProps {
   isOpen?: boolean;
@@ -55,11 +57,15 @@ export const ApplicationHelpGuideModal: React.FC<ApplicationHelpGuideModalProps>
 
   const isOpen = props.isOpen ?? storeIsOpen;
   const onClose = props.onClose ?? (() => storeSetIsOpen(false));
+  const isFocusMode = useSimulationStore((state) => state.isFocusMode);
+  const toggleFocusMode = useSimulationStore((state) => state.toggleFocusMode);
+  const isMac = useMemo(() => isMacPlatform(), []);
 
   const [activeTab, setActiveTab] = useState<GuideTab>('functional');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [isCheatSheetExpanded, setIsCheatSheetExpanded] = useState<boolean>(true);
 
   // Handle escape key
   useEffect(() => {
@@ -280,6 +286,35 @@ export const ApplicationHelpGuideModal: React.FC<ApplicationHelpGuideModalProps>
             </li>
             <li>
               <strong>Executive PDF Report:</strong> The PDF export button in the sidebar compiles a branded client presentation deck complete with scorecards, key milestones, and year-by-year cashflow projections.
+            </li>
+          </ul>
+        </div>
+      )
+    },
+    {
+      id: 'f_keyboard_shortcuts',
+      category: 'Keyboard & Focus',
+      title: 'Focus Mode & Mouse-Free Arrow Key Navigation',
+      badge: 'Accessibility',
+      icon: Keyboard,
+      summary: 'Navigate dashboard tabs and input sub-components using only Up, Down, Left, and Right arrow keys.',
+      content: (
+        <div className="space-y-3 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+          <p>
+            Turn on <strong>Focus Mode</strong> from the top header (or press <kbd className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">F</kbd>) to drive Strata completely without a mouse:
+          </p>
+          <ul className="space-y-2 text-[11.5px]">
+            <li>
+              <strong>Switch Horizontal Tabs (<kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">←</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">→</kbd>):</strong> Glide through the 5 Dashboard tabs or all visible Profile & Plan Input tabs.
+            </li>
+            <li>
+              <strong>Enter & Navigate Input Sub-Components (<kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">↓</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">↑</kbd>):</strong> Press Down from any tab to enter its input fields, sliders, toggles, and buttons. Use Up/Down/Left/Right to jump spatially across cards; sliders and text inputs retain Left/Right for values and cursor movement.
+            </li>
+            <li>
+              <strong>Return to Tabs or Exit (<kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">Esc</kbd>):</strong> Pressing Escape from inside a control pops focus back to the Tab Bar; pressing Escape at the Tab Bar exits Focus Mode.
+            </li>
+            <li>
+              <strong>Jump Views & Tabs Anywhere:</strong> Use <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">Alt+←/→</kbd> to switch tabs from deep inside a form, or <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[10px]">Alt+↑/↓</kbd> to switch between Dashboard, Inputs, Estate, and Expat views.
             </li>
           </ul>
         </div>
@@ -631,6 +666,128 @@ export const ApplicationHelpGuideModal: React.FC<ApplicationHelpGuideModalProps>
 
         {/* Accordion Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3">
+          {/* Compact Keyboard Shortcuts Cheat Sheet Card */}
+          <div className="rounded-xl border border-emerald-200/80 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50/60 via-white to-slate-50/70 dark:from-emerald-950/25 dark:via-slate-900/80 dark:to-slate-900 overflow-hidden shadow-2xs">
+            <div className="px-4 py-2.5 flex items-center justify-between gap-2 flex-wrap border-b border-emerald-100/80 dark:border-emerald-900/40">
+              <button
+                type="button"
+                onClick={() => setIsCheatSheetExpanded((prev) => !prev)}
+                className="flex items-center gap-2 text-left cursor-pointer group"
+                aria-expanded={isCheatSheetExpanded}
+              >
+                <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                  <Keyboard className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                  Keyboard Shortcuts Cheat Sheet
+                </span>
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                  Focus Mode
+                </span>
+                {isCheatSheetExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  toggleFocusMode();
+                  if (!isFocusMode) {
+                    onClose();
+                  }
+                }}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                  isFocusMode
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/80'
+                }`}
+              >
+                <span>{isFocusMode ? 'Focus Mode: ON' : 'Try Focus Mode'}</span>
+              </button>
+            </div>
+
+            {isCheatSheetExpanded && (
+              <div className="p-3.5 grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                {/* Focus Mode Arrow Navigation */}
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    Focus Mode (Arrow Keys)
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Toggle Focus Mode</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200">F</kbd>
+                        <span className="text-slate-400">/</span>
+                        <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200">
+                          {isMac ? '⌘⇧F' : 'Ctrl+Shift+F'}
+                        </kbd>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Switch tabs / move left & right</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">← →</kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Move across input controls</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">↑ ↓</kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Switch tabs / views from anywhere</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">Alt + Arrows</kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Back to tab bar / exit Focus Mode</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">Esc</kbd>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Global Navigation Shortcuts */}
+                <div className="space-y-1.5 md:border-l md:border-slate-200/70 md:dark:border-slate-800 md:pl-3.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                    Global Quick Shortcuts
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Command Palette</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                        {isMac ? '⌘K' : 'Ctrl+K'} / /
+                      </kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Jump to Dashboard Tabs 1–5</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                        {isMac ? '⌘1–⌘5' : 'Ctrl+1–5'}
+                      </kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Profile & Plan Inputs</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                        {isMac ? '⌘I' : 'Ctrl+I'}
+                      </kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Estate / Expat Planning</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                        {isMac ? '⌘⇧E / ⌘⇧X' : 'Ctrl+Shift+E / X'}
+                      </kbd>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 py-0.5">
+                      <span className="text-slate-600 dark:text-slate-300">Theme / History / Help Guide</span>
+                      <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                        {isMac ? '⌘J · ⌘H · ?' : 'Ctrl+J · Ctrl+H · ?'}
+                      </kbd>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {filteredSections.length === 0 ? (
             <div className="py-12 text-center text-slate-400">
               <HelpCircle className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />

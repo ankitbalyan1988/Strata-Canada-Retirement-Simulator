@@ -36,6 +36,14 @@ export type InputTab =
   | 'strategy'
   | 'expat';
 
+export type ExcelExportPhase = 'loading_chunk' | 'processing' | 'downloading';
+
+export interface ExcelExportOverlayState {
+  phase: ExcelExportPhase;
+  title: string;
+  subtitle: string;
+}
+
 export interface SimulationState {
   // Primary state
   inputs: RetirementInputs;
@@ -68,6 +76,7 @@ export interface SimulationState {
   theme: 'light' | 'dark';
   activeChartTab: 'networth' | 'cashflow' | 'taxbracket';
   isExportingPdf: boolean;
+  excelExportOverlay: ExcelExportOverlayState | null;
   toastNotification: {
     id: number;
     status: 'loading' | 'success' | 'error';
@@ -81,6 +90,8 @@ export interface SimulationState {
   isWealthGuideModalOpen: boolean;
   isHelpGuideModalOpen: boolean;
   isCommandPaletteOpen: boolean;
+  isFocusMode: boolean;
+  focusModeZone: 'tabs' | 'content';
 
   // Section Collapse State
   collapsedSections: Record<string, boolean>;
@@ -136,10 +147,20 @@ export interface SimulationState {
   setIsHelpGuideModalOpen: (open: boolean) => void;
   setIsCommandPaletteOpen: (open: boolean) => void;
   toggleCommandPalette: () => void;
+  setIsFocusMode: (enabled: boolean) => void;
+  toggleFocusMode: () => void;
+  setFocusModeZone: (zone: 'tabs' | 'content') => void;
   toggleSectionCollapse: (sectionId: string) => void;
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
+  startExcelExportOverlay: (title: string, subtitle?: string) => void;
+  updateExcelExportOverlayPhase: (phase: ExcelExportPhase, subtitle?: string) => void;
+  finishExcelExportOverlay: () => void;
+  showToast: (
+    toast: { status: 'loading' | 'success' | 'error'; title: string; message?: string },
+    autoDismissMs?: number
+  ) => number;
   dismissToast: () => void;
 
   // History Actions
@@ -446,6 +467,16 @@ const getInitialSidebarCollapsed = (): boolean => {
   return false;
 };
 
+// Focus mode preference detection
+const getInitialFocusMode = (): boolean => {
+  if (typeof window !== 'undefined') {
+    try {
+      return localStorage.getItem('strata-focus-mode') === 'true';
+    } catch (_) {}
+  }
+  return false;
+};
+
 const loadSavedHistory = (): SimulationSnapshot[] => {
   if (typeof window !== 'undefined') {
     try {
@@ -488,6 +519,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   theme: getInitialTheme(),
   activeChartTab: 'networth',
   isExportingPdf: false,
+  excelExportOverlay: null,
   toastNotification: null,
   isCompareModalOpen: false,
   isSnapshotCompareModalOpen: false,
@@ -496,6 +528,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isWealthGuideModalOpen: false,
   isHelpGuideModalOpen: false,
   isCommandPaletteOpen: false,
+  isFocusMode: getInitialFocusMode(),
+  focusModeZone: 'tabs',
   collapsedSections: {
     personaSelection: false,
     aiPersona: false,
@@ -888,6 +922,28 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set((state) => ({ isCommandPaletteOpen: !state.isCommandPaletteOpen }));
   },
 
+  setIsFocusMode: (enabled) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('strata-focus-mode', String(enabled));
+      } catch (_) {}
+      document.documentElement.classList.toggle('focus-mode-active', enabled);
+    }
+    set({
+      isFocusMode: enabled,
+      focusModeZone: 'tabs'
+    });
+  },
+
+  toggleFocusMode: () => {
+    const next = !get().isFocusMode;
+    get().setIsFocusMode(next);
+  },
+
+  setFocusModeZone: (zone) => {
+    set({ focusModeZone: zone });
+  },
+
   toggleSectionCollapse: (sectionId) => {
     set((state) => ({
       collapsedSections: {
@@ -926,6 +982,47 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       }
       return { collapsedSections: next };
     });
+  },
+
+  startExcelExportOverlay: (title, subtitle) =>
+    set({
+      excelExportOverlay: {
+        phase: 'loading_chunk',
+        title,
+        subtitle: subtitle || 'Fetching ExcelJS workbook engine & formula modules...'
+      }
+    }),
+
+  updateExcelExportOverlayPhase: (phase, subtitle) =>
+    set((state) => {
+      if (!state.excelExportOverlay) return {};
+      return {
+        excelExportOverlay: {
+          ...state.excelExportOverlay,
+          phase,
+          subtitle: subtitle ?? state.excelExportOverlay.subtitle
+        }
+      };
+    }),
+
+  finishExcelExportOverlay: () => set({ excelExportOverlay: null }),
+
+  showToast: (toast, autoDismissMs) => {
+    const toastId = Date.now();
+    set({
+      toastNotification: {
+        id: toastId,
+        ...toast
+      }
+    });
+    if (autoDismissMs && autoDismissMs > 0 && typeof window !== 'undefined') {
+      window.setTimeout(() => {
+        if (get().toastNotification?.id === toastId) {
+          set({ toastNotification: null });
+        }
+      }, autoDismissMs);
+    }
+    return toastId;
   },
 
   dismissToast: () => set({ toastNotification: null }),

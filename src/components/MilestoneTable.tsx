@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { YearSimulationResult, RetirementInputs, CanadianProvince, SimulationSummary } from '../types/retirement';
 import { 
@@ -36,6 +36,7 @@ import {
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getEffectiveDebts } from '../utils/debtCalculator';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 
 interface LedgerAiExplanation {
   summary: string;
@@ -54,6 +55,621 @@ export interface MilestoneTableProps {
   summary?: SimulationSummary;
   isRecalculatingLedger?: boolean;
 }
+
+const SEARCH_DEBOUNCE_MS = 140;
+
+const formatCur = (val: number) => {
+  if (val === 0) return '-';
+  return `$${Math.round(val).toLocaleString()}`;
+};
+
+interface MilestoneTableRowProps {
+  row: YearSimulationResult;
+  rowIndex: number;
+  retirementAge: number;
+  isHighlighted: boolean;
+  isRrspMeltdownStrategy: boolean;
+  meltdownStartAge: number;
+  taxRateMode: 'effective' | 'marginal' | 'both';
+  measureElement: (node: Element | null) => void;
+  onCellClick: (metricName: string, value: number, age: number) => void;
+  onRowAiClick: (age: number) => void;
+}
+
+const MilestoneTableRow: React.FC<MilestoneTableRowProps> = React.memo(({
+  row,
+  rowIndex,
+  retirementAge,
+  isHighlighted,
+  isRrspMeltdownStrategy,
+  meltdownStartAge,
+  taxRateMode,
+  measureElement,
+  onCellClick,
+  onRowAiClick
+}) => {
+  const isRetirementMilestone = row.age === retirementAge;
+  const isRrifMandatory = row.age === 71 || row.age === 72;
+  const hasNotes = row.notes.length > 0;
+  const isMeltdownStart = Boolean(
+    row.isRrspMeltdownStartMilestone ||
+    (isRrspMeltdownStrategy && row.age === meltdownStartAge)
+  );
+  const isMeltdownActive = Boolean(
+    row.isRrspMeltdownActive ||
+    (isRrspMeltdownStrategy &&
+      row.age >= meltdownStartAge &&
+      row.age < 72 &&
+      (row.rrspWithdrawal > 0 || row.rrifWithdrawal > 0))
+  );
+
+  return (
+    <tr
+      id={`row-age-${row.age}`}
+      data-index={rowIndex}
+      ref={measureElement}
+      className={`hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all ${
+        isHighlighted
+          ? 'bg-emerald-100/90 dark:bg-emerald-950/80 ring-2 ring-emerald-500 z-10'
+          : isMeltdownStart
+          ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-4 border-blue-600 font-semibold'
+          : row.isCrossoverMilestone
+          ? 'bg-emerald-50/70 dark:bg-emerald-500/10 font-semibold text-emerald-950 dark:text-emerald-300'
+          : row.isCoastFireMilestone
+          ? 'bg-cyan-50/70 dark:bg-cyan-500/10 font-semibold text-cyan-950 dark:text-cyan-300'
+          : isRetirementMilestone
+          ? 'bg-rose-50/70 dark:bg-rose-500/10 font-semibold text-rose-950 dark:text-rose-300'
+          : isRrifMandatory
+          ? 'bg-amber-50/50 dark:bg-amber-500/10'
+          : isMeltdownActive
+          ? 'bg-blue-50/25 dark:bg-blue-950/20'
+          : row.isRetired
+          ? 'bg-slate-50/60 dark:bg-slate-800/50'
+          : rowIndex % 2 === 1
+          ? 'bg-slate-50/40 dark:bg-slate-800/40'
+          : 'bg-white dark:bg-slate-900'
+      }`}
+    >
+      {/* Age & Milestone Phase Badges */}
+      <td className="py-2.5 px-3 whitespace-nowrap font-sans">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs">
+            Age {row.age}
+            {row.isCouple && row.spouseAge !== undefined && (
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal"> (Sp {row.spouseAge})</span>
+            )}
+          </span>
+
+          {/* Primary Work/Retire Badge */}
+          {isRetirementMilestone && (
+            <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-bold flex items-center gap-1 shadow-2xs">
+              <Target className="w-2.5 h-2.5" />
+              <span>Retire Target</span>
+            </span>
+          )}
+          {!row.isRetired && !isRetirementMilestone && (
+            <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+              Work
+            </span>
+          )}
+          {row.isRetired && !isRetirementMilestone && (
+            <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
+              Retire
+            </span>
+          )}
+
+          {/* Strategic RRSP Meltdown Milestone Badge */}
+          {isMeltdownStart && (
+            <span 
+              title="Strategic RRSP Meltdown Milestone: Accelerated early draw begins here to lock in lowest lifetime tax brackets"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs animate-pulse"
+            >
+              <Flame className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 fill-blue-500" />
+              <span>Meltdown Start</span>
+            </span>
+          )}
+          {isMeltdownActive && !isMeltdownStart && (
+            <span 
+              title="RRSP Meltdown active: Accelerated draw utilizing low tax bracket"
+              className="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-0.5"
+            >
+              <Flame className="w-2 h-2 text-blue-600 dark:text-blue-400" />
+              <span>Meltdown</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 1: Crossover Point (Returns > Expenses) */}
+          {row.isCrossoverMilestone && (
+            <span 
+              title={`Crossover Milestone: Returns ($${Math.round(row.totalInvestmentGrowth).toLocaleString()}/yr) outgrow living expenses ($${Math.round(row.targetSpendingNominal).toLocaleString()}/yr)`}
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1 shadow-2xs animate-pulse"
+            >
+              <Zap className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 fill-emerald-500" />
+              <span>Crossover</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 2: Coast FIRE (Zero-Contribution Viability) */}
+          {row.isCoastFireMilestone && (
+            <span 
+              title="Coast FIRE: Zero further contributions needed to 100% fund retirement living expenses"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1 shadow-2xs"
+            >
+              <Anchor className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
+              <span>Coast FIRE</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 3: Millionaire */}
+          {row.isMillionaireMilestone && (
+            <span 
+              title="Millionaire Milestone: Total Net Worth surpasses $1,000,000"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1"
+            >
+              <Gem className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
+              <span>$1M NW</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 4: Mortgage Free */}
+          {row.isMortgageFreeMilestone && (
+            <span 
+              title="Mortgage Free: Home loan amortized to $0 balance"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"
+            >
+              <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Mortgage Free</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 4B: Consumer Debt Free */}
+          {row.isDebtFreeMilestone && (
+            <span 
+              title="Consumer Debt Free: All personal, vehicle, and student loans amortized to $0 balance"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-900 dark:text-teal-300 border border-teal-200 dark:border-teal-500/20 flex items-center gap-1 shadow-2xs"
+            >
+              <CreditCard className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
+              <span>Debt Free</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 4C: Home Purchase Milestone */}
+          {row.isHomePurchasedThisYear && (
+            <span 
+              title={`Home Purchase Milestone: Deployed $${(row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0)).toLocaleString()} total cash at closing ($${(row.downPaymentPaidThisYear || 0).toLocaleString()} down payment + $${(row.totalClosingCostsPaidThisYear || row.landTransferTaxPaidThisYear || 0).toLocaleString()} closing costs: LTT, legal fees, inspection, adjustments)`}
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs"
+            >
+              <Home className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+              <span>Buy Home (-${Math.round(((row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0))) / 1000)}k)</span>
+            </span>
+          )}
+
+          {/* Milestone Badge 5: Peak Wealth */}
+          {row.isPeakWealthMilestone && (
+            <span 
+              title="Peak Lifetime Wealth Apex"
+              className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1"
+            >
+              <Mountain className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Peak Wealth</span>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={() => onRowAiClick(row.age)}
+            className="opacity-40 hover:opacity-100 p-0.5 rounded text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition ml-auto"
+            title={`Ask AI to explain Age ${row.age} calculations`}
+          >
+            <Sparkles className="w-3 h-3" />
+          </button>
+        </div>
+      </td>
+
+      {/* RRSP Balance (Age < 72) */}
+      <td 
+        onClick={() => {
+          if (row.age < 72) {
+            onCellClick('RRSP', row.rrspBalance, row.age);
+          }
+        }}
+        title={row.age < 72 ? `Click to ask AI how RRSP balance (${formatCur(row.rrspBalance)}) was calculated at Age ${row.age}` : 'RRSP converted to RRIF by age 71 per CRA guidelines'}
+        className={`py-2.5 px-3 text-right select-none ${
+          row.age < 72 
+            ? 'text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:underline transition-colors' 
+            : 'text-slate-400 dark:text-slate-500 text-[10.5px]'
+        }`}
+      >
+        {row.age < 72 ? (
+          <div>{formatCur(row.rrspBalance)}</div>
+        ) : (
+          <span className="italic">Converted</span>
+        )}
+      </td>
+
+      {/* RRIF Balance & CRA Minimum Guidelines (Age 72+) */}
+      <td 
+        onClick={() => {
+          if (row.age >= 72) {
+            onCellClick('RRIF', row.rrifBalance, row.age);
+          }
+        }}
+        title={
+          row.age >= 72
+            ? `RRIF Balance: ${formatCur(row.rrifBalance)} | Statutory CRA Min: ${formatCur(row.rrifMinimumWithdrawal)} | Withdrawn: ${formatCur(row.rrifWithdrawal)}`
+            : 'RRIF account begins at statutory age 71 conversion from RRSP'
+        }
+        className={`py-2.5 px-3 text-right select-none ${
+          row.age >= 72 
+            ? 'text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors' 
+            : 'text-slate-400 dark:text-slate-500'
+        }`}
+      >
+        {row.age >= 72 ? (
+          <div>
+            <div className="font-semibold">{formatCur(row.rrifBalance)}</div>
+            <div className="flex items-center justify-end gap-1 mt-0.5">
+              {row.isRrifMinMet ? (
+                <span 
+                  title={`Statutory CRA withdrawal guideline satisfied (prescribed minimum: ${formatCur(row.rrifMinimumWithdrawal)})`}
+                  className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30"
+                >
+                  <span>CRA Min Met</span>
+                  <span>✓</span>
+                </span>
+              ) : row.rrifMinimumWithdrawal > 0 ? (
+                <span 
+                  title={`Below prescribed CRA statutory guideline (${formatCur(row.rrifMinimumWithdrawal)})`}
+                  className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30"
+                >
+                  <span>Min: {formatCur(row.rrifMinimumWithdrawal)}</span>
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <span>-</span>
+        )}
+      </td>
+
+      {/* TFSA */}
+      <td 
+        onClick={() => onCellClick('TFSA', row.tfsaBalance, row.age)}
+        title={`Click to ask AI how TFSA balance (${formatCur(row.tfsaBalance)}) was calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:underline transition-colors select-none"
+      >
+        {formatCur(row.tfsaBalance)}
+      </td>
+
+      {/* FHSA */}
+      <td 
+        onClick={() => onCellClick('FHSA', row.fhsaBalance, row.age)}
+        title={`Click to ask AI how FHSA balance (${formatCur(row.fhsaBalance)}) was calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors select-none"
+      >
+        {formatCur(row.fhsaBalance)}
+      </td>
+
+      {/* Non-Reg */}
+      <td 
+        onClick={() => onCellClick('Non-Reg', row.nonRegBalance, row.age)}
+        title={`Click to ask AI how Non-Registered balance (${formatCur(row.nonRegBalance)}) was calculated at Age ${row.age}${row.rrspMeltdownSurplusReinvested ? ` (includes +${formatCur(row.rrspMeltdownSurplusReinvested)} from RRSP meltdown reinvestment)` : ''}`}
+        className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400 cursor-pointer hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:underline transition-colors select-none"
+      >
+        <div>
+          <div>{formatCur(row.nonRegBalance)}</div>
+          {Boolean(row.rrspMeltdownSurplusReinvested && row.rrspMeltdownSurplusReinvested > 0) && (
+            <div 
+              title={`+${formatCur(row.rrspMeltdownSurplusReinvested || 0)} after-tax RRSP meltdown proceeds deposited into Non-Reg to continue compounding`}
+              className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5 flex items-center justify-end gap-0.5"
+            >
+              <span>+{formatCur(row.rrspMeltdownSurplusReinvested || 0)}</span>
+            </div>
+          )}
+        </div>
+      </td>
+
+      {/* Real Estate Share */}
+      <td 
+        onClick={() => {
+          if (row.realEstateShare > 0) {
+            onCellClick('Home Equity', row.realEstateShare, row.age);
+          }
+        }}
+        title={
+          row.isHomePurchasedThisYear
+            ? `Home purchased at Age ${row.age}: Value ${formatCur(row.homeValue || 0)}, Mortgage ${formatCur(row.remainingMortgage || 0)}, Down payment ${formatCur(row.downPaymentPaidThisYear || 0)}, Total closing costs ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`
+            : row.realEstateShare > 0
+            ? `Click to ask AI how Home Equity (${formatCur(row.realEstateShare)}) was calculated at Age ${row.age}`
+            : undefined
+        }
+        className={`py-2.5 px-3 text-right text-orange-600 dark:text-orange-400 font-medium select-none ${row.realEstateShare > 0 ? 'cursor-pointer hover:bg-orange-50/80 dark:hover:bg-orange-950/40 hover:underline transition-colors' : ''}`}
+      >
+        <div>
+          {row.realEstateShare > 0 ? formatCur(row.realEstateShare) : row.homeSoldThisYear ? 'Sold' : '-'}
+        </div>
+        {row.isHomePurchasedThisYear && (
+          <div 
+            title={`Down payment: ${formatCur(row.downPaymentPaidThisYear || 0)} + Closing costs: ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`}
+            className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5"
+          >
+            bought
+          </div>
+        )}
+      </td>
+
+      {/* Total Net Worth */}
+      <td 
+        onClick={() => onCellClick('Total Net Worth', row.totalNetWorth, row.age)}
+        title={`Click to ask AI how Total Net Worth (${formatCur(row.totalNetWorth)}) was calculated at Age ${row.age}${row.remainingDebt > 0 ? ` (reflects -${formatCur(row.remainingDebt)} consumer debt)` : ''}`}
+        className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-100/40 dark:bg-slate-800/40 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-300 hover:underline transition-colors select-none"
+      >
+        <div>
+          <div>{formatCur(row.totalNetWorth)}</div>
+          {row.remainingDebt > 0 && (
+            <div 
+              title={`Remaining consumer debt: -${formatCur(row.remainingDebt)}`}
+              className="text-[9px] font-sans font-normal text-rose-500 dark:text-rose-400 leading-tight mt-0.5"
+            >
+              -{formatCur(row.remainingDebt)} debt
+            </div>
+          )}
+        </div>
+      </td>
+
+      {/* Investment Returns / Compounding Growth */}
+      <td 
+        onClick={() => onCellClick('Investment Returns', row.totalInvestmentGrowth, row.age)}
+        title={`Click to ask AI how Investment Returns (${formatCur(row.totalInvestmentGrowth)}) were generated at Age ${row.age}`}
+        className={`py-2.5 px-3 text-right font-bold cursor-pointer transition-colors select-none ${
+          row.totalInvestmentGrowth >= row.targetSpendingNominal && row.targetSpendingNominal > 0
+            ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-500/10 hover:bg-emerald-100/90 dark:hover:bg-emerald-500/20 underline decoration-emerald-400'
+            : 'text-emerald-600/90 dark:text-emerald-400 hover:bg-emerald-50/60 dark:hover:bg-emerald-500/10 hover:underline'
+        }`}
+      >
+        +{formatCur(row.totalInvestmentGrowth)}
+      </td>
+
+      {/* CPP */}
+      <td 
+        onClick={() => onCellClick('CPP', row.cppIncome, row.age)}
+        title={`Click to ask AI how CPP pension (${formatCur(row.cppIncome)}) was calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
+      >
+        {formatCur(row.cppIncome)}
+      </td>
+
+      {/* OAS */}
+      <td 
+        onClick={() => onCellClick('OAS (Net)', row.oasNetIncome, row.age)}
+        title={`Click to ask AI how Net OAS pension (${formatCur(row.oasNetIncome)}) was calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
+      >
+        {formatCur(row.oasNetIncome)}
+      </td>
+
+      {/* Withdrawals & Breakdown of Sources */}
+      <td 
+        onClick={() => onCellClick('Withdrawals', row.totalWithdrawals, row.age)}
+        title={`Click to ask AI how withdrawals (${formatCur(row.totalWithdrawals)}) were calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
+      >
+        {row.totalWithdrawals > 0 ? (
+          <div className="flex flex-col items-end gap-1">
+            <span className="font-bold text-slate-900 dark:text-white">{formatCur(row.totalWithdrawals)}</span>
+            <div className="flex flex-wrap items-center justify-end gap-1 max-w-[210px]">
+              {row.nonRegWithdrawal > 0 && (
+                <span 
+                  title={`Non-Registered Account Withdrawal: ${formatCur(row.nonRegWithdrawal)}`}
+                  className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30"
+                >
+                  Non-Reg {formatCur(row.nonRegWithdrawal)}
+                </span>
+              )}
+              {row.rrspWithdrawal > 0 && (
+                <span 
+                  title={
+                    isMeltdownActive
+                      ? `Strategic RRSP Meltdown Withdrawal: ${formatCur(row.rrspWithdrawal)} (accelerated draw to utilize lower tax bracket)`
+                      : `RRSP Withdrawal: ${formatCur(row.rrspWithdrawal)}`
+                  }
+                  className={`text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold border ${
+                    isMeltdownActive
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-bold flex items-center gap-0.5'
+                      : 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30'
+                  }`}
+                >
+                  {isMeltdownActive && <Flame className="w-2.5 h-2.5 fill-white text-white shrink-0" />}
+                  <span>{isMeltdownActive ? 'Meltdown ' : 'RRSP '}{formatCur(row.rrspWithdrawal)}</span>
+                </span>
+              )}
+              {row.rrifWithdrawal > 0 && (
+                <span 
+                  title={`RRIF Withdrawal: ${formatCur(row.rrifWithdrawal)} ${row.isRrifMinMet ? '(CRA Guideline Satisfied)' : ''}`}
+                  className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30"
+                >
+                  RRIF {formatCur(row.rrifWithdrawal)}
+                </span>
+              )}
+              {row.tfsaWithdrawal > 0 && (
+                <span 
+                  title={`Tax-Free TFSA Withdrawal: ${formatCur(row.tfsaWithdrawal)}`}
+                  className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30"
+                >
+                  TFSA {formatCur(row.tfsaWithdrawal)}
+                </span>
+              )}
+              {row.fhsaWithdrawalOrTransfer > 0 && (
+                <span 
+                  title={`FHSA Withdrawal/Transfer: ${formatCur(row.fhsaWithdrawalOrTransfer)}`}
+                  className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30"
+                >
+                  FHSA {formatCur(row.fhsaWithdrawalOrTransfer)}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : (
+          <span>-</span>
+        )}
+      </td>
+
+      {/* Taxes Paid & Rate (Effective vs Marginal) */}
+      <td 
+        onClick={() => onCellClick('Tax Paid', row.totalTaxPaid, row.age)}
+        title={`Total Tax: ${formatCur(row.totalTaxPaid)} | Effective Rate: ${(row.effectiveTaxRate * 100).toFixed(1)}% | Marginal Bracket: ${(row.marginalTaxRate * 100).toFixed(1)}%`}
+        className="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400 font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
+      >
+        <div>{formatCur(row.totalTaxPaid)}</div>
+        {row.totalTaxPaid > 0 && (
+          <div className="text-[9.5px] mt-0.5 font-mono">
+            {taxRateMode === 'effective' && (
+              <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                {(row.effectiveTaxRate * 100).toFixed(1)}% eff
+              </span>
+            )}
+            {taxRateMode === 'marginal' && (
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                {(row.marginalTaxRate * 100).toFixed(1)}% marg
+              </span>
+            )}
+            {taxRateMode === 'both' && (
+              <span className="text-slate-500 dark:text-slate-400">
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">{(row.effectiveTaxRate * 100).toFixed(1)}%</span>
+                {' / '}
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{(row.marginalTaxRate * 100).toFixed(1)}%</span>
+              </span>
+            )}
+          </div>
+        )}
+        {isMeltdownActive && (
+          <div 
+            title="Early RRSP draw locks in lower tax bracket today, preventing 43.4%-53.5% tax brackets at Age 72+"
+            className="text-[8.5px] font-sans font-bold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-end gap-0.5"
+          >
+            <Flame className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+            <span>Tax Arbitrage</span>
+          </div>
+        )}
+        {isRrspMeltdownStrategy && row.age >= 72 && row.oasClawback === 0 && (
+          <div 
+            title="OAS protected: Zero clawback due to reduced mandatory RRIF minimums"
+            className="text-[8.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
+          >
+            ✓ 0% OAS Clawback
+          </div>
+        )}
+      </td>
+
+      {/* Debt Payments */}
+      <td 
+        onClick={() => onCellClick('Debt Payments', row.debtPayment, row.age)}
+        title={
+          row.debtPayment > 0
+            ? `Click to inspect: Debt Outflow ${formatCur(row.debtPayment)} (Principal: ${formatCur(row.debtPrincipalPaid || 0)}, Interest: ${formatCur(row.debtInterestPaid || 0)}) | Remaining Balance: ${formatCur(row.remainingDebt || 0)}`
+            : (row.remainingDebt || 0) > 0
+            ? `Remaining Debt Balance: ${formatCur(row.remainingDebt)}`
+            : 'Debt-Free: No active consumer debt service'
+        }
+        className="py-2.5 px-3 text-right font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
+      >
+        {row.debtPayment > 0 ? (
+          <div className="flex flex-col items-end">
+            <span className="text-rose-600 dark:text-rose-400 font-semibold font-mono">
+              -{formatCur(row.debtPayment)}
+            </span>
+            {(row.remainingDebt || 0) > 0 && (
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-normal">
+                bal {formatCur(row.remainingDebt)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-slate-400 dark:text-slate-600 font-mono font-normal">
+            {row.isDebtFreeMilestone ? (
+              <span className="text-[9.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20">
+                Paid Off
+              </span>
+            ) : (
+              '-'
+            )}
+          </span>
+        )}
+      </td>
+
+      {/* Spendable Cashflow */}
+      <td 
+        onClick={() => onCellClick('Spendable Cash', row.netSpendableCashflow, row.age)}
+        title={`Click to ask AI how Net Spendable Cashflow (${formatCur(row.netSpendableCashflow)}) was calculated at Age ${row.age}`}
+        className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors select-none"
+      >
+        {formatCur(row.netSpendableCashflow)}
+      </td>
+
+      {/* Living Target (Expenses) */}
+      <td 
+        title={`Living target expenses: ${formatCur(row.targetSpendingNominal)}${row.totalHousingCostsThisYear ? ` (includes housing: ${formatCur(row.totalHousingCostsThisYear || 0)}/yr)` : ''}`}
+        className="py-2.5 px-3 text-right text-slate-500 dark:text-slate-400 font-mono"
+      >
+        <div>{formatCur(row.targetSpendingNominal)}</div>
+        {Boolean(row.totalHousingCostsThisYear && row.totalHousingCostsThisYear > 0) && (
+          <div 
+            title={`Housing costs this year: ${formatCur(row.totalHousingCostsThisYear || 0)}${row.propertyTaxPaidThisYear ? ` (Property Tax: ${formatCur(row.propertyTaxPaidThisYear || 0)})` : ''}${row.condoFeesPaidThisYear ? ` (Condo Fees: ${formatCur(row.condoFeesPaidThisYear || 0)})` : ''}`}
+            className="text-[9px] font-sans font-normal text-slate-400 dark:text-slate-500 leading-tight mt-0.5"
+          >
+            housing {formatCur(row.totalHousingCostsThisYear || 0)}
+          </div>
+        )}
+      </td>
+
+      {/* Milestone Notes & Strategy Highlights */}
+      <td className="py-2.5 px-3 font-sans text-[11px] leading-snug">
+        {hasNotes ? (
+          <div className="flex flex-col gap-1">
+            {row.notes.map((note, nIdx) => {
+              const isMeltdownNote = note.includes('RRSP Meltdown') || note.includes('Meltdown Surplus');
+              const isCrossover = note.includes('Crossover Milestone');
+              const isCoast = note.includes('Coast FIRE Milestone');
+              const isMillionaire = note.includes('Millionaire Milestone');
+              const isMortgage = note.includes('Mortgage Freedom');
+              const isRetire = note.includes('Target Retirement');
+              const isPeak = note.includes('Peak Net Worth');
+
+              return (
+                <div 
+                  key={nIdx}
+                  className={`p-1 px-1.5 rounded-md text-[10.5px] ${
+                    isMeltdownNote
+                      ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-950 dark:text-blue-200 font-semibold border border-blue-200 dark:border-blue-800'
+                      : isCrossover
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
+                      : isCoast
+                      ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
+                      : isMillionaire
+                      ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
+                      : isMortgage
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
+                      : isRetire
+                      ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-900 dark:text-rose-400 font-semibold border border-rose-200 dark:border-rose-500/20'
+                      : isPeak
+                      ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-500/20'
+                      : 'text-slate-700 dark:text-slate-300 font-medium'
+                  }`}
+                >
+                  {note}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="text-slate-400 dark:text-slate-500">-</span>
+        )}
+      </td>
+    </tr>
+  );
+});
+
+MilestoneTableRow.displayName = 'MilestoneTableRow';
 
 const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
   const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
@@ -74,12 +690,40 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
   const isExpanded = !isTableCollapsed;
 
   const [filterMode, setFilterMode] = useState<'milestones' | 'retirement' | 'all'>('milestones');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [taxRateMode, setTaxRateMode] = useState<'effective' | 'marginal' | 'both'>('effective');
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (!val) {
+      setDebouncedSearchTerm('');
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(val);
+    }, SEARCH_DEBOUNCE_MS);
+  }, []);
 
   // Close full screen on Escape key press
   useEffect(() => {
@@ -101,22 +745,36 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const formatCur = (val: number) => {
-    if (val === 0) return '-';
-    return `$${Math.round(val).toLocaleString()}`;
-  };
+  const drawdownStrategy = inputs?.drawdownStrategy;
+  const meltdownStartAge = inputs?.meltdownStartAge ?? retirementAge;
+  const isRrspMeltdownStrategy = drawdownStrategy === 'rrsp_meltdown';
+  const crossoverAge = summary?.crossoverAge;
+  const coastFireAge = summary?.coastFireAge;
+  const millionaireAge = summary?.millionaireAge;
+  const mortgagePayoffAge = summary?.mortgagePayoffAge;
+  const debtPayoffAge = summary?.debtPayoffAge;
+  const peakNetWorthAge = summary?.peakNetWorthAge;
+
+  const hasEffectiveDebts = useMemo(
+    () => Boolean(debtPayoffAge || (inputs && getEffectiveDebts(inputs).length > 0)),
+    [debtPayoffAge, inputs]
+  );
 
   // Filtered dataset memoized for stable virtualization
   const filteredData = useMemo(() => {
+    const normalizedSearch = debouncedSearchTerm.trim().toLowerCase();
+    const firstAge = yearlyResults[0]?.age;
+    const lastAge = yearlyResults[yearlyResults.length - 1]?.age;
+
     return yearlyResults.filter((yr) => {
       // Search filter
-      if (searchTerm) {
-        const matchAge = String(yr.age).includes(searchTerm);
-        const matchNotes = yr.notes.some((n) => n.toLowerCase().includes(searchTerm.toLowerCase()));
+      if (normalizedSearch) {
+        const matchAge = String(yr.age).includes(normalizedSearch);
+        const matchNotes = yr.notes.some((n) => n.toLowerCase().includes(normalizedSearch));
         const matchBadges = yr.milestoneBadges?.some(
           (b) =>
-            b.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            b.shortLabel.toLowerCase().includes(searchTerm.toLowerCase())
+            b.label.toLowerCase().includes(normalizedSearch) ||
+            b.shortLabel.toLowerCase().includes(normalizedSearch)
         );
         if (!matchAge && !matchNotes && !matchBadges) return false;
       }
@@ -126,12 +784,10 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
       }
 
       if (filterMode === 'milestones') {
-        const isMeltdownStart =
-          inputs?.drawdownStrategy === 'rrsp_meltdown' &&
-          yr.age === (inputs.meltdownStartAge ?? retirementAge);
+        const isMeltdownStart = isRrspMeltdownStrategy && yr.age === meltdownStartAge;
 
         return (
-          yr.age === yearlyResults[0]?.age ||
+          yr.age === firstAge ||
           yr.age === retirementAge ||
           isMeltdownStart ||
           yr.isRrspMeltdownStartMilestone ||
@@ -141,12 +797,12 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           yr.isMortgageFreeMilestone ||
           yr.isDebtFreeMilestone ||
           yr.isPeakWealthMilestone ||
-          yr.age === summary?.crossoverAge ||
-          yr.age === summary?.coastFireAge ||
-          yr.age === summary?.millionaireAge ||
-          yr.age === summary?.mortgagePayoffAge ||
-          yr.age === summary?.debtPayoffAge ||
-          yr.age === summary?.peakNetWorthAge ||
+          yr.age === crossoverAge ||
+          yr.age === coastFireAge ||
+          yr.age === millionaireAge ||
+          yr.age === mortgagePayoffAge ||
+          yr.age === debtPayoffAge ||
+          yr.age === peakNetWorthAge ||
           yr.age === 60 ||
           yr.age === 65 ||
           yr.age === 70 ||
@@ -156,7 +812,7 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           yr.age === 80 ||
           yr.age === 85 ||
           yr.age === 90 ||
-          yr.age === yearlyResults[yearlyResults.length - 1]?.age ||
+          yr.age === lastAge ||
           yr.homeSoldThisYear ||
           yr.notes.length > 0 ||
           (yr.milestoneBadges && yr.milestoneBadges.length > 0)
@@ -165,7 +821,20 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
 
       return true; // 'all'
     });
-  }, [yearlyResults, searchTerm, filterMode, retirementAge, summary, inputs]);
+  }, [
+    yearlyResults,
+    debouncedSearchTerm,
+    filterMode,
+    retirementAge,
+    isRrspMeltdownStrategy,
+    meltdownStartAge,
+    crossoverAge,
+    coastFireAge,
+    millionaireAge,
+    mortgagePayoffAge,
+    debtPayoffAge,
+    peakNetWorthAge
+  ]);
 
   // DOM Virtualizer for 80+ dynamic simulation rows
   const rowVirtualizer = useVirtualizer({
@@ -180,7 +849,7 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
   const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0;
   const paddingBottom = virtualRows.length > 0 ? totalSize - virtualRows[virtualRows.length - 1].end : 0;
 
-  const scrollToAge = (age: number) => {
+  const scrollToAge = useCallback((age: number) => {
     setHighlightedAge(age);
     if (filterMode !== 'all' && filterMode !== 'milestones') {
       setFilterMode('all');
@@ -196,10 +865,13 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
         }
       }, 100);
     }
-    setTimeout(() => {
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
       setHighlightedAge(null);
     }, 3500);
-  };
+  }, [filterMode, filteredData, rowVirtualizer]);
 
   // Dynamic suggestions tailored to this specific user's milestone results
   const dynamicSuggestions = useMemo(() => {
@@ -312,19 +984,40 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
     return list;
   }, [yearlyResults, retirementAge, inputs, summary]);
 
-  const handleAskAi = async (customQuery?: string, targetAge?: number, targetMetric?: string) => {
-    const query = (customQuery || aiQuestion).trim();
+  // Latest AI context ref so row click handlers stay referentially stable across AI drawer interactions
+  const aiContextRef = useRef({
+    aiQuestion,
+    selectedAge,
+    selectedMetric,
+    yearlyResults,
+    retirementAge,
+    province,
+    inputs
+  });
+  aiContextRef.current = {
+    aiQuestion,
+    selectedAge,
+    selectedMetric,
+    yearlyResults,
+    retirementAge,
+    province,
+    inputs
+  };
+
+  const handleAskAi = useCallback(async (customQuery?: string, targetAge?: number, targetMetric?: string) => {
+    const ctx = aiContextRef.current;
+    const query = (customQuery || ctx.aiQuestion).trim();
     if (!query) return;
 
-    const age = targetAge !== undefined ? targetAge : (selectedAge !== '' ? Number(selectedAge) : undefined);
-    const metric = targetMetric || selectedMetric;
+    const age = targetAge !== undefined ? targetAge : (ctx.selectedAge !== '' ? Number(ctx.selectedAge) : undefined);
+    const metric = targetMetric || ctx.selectedMetric;
 
     setIsLoadingAi(true);
     setAiError(null);
     setAiExplanation(null);
 
     // Find row data for target age or retirement age
-    const row = yearlyResults.find(r => r.age === (age || retirementAge)) || yearlyResults[0];
+    const row = ctx.yearlyResults.find(r => r.age === (age || ctx.retirementAge)) || ctx.yearlyResults[0];
 
     try {
       const res = await fetch('/api/explain-ledger-value', {
@@ -336,17 +1029,17 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           selectedMetric: metric,
           rowData: row,
           planContext: {
-            currentAge: inputs?.currentAge,
-            retirementAge,
-            lifeExpectancy: inputs?.lifeExpectancy,
-            province: province || inputs?.province || 'ON',
-            isMarried: inputs?.maritalStatus === 'married',
-            drawdownStrategy: inputs?.drawdownStrategy,
-            inflationRate: inputs?.inflationRate,
-            currentAnnualIncome: inputs?.currentAnnualIncome,
-            targetRetirementSpendingToday: inputs?.targetRetirementSpendingToday,
-            cppStartAge: inputs?.cppStartAge,
-            cppEstimatedPercentOfMax: inputs?.cppEstimatedPercentOfMax
+            currentAge: ctx.inputs?.currentAge,
+            retirementAge: ctx.retirementAge,
+            lifeExpectancy: ctx.inputs?.lifeExpectancy,
+            province: ctx.province || ctx.inputs?.province || 'ON',
+            isMarried: ctx.inputs?.maritalStatus === 'married',
+            drawdownStrategy: ctx.inputs?.drawdownStrategy,
+            inflationRate: ctx.inputs?.inflationRate,
+            currentAnnualIncome: ctx.inputs?.currentAnnualIncome,
+            targetRetirementSpendingToday: ctx.inputs?.targetRetirementSpendingToday,
+            cppStartAge: ctx.inputs?.cppStartAge,
+            cppEstimatedPercentOfMax: ctx.inputs?.cppEstimatedPercentOfMax
           }
         })
       });
@@ -368,28 +1061,45 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
     } finally {
       setIsLoadingAi(false);
     }
-  };
+  }, []);
 
-  const handleCellClick = (metricName: string, value: number, age: number) => {
+  const handleCellClick = useCallback((metricName: string, value: number, age: number) => {
     setIsAiOpen(true);
     setSelectedAge(age);
     setSelectedMetric(metricName);
     const q = `How is the ${metricName} value of ${formatCur(value)} calculated at Age ${age}?`;
     setAiQuestion(q);
     handleAskAi(q, age, metricName);
-  };
+  }, [handleAskAi]);
+
+  const handleRowAiClick = useCallback((age: number) => {
+    setIsAiOpen(true);
+    setSelectedAge(age);
+    const q = `How are the numbers, tax brackets, and milestone values calculated for Age ${age}?`;
+    setAiQuestion(q);
+    handleAskAi(q, age);
+  }, [handleAskAi]);
 
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const { exportMilestoneTableToExcel } = await import('../utils/excelExport');
-      await exportMilestoneTableToExcel({
-        data: filteredData,
-        filterMode,
-        retirementAge,
-        province,
-        inputs
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Annual Simulation Ledger',
+          processingSubtitle:
+            'Building year-by-year net worth, RRSP/RRIF/TFSA balances, tax brackets, and audit formulas...',
+          successMessage: 'Your Annual Simulation & Milestone Ledger (.xlsx) has started downloading.'
+        },
+        async ({ exportMilestoneTableToExcel }) => {
+          await exportMilestoneTableToExcel({
+            data: filteredData,
+            filterMode,
+            retirementAge,
+            province,
+            inputs
+          });
+        }
+      );
     } catch (err) {
       console.error('Failed to export Excel spreadsheet:', err);
     } finally {
@@ -506,10 +1216,11 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           <div className="relative">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400 dark:text-slate-500" />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="Search age, note..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              defaultValue=""
+              onChange={handleSearchChange}
               className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 w-28 sm:w-36"
             />
           </div>
@@ -837,7 +1548,7 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
           </button>
 
           {/* Card 7: Consumer Debt Freedom */}
-          {Boolean(summary?.debtPayoffAge || (inputs && getEffectiveDebts(inputs).length > 0)) && (
+          {hasEffectiveDebts && (
             <button
               type="button"
               onClick={() => summary?.debtPayoffAge && scrollToAge(summary.debtPayoffAge)}
@@ -1270,592 +1981,21 @@ const MilestoneTableComponent: React.FC<MilestoneTableProps> = (props) => {
             {virtualRows.map((virtualRow) => {
               const row = filteredData[virtualRow.index];
               if (!row) return null;
-              const isRetirementMilestone = row.age === retirementAge;
-              const isRrifMandatory = row.age === 71 || row.age === 72;
-              const hasNotes = row.notes.length > 0;
-              const isHighlighted = highlightedAge === row.age;
-              const isMeltdownStart = Boolean(
-                row.isRrspMeltdownStartMilestone ||
-                (inputs?.drawdownStrategy === 'rrsp_meltdown' && row.age === (inputs.meltdownStartAge ?? retirementAge))
-              );
-              const isMeltdownActive = Boolean(
-                row.isRrspMeltdownActive ||
-                (inputs?.drawdownStrategy === 'rrsp_meltdown' &&
-                  row.age >= (inputs.meltdownStartAge ?? retirementAge) &&
-                  row.age < 72 &&
-                  (row.rrspWithdrawal > 0 || row.rrifWithdrawal > 0))
-              );
 
               return (
-                <tr
-                  id={`row-age-${row.age}`}
+                <MilestoneTableRow
                   key={virtualRow.key}
-                  data-index={virtualRow.index}
-                  ref={rowVirtualizer.measureElement}
-                  className={`hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-all ${
-                    isHighlighted
-                      ? 'bg-emerald-100/90 dark:bg-emerald-950/80 ring-2 ring-emerald-500 z-10'
-                      : isMeltdownStart
-                      ? 'bg-blue-50/80 dark:bg-blue-950/40 border-l-4 border-blue-600 font-semibold'
-                      : row.isCrossoverMilestone
-                      ? 'bg-emerald-50/70 dark:bg-emerald-500/10 font-semibold text-emerald-950 dark:text-emerald-300'
-                      : row.isCoastFireMilestone
-                      ? 'bg-cyan-50/70 dark:bg-cyan-500/10 font-semibold text-cyan-950 dark:text-cyan-300'
-                      : isRetirementMilestone
-                      ? 'bg-rose-50/70 dark:bg-rose-500/10 font-semibold text-rose-950 dark:text-rose-300'
-                      : isRrifMandatory
-                      ? 'bg-amber-50/50 dark:bg-amber-500/10'
-                      : isMeltdownActive
-                      ? 'bg-blue-50/25 dark:bg-blue-950/20'
-                      : row.isRetired
-                      ? 'bg-slate-50/60 dark:bg-slate-800/50'
-                      : virtualRow.index % 2 === 1
-                      ? 'bg-slate-50/40 dark:bg-slate-800/40'
-                      : 'bg-white dark:bg-slate-900'
-                  }`}
-                >
-                  {/* Age & Milestone Phase Badges */}
-                  <td className="py-2.5 px-3 whitespace-nowrap font-sans">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs">
-                        Age {row.age}
-                        {row.isCouple && row.spouseAge !== undefined && (
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-normal"> (Sp {row.spouseAge})</span>
-                        )}
-                      </span>
-
-                      {/* Primary Work/Retire Badge */}
-                      {isRetirementMilestone && (
-                        <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-rose-600 text-white font-bold flex items-center gap-1 shadow-2xs">
-                          <Target className="w-2.5 h-2.5" />
-                          <span>Retire Target</span>
-                        </span>
-                      )}
-                      {!row.isRetired && !isRetirementMilestone && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                          Work
-                        </span>
-                      )}
-                      {row.isRetired && !isRetirementMilestone && (
-                        <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
-                          Retire
-                        </span>
-                      )}
-
-                      {/* Strategic RRSP Meltdown Milestone Badge */}
-                      {isMeltdownStart && (
-                        <span 
-                          title="Strategic RRSP Meltdown Milestone: Accelerated early draw begins here to lock in lowest lifetime tax brackets"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs animate-pulse"
-                        >
-                          <Flame className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400 fill-blue-500" />
-                          <span>Meltdown Start</span>
-                        </span>
-                      )}
-                      {isMeltdownActive && !isMeltdownStart && (
-                        <span 
-                          title="RRSP Meltdown active: Accelerated draw utilizing low tax bracket"
-                          className="text-[8.5px] px-1 py-0.2 rounded font-semibold bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-0.5"
-                        >
-                          <Flame className="w-2 h-2 text-blue-600 dark:text-blue-400" />
-                          <span>Meltdown</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 1: Crossover Point (Returns > Expenses) */}
-                      {row.isCrossoverMilestone && (
-                        <span 
-                          title={`Crossover Milestone: Returns ($${Math.round(row.totalInvestmentGrowth).toLocaleString()}/yr) outgrow living expenses ($${Math.round(row.targetSpendingNominal).toLocaleString()}/yr)`}
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1 shadow-2xs animate-pulse"
-                        >
-                          <Zap className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 fill-emerald-500" />
-                          <span>Crossover</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 2: Coast FIRE (Zero-Contribution Viability) */}
-                      {row.isCoastFireMilestone && (
-                        <span 
-                          title="Coast FIRE: Zero further contributions needed to 100% fund retirement living expenses"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1 shadow-2xs"
-                        >
-                          <Anchor className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
-                          <span>Coast FIRE</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 3: Millionaire */}
-                      {row.isMillionaireMilestone && (
-                        <span 
-                          title="Millionaire Milestone: Total Net Worth surpasses $1,000,000"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-cyan-50 dark:bg-cyan-500/15 text-cyan-900 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-500/20 flex items-center gap-1"
-                        >
-                          <Gem className="w-2.5 h-2.5 text-cyan-600 dark:text-cyan-400" />
-                          <span>$1M NW</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 4: Mortgage Free */}
-                      {row.isMortgageFreeMilestone && (
-                        <span 
-                          title="Mortgage Free: Home loan amortized to $0 balance"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-emerald-50 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"
-                        >
-                          <Home className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Mortgage Free</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 4B: Consumer Debt Free */}
-                      {row.isDebtFreeMilestone && (
-                        <span 
-                          title="Consumer Debt Free: All personal, vehicle, and student loans amortized to $0 balance"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-teal-50 dark:bg-teal-500/15 text-teal-900 dark:text-teal-300 border border-teal-200 dark:border-teal-500/20 flex items-center gap-1 shadow-2xs"
-                        >
-                          <CreditCard className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
-                          <span>Debt Free</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 4C: Home Purchase Milestone */}
-                      {row.isHomePurchasedThisYear && (
-                        <span 
-                          title={`Home Purchase Milestone: Deployed $${(row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0)).toLocaleString()} total cash at closing ($${(row.downPaymentPaidThisYear || 0).toLocaleString()} down payment + $${(row.totalClosingCostsPaidThisYear || row.landTransferTaxPaidThisYear || 0).toLocaleString()} closing costs: LTT, legal fees, inspection, adjustments)`}
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-900 dark:text-blue-200 border border-blue-300 dark:border-blue-700 flex items-center gap-1 shadow-2xs"
-                        >
-                          <Home className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
-                          <span>Buy Home (-${Math.round(((row.totalCashNeededToBuyPaidThisYear || (row.downPaymentPaidThisYear || 0) + (row.landTransferTaxPaidThisYear || 0))) / 1000)}k)</span>
-                        </span>
-                      )}
-
-                      {/* Milestone Badge 5: Peak Wealth */}
-                      {row.isPeakWealthMilestone && (
-                        <span 
-                          title="Peak Lifetime Wealth Apex"
-                          className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-900 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/20 flex items-center gap-1"
-                        >
-                          <Mountain className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-400" />
-                          <span>Peak Wealth</span>
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsAiOpen(true);
-                          setSelectedAge(row.age);
-                          const q = `How are the numbers, tax brackets, and milestone values calculated for Age ${row.age}?`;
-                          setAiQuestion(q);
-                          handleAskAi(q, row.age);
-                        }}
-                        className="opacity-40 hover:opacity-100 p-0.5 rounded text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition ml-auto"
-                        title={`Ask AI to explain Age ${row.age} calculations`}
-                      >
-                        <Sparkles className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </td>
-
-                  {/* RRSP Balance (Age < 72) */}
-                  <td 
-                    onClick={() => {
-                      if (row.age < 72) {
-                        handleCellClick('RRSP', row.rrspBalance, row.age);
-                      }
-                    }}
-                    title={row.age < 72 ? `Click to ask AI how RRSP balance (${formatCur(row.rrspBalance)}) was calculated at Age ${row.age}` : 'RRSP converted to RRIF by age 71 per CRA guidelines'}
-                    className={`py-2.5 px-3 text-right select-none ${
-                      row.age < 72 
-                        ? 'text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-blue-50/80 dark:hover:bg-blue-950/40 hover:underline transition-colors' 
-                        : 'text-slate-400 dark:text-slate-500 text-[10.5px]'
-                    }`}
-                  >
-                    {row.age < 72 ? (
-                      <div>{formatCur(row.rrspBalance)}</div>
-                    ) : (
-                      <span className="italic">Converted</span>
-                    )}
-                  </td>
-
-                  {/* RRIF Balance & CRA Minimum Guidelines (Age 72+) */}
-                  <td 
-                    onClick={() => {
-                      if (row.age >= 72) {
-                        handleCellClick('RRIF', row.rrifBalance, row.age);
-                      }
-                    }}
-                    title={
-                      row.age >= 72
-                        ? `RRIF Balance: ${formatCur(row.rrifBalance)} | Statutory CRA Min: ${formatCur(row.rrifMinimumWithdrawal)} | Withdrawn: ${formatCur(row.rrifWithdrawal)}`
-                        : 'RRIF account begins at statutory age 71 conversion from RRSP'
-                    }
-                    className={`py-2.5 px-3 text-right select-none ${
-                      row.age >= 72 
-                        ? 'text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors' 
-                        : 'text-slate-400 dark:text-slate-500'
-                    }`}
-                  >
-                    {row.age >= 72 ? (
-                      <div>
-                        <div className="font-semibold">{formatCur(row.rrifBalance)}</div>
-                        <div className="flex items-center justify-end gap-1 mt-0.5">
-                          {row.isRrifMinMet ? (
-                            <span 
-                              title={`Statutory CRA withdrawal guideline satisfied (prescribed minimum: ${formatCur(row.rrifMinimumWithdrawal)})`}
-                              className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30"
-                            >
-                              <span>CRA Min Met</span>
-                              <span>✓</span>
-                            </span>
-                          ) : row.rrifMinimumWithdrawal > 0 ? (
-                            <span 
-                              title={`Below prescribed CRA statutory guideline (${formatCur(row.rrifMinimumWithdrawal)})`}
-                              className="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30"
-                            >
-                              <span>Min: {formatCur(row.rrifMinimumWithdrawal)}</span>
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </td>
-
-                  {/* TFSA */}
-                  <td 
-                    onClick={() => handleCellClick('TFSA', row.tfsaBalance, row.age)}
-                    title={`Click to ask AI how TFSA balance (${formatCur(row.tfsaBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:underline transition-colors select-none"
-                  >
-                    {formatCur(row.tfsaBalance)}
-                  </td>
-
-                  {/* FHSA */}
-                  <td 
-                    onClick={() => handleCellClick('FHSA', row.fhsaBalance, row.age)}
-                    title={`Click to ask AI how FHSA balance (${formatCur(row.fhsaBalance)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-50/80 dark:hover:bg-amber-950/40 hover:underline transition-colors select-none"
-                  >
-                    {formatCur(row.fhsaBalance)}
-                  </td>
-
-                  {/* Non-Reg */}
-                  <td 
-                    onClick={() => handleCellClick('Non-Reg', row.nonRegBalance, row.age)}
-                    title={`Click to ask AI how Non-Registered balance (${formatCur(row.nonRegBalance)}) was calculated at Age ${row.age}${row.rrspMeltdownSurplusReinvested ? ` (includes +${formatCur(row.rrspMeltdownSurplusReinvested)} from RRSP meltdown reinvestment)` : ''}`}
-                    className="py-2.5 px-3 text-right text-purple-600 dark:text-purple-400 cursor-pointer hover:bg-purple-50/80 dark:hover:bg-purple-950/40 hover:underline transition-colors select-none"
-                  >
-                    <div>
-                      <div>{formatCur(row.nonRegBalance)}</div>
-                      {Boolean(row.rrspMeltdownSurplusReinvested && row.rrspMeltdownSurplusReinvested > 0) && (
-                        <div 
-                          title={`+${formatCur(row.rrspMeltdownSurplusReinvested || 0)} after-tax RRSP meltdown proceeds deposited into Non-Reg to continue compounding`}
-                          className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5 flex items-center justify-end gap-0.5"
-                        >
-                          <span>+{formatCur(row.rrspMeltdownSurplusReinvested || 0)}</span>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Real Estate Share */}
-                  <td 
-                    onClick={() => {
-                      if (row.realEstateShare > 0) {
-                        handleCellClick('Home Equity', row.realEstateShare, row.age);
-                      }
-                    }}
-                    title={
-                      row.isHomePurchasedThisYear
-                        ? `Home purchased at Age ${row.age}: Value ${formatCur(row.homeValue || 0)}, Mortgage ${formatCur(row.remainingMortgage || 0)}, Down payment ${formatCur(row.downPaymentPaidThisYear || 0)}, Total closing costs ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`
-                        : row.realEstateShare > 0
-                        ? `Click to ask AI how Home Equity (${formatCur(row.realEstateShare)}) was calculated at Age ${row.age}`
-                        : undefined
-                    }
-                    className={`py-2.5 px-3 text-right text-orange-600 dark:text-orange-400 font-medium select-none ${row.realEstateShare > 0 ? 'cursor-pointer hover:bg-orange-50/80 dark:hover:bg-orange-950/40 hover:underline transition-colors' : ''}`}
-                  >
-                    <div>
-                      {row.realEstateShare > 0 ? formatCur(row.realEstateShare) : row.homeSoldThisYear ? 'Sold' : '-'}
-                    </div>
-                    {row.isHomePurchasedThisYear && (
-                      <div 
-                        title={`Down payment: ${formatCur(row.downPaymentPaidThisYear || 0)} + Closing costs: ${formatCur(row.totalClosingCostsPaidThisYear || 0)}`}
-                        className="text-[9px] font-sans font-semibold text-blue-600 dark:text-blue-400 leading-tight mt-0.5"
-                      >
-                        bought
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Total Net Worth */}
-                  <td 
-                    onClick={() => handleCellClick('Total Net Worth', row.totalNetWorth, row.age)}
-                    title={`Click to ask AI how Total Net Worth (${formatCur(row.totalNetWorth)}) was calculated at Age ${row.age}${row.remainingDebt > 0 ? ` (reflects -${formatCur(row.remainingDebt)} consumer debt)` : ''}`}
-                    className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-100/40 dark:bg-slate-800/40 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-300 hover:underline transition-colors select-none"
-                  >
-                    <div>
-                      <div>{formatCur(row.totalNetWorth)}</div>
-                      {row.remainingDebt > 0 && (
-                        <div 
-                          title={`Remaining consumer debt: -${formatCur(row.remainingDebt)}`}
-                          className="text-[9px] font-sans font-normal text-rose-500 dark:text-rose-400 leading-tight mt-0.5"
-                        >
-                          -{formatCur(row.remainingDebt)} debt
-                        </div>
-                      )}
-                    </div>
-                  </td>
-
-                  {/* Investment Returns / Compounding Growth */}
-                  <td 
-                    onClick={() => handleCellClick('Investment Returns', row.totalInvestmentGrowth, row.age)}
-                    title={`Click to ask AI how Investment Returns (${formatCur(row.totalInvestmentGrowth)}) were generated at Age ${row.age}`}
-                    className={`py-2.5 px-3 text-right font-bold cursor-pointer transition-colors select-none ${
-                      row.totalInvestmentGrowth >= row.targetSpendingNominal && row.targetSpendingNominal > 0
-                        ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50/60 dark:bg-emerald-500/10 hover:bg-emerald-100/90 dark:hover:bg-emerald-500/20 underline decoration-emerald-400'
-                        : 'text-emerald-600/90 dark:text-emerald-400 hover:bg-emerald-50/60 dark:hover:bg-emerald-500/10 hover:underline'
-                    }`}
-                  >
-                    +{formatCur(row.totalInvestmentGrowth)}
-                  </td>
-
-                  {/* CPP */}
-                  <td 
-                    onClick={() => handleCellClick('CPP', row.cppIncome, row.age)}
-                    title={`Click to ask AI how CPP pension (${formatCur(row.cppIncome)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
-                  >
-                    {formatCur(row.cppIncome)}
-                  </td>
-
-                  {/* OAS */}
-                  <td 
-                    onClick={() => handleCellClick('OAS (Net)', row.oasNetIncome, row.age)}
-                    title={`Click to ask AI how Net OAS pension (${formatCur(row.oasNetIncome)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
-                  >
-                    {formatCur(row.oasNetIncome)}
-                  </td>
-
-                  {/* Withdrawals & Breakdown of Sources */}
-                  <td 
-                    onClick={() => handleCellClick('Withdrawals', row.totalWithdrawals, row.age)}
-                    title={`Click to ask AI how withdrawals (${formatCur(row.totalWithdrawals)}) were calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white hover:underline transition-colors select-none"
-                  >
-                    {row.totalWithdrawals > 0 ? (
-                      <div className="flex flex-col items-end gap-1">
-                        <span className="font-bold text-slate-900 dark:text-white">{formatCur(row.totalWithdrawals)}</span>
-                        <div className="flex flex-wrap items-center justify-end gap-1 max-w-[210px]">
-                          {row.nonRegWithdrawal > 0 && (
-                            <span 
-                              title={`Non-Registered Account Withdrawal: ${formatCur(row.nonRegWithdrawal)}`}
-                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30"
-                            >
-                              Non-Reg {formatCur(row.nonRegWithdrawal)}
-                            </span>
-                          )}
-                          {row.rrspWithdrawal > 0 && (
-                            <span 
-                              title={
-                                isMeltdownActive
-                                  ? `Strategic RRSP Meltdown Withdrawal: ${formatCur(row.rrspWithdrawal)} (accelerated draw to utilize lower tax bracket)`
-                                  : `RRSP Withdrawal: ${formatCur(row.rrspWithdrawal)}`
-                              }
-                              className={`text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold border ${
-                                isMeltdownActive
-                                  ? 'bg-blue-600 text-white border-blue-700 shadow-2xs font-bold flex items-center gap-0.5'
-                                  : 'bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
-                              }`}
-                            >
-                              {isMeltdownActive && <Flame className="w-2.5 h-2.5 fill-white text-white shrink-0" />}
-                              <span>{isMeltdownActive ? 'Meltdown ' : 'RRSP '}{formatCur(row.rrspWithdrawal)}</span>
-                            </span>
-                          )}
-                          {row.rrifWithdrawal > 0 && (
-                            <span 
-                              title={`RRIF Withdrawal: ${formatCur(row.rrifWithdrawal)} ${row.isRrifMinMet ? '(CRA Guideline Satisfied)' : ''}`}
-                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30"
-                            >
-                              RRIF {formatCur(row.rrifWithdrawal)}
-                            </span>
-                          )}
-                          {row.tfsaWithdrawal > 0 && (
-                            <span 
-                              title={`Tax-Free TFSA Withdrawal: ${formatCur(row.tfsaWithdrawal)}`}
-                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-teal-100 dark:bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-500/30"
-                            >
-                              TFSA {formatCur(row.tfsaWithdrawal)}
-                            </span>
-                          )}
-                          {row.fhsaWithdrawalOrTransfer > 0 && (
-                            <span 
-                              title={`FHSA Withdrawal/Transfer: ${formatCur(row.fhsaWithdrawalOrTransfer)}`}
-                              className="text-[8.5px] px-1.5 py-0.2 rounded font-sans font-semibold bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30"
-                            >
-                              FHSA {formatCur(row.fhsaWithdrawalOrTransfer)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </td>
-
-                  {/* Taxes Paid & Rate (Effective vs Marginal) */}
-                  <td 
-                    onClick={() => handleCellClick('Tax Paid', row.totalTaxPaid, row.age)}
-                    title={`Total Tax: ${formatCur(row.totalTaxPaid)} | Effective Rate: ${(row.effectiveTaxRate * 100).toFixed(1)}% | Marginal Bracket: ${(row.marginalTaxRate * 100).toFixed(1)}%`}
-                    className="py-2.5 px-3 text-right text-rose-600 dark:text-rose-400 font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
-                  >
-                    <div>{formatCur(row.totalTaxPaid)}</div>
-                    {row.totalTaxPaid > 0 && (
-                      <div className="text-[9.5px] mt-0.5 font-mono">
-                        {taxRateMode === 'effective' && (
-                          <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                            {(row.effectiveTaxRate * 100).toFixed(1)}% eff
-                          </span>
-                        )}
-                        {taxRateMode === 'marginal' && (
-                          <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                            {(row.marginalTaxRate * 100).toFixed(1)}% marg
-                          </span>
-                        )}
-                        {taxRateMode === 'both' && (
-                          <span className="text-slate-500 dark:text-slate-400">
-                            <span className="text-rose-600 dark:text-rose-400 font-semibold">{(row.effectiveTaxRate * 100).toFixed(1)}%</span>
-                            {' / '}
-                            <span className="text-amber-600 dark:text-amber-400 font-semibold">{(row.marginalTaxRate * 100).toFixed(1)}%</span>
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {isMeltdownActive && (
-                      <div 
-                        title="Early RRSP draw locks in lower tax bracket today, preventing 43.4%-53.5% tax brackets at Age 72+"
-                        className="text-[8.5px] font-sans font-bold text-blue-600 dark:text-blue-400 mt-0.5 flex items-center justify-end gap-0.5"
-                      >
-                        <Flame className="w-2.5 h-2.5 text-blue-500 shrink-0" />
-                        <span>Tax Arbitrage</span>
-                      </div>
-                    )}
-                    {inputs?.drawdownStrategy === 'rrsp_meltdown' && row.age >= 72 && row.oasClawback === 0 && (
-                      <div 
-                        title="OAS protected: Zero clawback due to reduced mandatory RRIF minimums"
-                        className="text-[8.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 mt-0.5"
-                      >
-                        ✓ 0% OAS Clawback
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Debt Payments */}
-                  <td 
-                    onClick={() => handleCellClick('Debt Payments', row.debtPayment, row.age)}
-                    title={
-                      row.debtPayment > 0
-                        ? `Click to inspect: Debt Outflow ${formatCur(row.debtPayment)} (Principal: ${formatCur(row.debtPrincipalPaid || 0)}, Interest: ${formatCur(row.debtInterestPaid || 0)}) | Remaining Balance: ${formatCur(row.remainingDebt || 0)}`
-                        : (row.remainingDebt || 0) > 0
-                        ? `Remaining Debt Balance: ${formatCur(row.remainingDebt)}`
-                        : 'Debt-Free: No active consumer debt service'
-                    }
-                    className="py-2.5 px-3 text-right font-medium cursor-pointer hover:bg-rose-50/80 dark:hover:bg-rose-950/40 hover:underline transition-colors select-none"
-                  >
-                    {row.debtPayment > 0 ? (
-                      <div className="flex flex-col items-end">
-                        <span className="text-rose-600 dark:text-rose-400 font-semibold font-mono">
-                          -{formatCur(row.debtPayment)}
-                        </span>
-                        {(row.remainingDebt || 0) > 0 && (
-                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono font-normal">
-                            bal {formatCur(row.remainingDebt)}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-600 font-mono font-normal">
-                        {row.isDebtFreeMilestone ? (
-                          <span className="text-[9.5px] font-sans font-bold text-emerald-600 dark:text-emerald-400 px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20">
-                            Paid Off
-                          </span>
-                        ) : (
-                          '-'
-                        )}
-                      </span>
-                    )}
-                  </td>
-
-                  {/* Spendable Cashflow */}
-                  <td 
-                    onClick={() => handleCellClick('Spendable Cash', row.netSpendableCashflow, row.age)}
-                    title={`Click to ask AI how Net Spendable Cashflow (${formatCur(row.netSpendableCashflow)}) was calculated at Age ${row.age}`}
-                    className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-slate-100 cursor-pointer hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 hover:text-emerald-600 dark:hover:text-emerald-400 hover:underline transition-colors select-none"
-                  >
-                    {formatCur(row.netSpendableCashflow)}
-                  </td>
-
-                  {/* Living Target (Expenses) */}
-                  <td 
-                    title={`Living target expenses: ${formatCur(row.targetSpendingNominal)}${row.totalHousingCostsThisYear ? ` (includes housing: ${formatCur(row.totalHousingCostsThisYear || 0)}/yr)` : ''}`}
-                    className="py-2.5 px-3 text-right text-slate-500 dark:text-slate-400 font-mono"
-                  >
-                    <div>{formatCur(row.targetSpendingNominal)}</div>
-                    {Boolean(row.totalHousingCostsThisYear && row.totalHousingCostsThisYear > 0) && (
-                      <div 
-                        title={`Housing costs this year: ${formatCur(row.totalHousingCostsThisYear || 0)}${row.propertyTaxPaidThisYear ? ` (Property Tax: ${formatCur(row.propertyTaxPaidThisYear || 0)})` : ''}${row.condoFeesPaidThisYear ? ` (Condo Fees: ${formatCur(row.condoFeesPaidThisYear || 0)})` : ''}`}
-                        className="text-[9px] font-sans font-normal text-slate-400 dark:text-slate-500 leading-tight mt-0.5"
-                      >
-                        housing {formatCur(row.totalHousingCostsThisYear || 0)}
-                      </div>
-                    )}
-                  </td>
-
-                  {/* Milestone Notes & Strategy Highlights */}
-                  <td className="py-2.5 px-3 font-sans text-[11px] leading-snug">
-                    {hasNotes ? (
-                      <div className="flex flex-col gap-1">
-                        {row.notes.map((note, nIdx) => {
-                          const isMeltdownNote = note.includes('RRSP Meltdown') || note.includes('Meltdown Surplus');
-                          const isCrossover = note.includes('Crossover Milestone');
-                          const isCoast = note.includes('Coast FIRE Milestone');
-                          const isMillionaire = note.includes('Millionaire Milestone');
-                          const isMortgage = note.includes('Mortgage Freedom');
-                          const isRetire = note.includes('Target Retirement');
-                          const isPeak = note.includes('Peak Net Worth');
-
-                          return (
-                            <div 
-                              key={nIdx}
-                              className={`p-1 px-1.5 rounded-md text-[10.5px] ${
-                                isMeltdownNote
-                                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-950 dark:text-blue-200 font-semibold border border-blue-200 dark:border-blue-800'
-                                  : isCrossover
-                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
-                                  : isCoast
-                                  ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
-                                  : isMillionaire
-                                  ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-900 dark:text-cyan-400 font-semibold border border-cyan-200 dark:border-cyan-500/20'
-                                  : isMortgage
-                                  ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-900 dark:text-emerald-400 font-semibold border border-emerald-200 dark:border-emerald-500/20'
-                                  : isRetire
-                                  ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-900 dark:text-rose-400 font-semibold border border-rose-200 dark:border-rose-500/20'
-                                  : isPeak
-                                  ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-400 font-semibold border border-indigo-200 dark:border-indigo-500/20'
-                                  : 'text-slate-700 dark:text-slate-300 font-medium'
-                              }`}
-                            >
-                              {note}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <span className="text-slate-400 dark:text-slate-500">-</span>
-                    )}
-                  </td>
-                </tr>
+                  row={row}
+                  rowIndex={virtualRow.index}
+                  retirementAge={retirementAge}
+                  isHighlighted={highlightedAge === row.age}
+                  isRrspMeltdownStrategy={isRrspMeltdownStrategy}
+                  meltdownStartAge={meltdownStartAge}
+                  taxRateMode={taxRateMode}
+                  measureElement={rowVirtualizer.measureElement}
+                  onCellClick={handleCellClick}
+                  onRowAiClick={handleRowAiClick}
+                />
               );
             })}
             {paddingBottom > 0 && (

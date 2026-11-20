@@ -23,10 +23,12 @@ import {
   X,
   Command,
   Monitor,
-  Apple
+  Apple,
+  Keyboard
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab } from '../store/useSimulationStore';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 
 export interface PaletteCommand {
   id: string;
@@ -55,6 +57,8 @@ export const CommandPaletteModal: React.FC = () => {
   const setIsCompareModalOpen = useSimulationStore((state) => state.setIsCompareModalOpen);
   const setIsSnapshotCompareModalOpen = useSimulationStore((state) => state.setIsSnapshotCompareModalOpen);
   const setIsAIPersonaModalOpen = useSimulationStore((state) => state.setIsAIPersonaModalOpen);
+  const isFocusMode = useSimulationStore((state) => state.isFocusMode);
+  const toggleFocusMode = useSimulationStore((state) => state.toggleFocusMode);
   const exportPdf = useSimulationStore((state) => state.exportPdf);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
   const inputs = useSimulationStore((state) => state.inputs);
@@ -238,16 +242,31 @@ export const CommandPaletteModal: React.FC = () => {
       {
         id: 'tool_help_guide',
         title: 'Help & Technical Guide',
-        subtitle: 'Comprehensive functional user manual and architectural technical guide',
+        subtitle: 'Comprehensive functional user manual, keyboard shortcuts & technical architecture',
         category: 'Tools & Guides',
         icon: HelpCircle,
         iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
         iconColor: 'text-indigo-600 dark:text-indigo-400',
         shortcutMac: '?',
         shortcutWin: '?',
-        keywords: ['help', 'manual', 'docs', 'technical', 'formula', 'methodology', 'faq'],
+        keywords: ['help', 'manual', 'docs', 'technical', 'formula', 'methodology', 'faq', 'shortcuts', 'keyboard'],
         action: () => {
           setIsHelpGuideModalOpen(true);
+        }
+      },
+      {
+        id: 'tool_focus_mode',
+        title: isFocusMode ? 'Disable Keyboard Focus Mode' : 'Enable Keyboard Focus Mode',
+        subtitle: 'Use Arrow keys (↑ ↓ ← →) to navigate dashboard tabs and input sub-components without a mouse',
+        category: 'Tools & Guides',
+        icon: Keyboard,
+        iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        shortcutMac: '⌘⇧F',
+        shortcutWin: 'Ctrl+Shift+F',
+        keywords: ['focus', 'focus mode', 'keyboard', 'arrow', 'arrows', 'navigation', 'mouse-free', 'accessibility'],
+        action: () => {
+          toggleFocusMode();
         }
       },
       {
@@ -309,16 +328,29 @@ export const CommandPaletteModal: React.FC = () => {
         shortcutWin: 'Ctrl+E',
         keywords: ['excel', 'export', 'spreadsheet', 'download', 'audit', 'master'],
         action: async () => {
-          const { exportMasterComprehensiveExcel } = await import('../utils/excelExport');
-          await exportMasterComprehensiveExcel({
-            inputs,
-            summary,
-            yearlyResults,
-            estateInputs,
-            expatInputs: inputs.expat,
-            stressTiming,
-            customStressAge
-          });
+          try {
+            await runWithExcelExportOverlay(
+              {
+                title: 'Exporting Master Excel Workbook',
+                processingSubtitle:
+                  'Compiling Annual Simulation, Estate, 6 Stress Tests, and Expat ledgers into multi-tab worksheets...',
+                successMessage: 'Your Master Comprehensive Excel Workbook (.xlsx) has started downloading.'
+              },
+              async ({ exportMasterComprehensiveExcel }) => {
+                await exportMasterComprehensiveExcel({
+                  inputs,
+                  summary,
+                  yearlyResults,
+                  estateInputs,
+                  expatInputs: inputs.expat,
+                  stressTiming,
+                  customStressAge
+                });
+              }
+            );
+          } catch (err) {
+            console.error('Failed to export comprehensive master Excel from Command Palette:', err);
+          }
         }
       },
       {
@@ -380,6 +412,8 @@ export const CommandPaletteModal: React.FC = () => {
     setIsCompareModalOpen,
     setIsSnapshotCompareModalOpen,
     setIsAIPersonaModalOpen,
+    isFocusMode,
+    toggleFocusMode,
     exportPdf,
     resetToBlankCanvas,
     inputs,

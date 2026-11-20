@@ -12,11 +12,13 @@ import {
   FileDown,
   FileSpreadsheet,
   Loader2,
-  Command
+  Command,
+  Keyboard
 } from 'lucide-react';
 import { useSimulationStore, AppView } from '../store/useSimulationStore';
 import { TopScenarioSwitcher } from './TopScenarioSwitcher';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
@@ -32,6 +34,8 @@ export const Header: React.FC = () => {
   const [isConfirmingClear, setIsConfirmingClear] = useState<boolean>(false);
   const [isExportingMasterExcel, setIsExportingMasterExcel] = useState<boolean>(false);
   const setIsCommandPaletteOpen = useSimulationStore((state) => state.setIsCommandPaletteOpen);
+  const isFocusMode = useSimulationStore((state) => state.isFocusMode);
+  const toggleFocusMode = useSimulationStore((state) => state.toggleFocusMode);
   const isMac = useMemo(() => isMacPlatform(), []);
 
   const handleExportMasterExcel = async () => {
@@ -39,16 +43,25 @@ export const Header: React.FC = () => {
       setIsExportingMasterExcel(true);
       const { inputs, summary, yearlyResults, estateInputs, stressTiming, customStressAge } =
         useSimulationStore.getState();
-      const { exportMasterComprehensiveExcel } = await import('../utils/excelExport');
-      await exportMasterComprehensiveExcel({
-        inputs,
-        summary,
-        yearlyResults,
-        estateInputs,
-        expatInputs: inputs.expat,
-        stressTiming,
-        customStressAge
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Master Excel Workbook',
+          processingSubtitle:
+            'Compiling Annual Simulation, Estate, 6 Stress Tests, and Expat ledgers into multi-tab worksheets...',
+          successMessage: 'Your Master Comprehensive Excel Workbook (.xlsx) has started downloading.'
+        },
+        async ({ exportMasterComprehensiveExcel }) => {
+          await exportMasterComprehensiveExcel({
+            inputs,
+            summary,
+            yearlyResults,
+            estateInputs,
+            expatInputs: inputs.expat,
+            stressTiming,
+            customStressAge
+          });
+        }
+      );
     } catch (err) {
       console.error('Failed to export comprehensive master Excel:', err);
     } finally {
@@ -150,6 +163,46 @@ export const Header: React.FC = () => {
               <span className="hidden xl:inline text-zinc-600 dark:text-zinc-300">Quick Jump</span>
               <kbd className="px-1.5 py-0.5 rounded bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[10px] font-mono font-bold text-zinc-700 dark:text-zinc-300 shadow-2xs">
                 {isMac ? '⌘K' : 'Ctrl+K'}
+              </kbd>
+            </button>
+
+            {/* Keyboard Focus Mode Toggle Button (Arrow-key navigation across tabs & inputs) */}
+            <button
+              type="button"
+              onClick={toggleFocusMode}
+              aria-pressed={isFocusMode}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs shrink-0 ${
+                isFocusMode
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-emerald-600/20'
+                  : 'bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-zinc-700 dark:text-zinc-200 border-zinc-200/80 dark:border-zinc-700/80'
+              }`}
+              title={
+                isFocusMode
+                  ? `Keyboard Focus Mode is ON — Use Arrow keys (↑ ↓ ← →) to navigate tabs & inputs. Press F or ${isMac ? '⌘⇧F' : 'Ctrl+Shift+F'} to exit.`
+                  : `Enable Keyboard Focus Mode (F or ${isMac ? '⌘⇧F' : 'Ctrl+Shift+F'}) for mouse-free Arrow-key navigation`
+              }
+              aria-label={isFocusMode ? 'Disable Keyboard Focus Mode' : 'Enable Keyboard Focus Mode'}
+            >
+              {isFocusMode && (
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-200 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                </span>
+              )}
+              <Keyboard
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  isFocusMode ? 'text-white' : 'text-emerald-600 dark:text-emerald-400'
+                }`}
+              />
+              <span className="hidden lg:inline">{isFocusMode ? 'Focus On' : 'Focus Mode'}</span>
+              <kbd
+                className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                  isFocusMode
+                    ? 'bg-emerald-700/80 border-emerald-400/50 text-white'
+                    : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300'
+                }`}
+              >
+                F
               </kbd>
             </button>
 

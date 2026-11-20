@@ -15,33 +15,58 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            if (id.includes('vite/preload-helper')) {
+            const normalizedId = id.replace(/\\/g, '/');
+
+            if (normalizedId.includes('vite/preload-helper')) {
               return 'preload-helper';
             }
-            if (id.includes('node_modules')) {
-              if (id.includes('lucide-react')) {
-                return 'vendor-icons';
-              }
-              if (id.includes('motion')) {
-                return 'vendor-motion';
-              }
-              if (id.includes('exceljs')) {
-                return 'vendor-excel';
-              }
-              if (id.includes('jspdf') || id.includes('jspdf-autotable')) {
-                return 'vendor-pdf';
-              }
-              if (id.includes('canvas-confetti')) {
-                return 'vendor-confetti';
-              }
-              if (id.includes('react') || id.includes('react-dom')) {
+
+            if (normalizedId.includes('node_modules/')) {
+              // Stable core vendor chunks (cacheable across app deploys)
+              if (
+                normalizedId.includes('node_modules/react/') ||
+                normalizedId.includes('node_modules/react-dom/') ||
+                normalizedId.includes('node_modules/scheduler/')
+              ) {
                 return 'vendor-react';
               }
-              return 'vendor';
+              if (
+                normalizedId.includes('node_modules/zustand/') ||
+                normalizedId.includes('node_modules/use-sync-external-store/')
+              ) {
+                return 'vendor-zustand';
+              }
+              if (normalizedId.includes('node_modules/lucide-react/')) {
+                return 'vendor-icons';
+              }
+              if (
+                normalizedId.includes('node_modules/motion/') ||
+                normalizedId.includes('node_modules/framer-motion/') ||
+                normalizedId.includes('node_modules/motion-dom/') ||
+                normalizedId.includes('node_modules/motion-utils/')
+              ) {
+                return 'vendor-motion';
+              }
+
+              // Dynamically imported heavy libraries kept in dedicated on-demand chunks.
+              // Omitting a catch-all 'vendor' chunk ensures their transitive dependencies
+              // (jszip, pako, fflate, fast-csv, canvg, html2canvas, etc.) stay out of the initial load.
+              if (normalizedId.includes('node_modules/exceljs/')) {
+                return 'vendor-excel';
+              }
+              if (
+                normalizedId.includes('node_modules/jspdf/') ||
+                normalizedId.includes('node_modules/jspdf-autotable/')
+              ) {
+                return 'vendor-pdf';
+              }
+              if (normalizedId.includes('node_modules/canvas-confetti/')) {
+                return 'vendor-confetti';
+              }
             }
-          }
-        }
-      }
+          },
+        },
+      },
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

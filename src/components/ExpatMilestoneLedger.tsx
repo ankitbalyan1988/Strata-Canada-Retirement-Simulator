@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { YearSimulationResult, RetirementInputs, SimulationSummary } from '../types/retirement';
 import { ExpatInputs, ExpatSimulationSummary, ExpatYearResult } from '../types/expat';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 import { 
   Table, 
   Search, 
@@ -347,22 +348,31 @@ export const ExpatMilestoneLedger: React.FC<ExpatMilestoneLedgerProps> = ({
   const handleExportExcel = async () => {
     try {
       setIsExporting(true);
-      const { exportExpatLedgerToExcel } = await import('../utils/excelExport');
-      await exportExpatLedgerToExcel({
-        data: filteredData,
-        filterMode,
-        departureAge,
-        departureYear,
-        destinationCountry,
-        exchangeRate,
-        colIndex,
-        qualifiesForLifetimeWorldwideOAS,
-        departureTaxEstimateCAD,
-        retirementAge,
-        province: retirementInputs.province,
-        inputs: retirementInputs,
-        expatInputs
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Expat Relocation Ledger',
+          processingSubtitle:
+            'Formatting cross-border CAD/FX conversions, departure tax (Sec. 128.1), and bilateral treaty schedules...',
+          successMessage: 'Your Expat Relocation Ledger (.xlsx) has started downloading.'
+        },
+        async ({ exportExpatLedgerToExcel }) => {
+          await exportExpatLedgerToExcel({
+            data: filteredData,
+            filterMode,
+            departureAge,
+            departureYear,
+            destinationCountry,
+            exchangeRate,
+            colIndex,
+            qualifiesForLifetimeWorldwideOAS,
+            departureTaxEstimateCAD,
+            retirementAge,
+            province: retirementInputs.province,
+            inputs: retirementInputs,
+            expatInputs
+          });
+        }
+      );
     } catch (err) {
       console.error('Failed to export Expat Milestone Ledger to Excel:', err);
     } finally {

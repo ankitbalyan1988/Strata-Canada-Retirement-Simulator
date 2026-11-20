@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { ScenarioSimulationDetails } from '../utils/stressTestHealthCalculator';
 import { RetirementInputs, YearSimulationResult } from '../types/retirement';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 import {
   Table,
   Search,
@@ -52,6 +53,253 @@ type ColumnCategory = 'all' | 'executive' | 'cashflow' | 'accounts' | 'tax';
 type FilterMode = 'milestones' | 'retirement' | 'shock' | 'all';
 type TaxRateMode = 'effective' | 'marginal' | 'both';
 
+const SEARCH_DEBOUNCE_MS = 140;
+
+const formatCur = (val: number) => {
+  if (val === 0) return '$0';
+  return `$${Math.round(val).toLocaleString()}`;
+};
+
+interface StressScenarioLedgerRowProps {
+  row: YearSimulationResult;
+  shockAge: number;
+  shockDropPercent: number;
+  scenarioName: string;
+  depletionAge: number | null;
+  retirementAge: number;
+  isHighlighted: boolean;
+  baselineNetWorth: number;
+  columnCategory: ColumnCategory;
+  taxRateMode: TaxRateMode;
+  onSelectRow: (row: YearSimulationResult) => void;
+}
+
+const StressScenarioLedgerRow: React.FC<StressScenarioLedgerRowProps> = React.memo(({
+  row,
+  shockAge,
+  shockDropPercent,
+  scenarioName,
+  depletionAge,
+  retirementAge,
+  isHighlighted,
+  baselineNetWorth,
+  columnCategory,
+  taxRateMode,
+  onSelectRow
+}) => {
+  const isShockYear = shockDropPercent > 0 && row.age === shockAge;
+  const isRecoveryYear = shockDropPercent > 0 && row.age > shockAge && row.age <= shockAge + 4;
+  const recoveryStep = row.age - shockAge;
+  const isDepletedYear = depletionAge !== null && row.age === depletionAge;
+  const isRetireTarget = row.age === retirementAge;
+  const isExhausted = row.totalNetWorth <= 0 && row.isRetired;
+
+  const nwDelta = row.totalNetWorth - baselineNetWorth;
+
+  let rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
+  if (isHighlighted) {
+    rowBg = 'bg-amber-100/90 dark:bg-amber-950/60 ring-2 ring-amber-400';
+  } else if (isShockYear) {
+    rowBg = 'bg-rose-50/90 dark:bg-rose-950/40 border-y-2 border-rose-500/70 hover:bg-rose-100/80 dark:hover:bg-rose-950/60';
+  } else if (isDepletedYear || isExhausted) {
+    rowBg = 'bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100/60';
+  } else if (isRetireTarget) {
+    rowBg = 'bg-amber-50/50 dark:bg-amber-950/20 border-y border-amber-300 dark:border-amber-700/60';
+  } else if (isRecoveryYear) {
+    rowBg = 'bg-orange-50/30 dark:bg-orange-950/15';
+  }
+
+  return (
+    <tr
+      id={`stress-row-age-${row.age}`}
+      onClick={() => onSelectRow(row)}
+      className={`cursor-pointer group ${rowBg}`}
+    >
+      {/* Age / Phase */}
+      <td className="py-2 px-3 font-sans">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-bold text-slate-900 dark:text-white text-xs">
+            Age {row.age}
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">
+            ({row.year})
+          </span>
+
+          {isShockYear && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-rose-600 text-white animate-pulse">
+              💥 Shock -{shockDropPercent}%
+            </span>
+          )}
+
+          {isRecoveryYear && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300">
+              Recov Yr {recoveryStep}
+            </span>
+          )}
+
+          {isRetireTarget && !isShockYear && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-amber-500 text-white">
+              Retire Day
+            </span>
+          )}
+
+          {isDepletedYear && (
+            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-red-600 text-white animate-pulse">
+              Depleted
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* Total Net Worth */}
+      <td className={`py-2 px-3 text-right font-bold tabular-nums ${
+        isExhausted
+          ? 'text-red-600 dark:text-red-400'
+          : isShockYear
+          ? 'text-rose-700 dark:text-rose-300 font-extrabold'
+          : 'text-slate-900 dark:text-white'
+      }`}>
+        {formatCur(row.totalNetWorth)}
+      </td>
+
+      {/* Baseline Delta */}
+      <td className={`py-2 px-3 text-right tabular-nums text-[10.5px] ${
+        nwDelta < -100
+          ? 'text-rose-600 dark:text-rose-400 font-semibold'
+          : nwDelta > 100
+          ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+          : 'text-slate-400 dark:text-slate-500'
+      }`}>
+        {nwDelta === 0 ? '-' : `${nwDelta > 0 ? '+' : ''}${formatCur(nwDelta)}`}
+      </td>
+
+      {/* Investment Growth */}
+      <td className={`py-2 px-3 text-right tabular-nums ${
+        row.totalInvestmentGrowth < 0
+          ? 'text-rose-600 dark:text-rose-400 font-bold'
+          : row.totalInvestmentGrowth > 0
+          ? 'text-emerald-600 dark:text-emerald-400'
+          : 'text-slate-400'
+      }`}>
+        {row.totalInvestmentGrowth === 0 ? '-' : `${row.totalInvestmentGrowth > 0 ? '+' : ''}${formatCur(row.totalInvestmentGrowth)}`}
+      </td>
+
+      {/* Account Balances (if active view) */}
+      {(columnCategory === 'all' || columnCategory === 'accounts') && (
+        <>
+          <td className="py-2 px-3 text-right tabular-nums text-slate-700 dark:text-slate-300">
+            {formatCur(row.rrspBalance + row.rrifBalance)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
+            {formatCur(row.tfsaBalance)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-teal-700 dark:text-teal-400">
+            {formatCur(row.fhsaBalance)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
+            {formatCur(row.nonRegBalance)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-orange-600 dark:text-orange-400">
+            {formatCur(row.homeEquity)}
+          </td>
+        </>
+      )}
+
+      {/* Cash Flow (if active view) */}
+      {(columnCategory === 'all' || columnCategory === 'cashflow' || columnCategory === 'executive') && (
+        <>
+          <td className="py-2 px-3 text-right tabular-nums text-slate-800 dark:text-slate-200">
+            {formatCur(row.targetSpendingNominal)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-indigo-700 dark:text-indigo-400">
+            {formatCur(row.cppIncome + row.oasNetIncome)}
+          </td>
+          <td className="py-2 px-3 text-right tabular-nums text-amber-700 dark:text-amber-400">
+            {formatCur(row.totalWithdrawals)}
+          </td>
+        </>
+      )}
+
+      {/* Taxes (if active view) */}
+      {(columnCategory === 'all' || columnCategory === 'tax') && (
+        <>
+          <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
+            {formatCur(row.totalTaxPaid)}
+          </td>
+          {taxRateMode === 'effective' && (
+            <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
+              {row.effectiveTaxRate.toFixed(1)}%
+            </td>
+          )}
+          {taxRateMode === 'marginal' && (
+            <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
+              {row.marginalTaxRate.toFixed(1)}%
+            </td>
+          )}
+          {taxRateMode === 'both' && (
+            <>
+              <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
+                {row.effectiveTaxRate.toFixed(1)}%
+              </td>
+              <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
+                {row.marginalTaxRate.toFixed(1)}%
+              </td>
+            </>
+          )}
+          <td className={`py-2 px-3 text-right tabular-nums ${row.oasClawback > 0 ? 'text-rose-600 font-semibold' : 'text-slate-400'}`}>
+            {row.oasClawback > 0 ? formatCur(row.oasClawback) : '-'}
+          </td>
+        </>
+      )}
+
+      {/* Solvency Status */}
+      <td className="py-2 px-3 text-center font-sans">
+        {row.totalNetWorth > 0 ? (
+          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span>Solvent</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
+            <AlertTriangle className="w-3 h-3 text-rose-600" />
+            <span>Shortfall</span>
+          </span>
+        )}
+      </td>
+
+      {/* Actuarial Notes */}
+      <td className="py-2 px-3 text-slate-500 dark:text-slate-400 font-sans text-[11px] truncate max-w-[280px]">
+        {isShockYear ? (
+          <span className="text-rose-600 dark:text-rose-400 font-semibold">
+            💥 {scenarioName} shock executed (-{shockDropPercent}% portfolio drop)
+          </span>
+        ) : row.notes.length > 0 ? (
+          <span>{row.notes[0]}</span>
+        ) : (
+          <span className="text-slate-400">Normal decumulation & compounding</span>
+        )}
+      </td>
+
+      {/* Inspect Button */}
+      <td className="py-2 px-3 text-center">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectRow(row);
+          }}
+          className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 transition"
+          title={`Inspect Age ${row.age} mathematical formulas and account breakdown`}
+        >
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      </td>
+    </tr>
+  );
+});
+
+StressScenarioLedgerRow.displayName = 'StressScenarioLedgerRow';
+
 const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (props) => {
   const { scenarioDetails, inputs } = props;
   const {
@@ -90,7 +338,7 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
   const [columnCategory, setColumnCategory] = useState<ColumnCategory>('all');
   const [filterMode, setFilterMode] = useState<FilterMode>('milestones');
   const [taxRateMode, setTaxRateMode] = useState<TaxRateMode>('effective');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
@@ -98,6 +346,38 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
   const [modalTab, setModalTab] = useState<'balance' | 'cashflow' | 'tax' | 'notes'>('balance');
 
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+      if (highlightTimerRef.current) {
+        clearTimeout(highlightTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (!val) {
+      setDebouncedSearchTerm('');
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(val);
+    }, SEARCH_DEBOUNCE_MS);
+  }, []);
+
+  const handleSelectRow = useCallback((row: YearSimulationResult) => {
+    setSelectedYearModal(row);
+  }, []);
 
   // Close full screen on Escape key press
   useEffect(() => {
@@ -114,13 +394,17 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen, selectedYearModal]);
 
-  const formatCur = (val: number) => {
-    if (val === 0) return '$0';
-    return `$${Math.round(val).toLocaleString()}`;
-  };
+  // O(1) baseline lookup map by age
+  const baselineByAge = useMemo(() => {
+    const map = new Map<number, YearSimulationResult>();
+    for (const row of baselineResults) {
+      map.set(row.age, row);
+    }
+    return map;
+  }, [baselineResults]);
 
   // Scroll to age and highlight row
-  const scrollToAge = (age: number) => {
+  const scrollToAge = useCallback((age: number) => {
     setHighlightedAge(age);
     if (filterMode === 'retirement' && age < inputs.retirementAge) {
       setFilterMode('all');
@@ -132,21 +416,38 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
       }
     }, 50);
 
-    setTimeout(() => {
+    if (highlightTimerRef.current) {
+      clearTimeout(highlightTimerRef.current);
+    }
+    highlightTimerRef.current = setTimeout(() => {
       setHighlightedAge(null);
     }, 3500);
-  };
+  }, [filterMode, inputs.retirementAge]);
+
+  const currentAge = inputs.currentAge;
+  const retirementAge = inputs.retirementAge;
+  const lifeExpectancy = inputs.lifeExpectancy;
+  const crossoverAge = summary?.crossoverAge;
+  const coastFireAge = summary?.coastFireAge;
+  const millionaireAge = summary?.millionaireAge;
+  const mortgagePayoffAge = summary?.mortgagePayoffAge;
+  const debtPayoffAge = summary?.debtPayoffAge;
+  const peakNetWorthAge = summary?.peakNetWorthAge;
 
   // Filtered dataset
   const filteredRows = useMemo(() => {
+    const normalizedSearch = debouncedSearchTerm.trim().toLowerCase();
+    const firstAge = yearlyResults[0]?.age;
+    const lastAge = yearlyResults[yearlyResults.length - 1]?.age;
+
     return yearlyResults.filter((yr) => {
       // Search
-      if (searchTerm) {
-        const matchAge = String(yr.age).includes(searchTerm);
-        const matchYear = String(yr.year).includes(searchTerm);
-        const matchNotes = yr.notes.some((n) => n.toLowerCase().includes(searchTerm.toLowerCase()));
+      if (normalizedSearch) {
+        const matchAge = String(yr.age).includes(normalizedSearch);
+        const matchYear = String(yr.year).includes(normalizedSearch);
+        const matchNotes = yr.notes.some((n) => n.toLowerCase().includes(normalizedSearch));
         const matchBadges = yr.milestoneBadges?.some((b) =>
-          b.label.toLowerCase().includes(searchTerm.toLowerCase())
+          b.label.toLowerCase().includes(normalizedSearch)
         );
         if (!matchAge && !matchYear && !matchNotes && !matchBadges) return false;
       }
@@ -157,23 +458,23 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
 
       if (filterMode === 'shock') {
         // Window from shock age minus 2 to shock age plus 6, or through depletion
-        const startAge = Math.max(inputs.currentAge, shockAge - 2);
-        const endAge = depletionAge ? Math.min(inputs.lifeExpectancy, depletionAge + 2) : shockAge + 6;
+        const startAge = Math.max(currentAge, shockAge - 2);
+        const endAge = depletionAge ? Math.min(lifeExpectancy, depletionAge + 2) : shockAge + 6;
         return yr.age >= startAge && yr.age <= endAge;
       }
 
       if (filterMode === 'milestones') {
         return (
-          yr.age === yearlyResults[0]?.age ||
-          yr.age === inputs.retirementAge ||
+          yr.age === firstAge ||
+          yr.age === retirementAge ||
           yr.age === shockAge ||
           (depletionAge !== null && yr.age === depletionAge) ||
-          yr.age === summary?.crossoverAge ||
-          yr.age === summary?.coastFireAge ||
-          yr.age === summary?.millionaireAge ||
-          yr.age === summary?.mortgagePayoffAge ||
-          yr.age === summary?.debtPayoffAge ||
-          yr.age === summary?.peakNetWorthAge ||
+          yr.age === crossoverAge ||
+          yr.age === coastFireAge ||
+          yr.age === millionaireAge ||
+          yr.age === mortgagePayoffAge ||
+          yr.age === debtPayoffAge ||
+          yr.age === peakNetWorthAge ||
           yr.age === 60 ||
           yr.age === 65 ||
           yr.age === 70 ||
@@ -182,7 +483,7 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
           yr.age === 75 ||
           yr.age === 80 ||
           yr.age === 85 ||
-          yr.age === yearlyResults[yearlyResults.length - 1]?.age ||
+          yr.age === lastAge ||
           yr.homeSoldThisYear ||
           yr.notes.length > 0 ||
           (yr.milestoneBadges && yr.milestoneBadges.length > 0)
@@ -191,20 +492,44 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
 
       return true; // 'all'
     });
-  }, [yearlyResults, filterMode, searchTerm, shockAge, depletionAge, inputs, summary]);
+  }, [
+    yearlyResults,
+    filterMode,
+    debouncedSearchTerm,
+    shockAge,
+    depletionAge,
+    currentAge,
+    retirementAge,
+    lifeExpectancy,
+    crossoverAge,
+    coastFireAge,
+    millionaireAge,
+    mortgagePayoffAge,
+    debtPayoffAge,
+    peakNetWorthAge
+  ]);
 
   // Export to Excel (.xlsx)
   const handleExportExcel = async () => {
     try {
       setIsExportingExcel(true);
-      const { exportMilestoneTableToExcel } = await import('../utils/excelExport');
-      await exportMilestoneTableToExcel({
-        data: filteredRows,
-        filterMode: filterMode === 'shock' ? 'milestones' : filterMode,
-        retirementAge: inputs.retirementAge,
-        province: inputs.province,
-        inputs
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Stress Scenario Ledger',
+          processingSubtitle:
+            'Formatting shocked portfolio trajectory, drawdown impact, and resilience audit formulas...',
+          successMessage: 'Your Stress Test Scenario Ledger (.xlsx) has started downloading.'
+        },
+        async ({ exportMilestoneTableToExcel }) => {
+          await exportMilestoneTableToExcel({
+            data: filteredRows,
+            filterMode: filterMode === 'shock' ? 'milestones' : filterMode,
+            retirementAge: inputs.retirementAge,
+            province: inputs.province,
+            inputs
+          });
+        }
+      );
     } catch (err) {
       console.error('Failed to export Excel spreadsheet:', err);
     } finally {
@@ -240,7 +565,7 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
 
     const rows = filteredRows.map((yr) => {
       const isShock = shockDropPercent > 0 && yr.age === shockAge;
-      const baselineRow = baselineResults.find((b) => b.age === yr.age);
+      const baselineRow = baselineByAge.get(yr.age);
       const nwDelta = baselineRow ? Math.round(yr.totalNetWorth - baselineRow.totalNetWorth) : 0;
 
       return [
@@ -783,10 +1108,11 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder="Search age, note..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                defaultValue=""
+                onChange={handleSearchChange}
                 className="pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-1 focus:ring-rose-500 text-slate-800 dark:text-slate-200 w-28 sm:w-36"
               />
             </div>
@@ -909,220 +1235,24 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
               ) : null}
 
               {filteredRows.map((row) => {
-                const isShockYear = (shockDropPercent > 0 && row.age === shockAge);
-                const isRecoveryYear = (shockDropPercent > 0 && row.age > shockAge && row.age <= shockAge + 4);
-                const recoveryStep = row.age - shockAge;
-                const isDepletedYear = (depletionAge !== null && row.age === depletionAge);
-                const isRetireTarget = (row.age === inputs.retirementAge);
-                const isExhausted = row.totalNetWorth <= 0 && row.isRetired;
-                const isHighlighted = highlightedAge === row.age;
-
-                // Baseline comparison delta
-                const baselineRow = baselineResults.find((b) => b.age === row.age);
-                const baselineNW = baselineRow ? baselineRow.totalNetWorth : row.totalNetWorth;
-                const nwDelta = row.totalNetWorth - baselineNW;
-
-                // Row background styling
-                let rowBg = 'hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors';
-                if (isHighlighted) {
-                  rowBg = 'bg-amber-100/90 dark:bg-amber-950/60 ring-2 ring-amber-400';
-                } else if (isShockYear) {
-                  rowBg = 'bg-rose-50/90 dark:bg-rose-950/40 border-y-2 border-rose-500/70 hover:bg-rose-100/80 dark:hover:bg-rose-950/60';
-                } else if (isDepletedYear || isExhausted) {
-                  rowBg = 'bg-red-50/60 dark:bg-red-950/30 hover:bg-red-100/60';
-                } else if (isRetireTarget) {
-                  rowBg = 'bg-amber-50/50 dark:bg-amber-950/20 border-y border-amber-300 dark:border-amber-700/60';
-                } else if (isRecoveryYear) {
-                  rowBg = 'bg-orange-50/30 dark:bg-orange-950/15';
-                }
+                const baselineRow = baselineByAge.get(row.age);
+                const baselineNetWorth = baselineRow ? baselineRow.totalNetWorth : row.totalNetWorth;
 
                 return (
-                  <tr
+                  <StressScenarioLedgerRow
                     key={row.age}
-                    id={`stress-row-age-${row.age}`}
-                    onClick={() => setSelectedYearModal(row)}
-                    className={`cursor-pointer group ${rowBg}`}
-                  >
-                    {/* Age / Phase */}
-                    <td className="py-2 px-3 font-sans">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-bold text-slate-900 dark:text-white text-xs">
-                          Age {row.age}
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          ({row.year})
-                        </span>
-
-                        {isShockYear && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-rose-600 text-white animate-pulse">
-                            💥 Shock -{shockDropPercent}%
-                          </span>
-                        )}
-
-                        {isRecoveryYear && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-semibold bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300">
-                            Recov Yr {recoveryStep}
-                          </span>
-                        )}
-
-                        {isRetireTarget && !isShockYear && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-amber-500 text-white">
-                            Retire Day
-                          </span>
-                        )}
-
-                        {isDepletedYear && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-red-600 text-white animate-pulse">
-                            Depleted
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Total Net Worth */}
-                    <td className={`py-2 px-3 text-right font-bold tabular-nums ${
-                      isExhausted
-                        ? 'text-red-600 dark:text-red-400'
-                        : isShockYear
-                        ? 'text-rose-700 dark:text-rose-300 font-extrabold'
-                        : 'text-slate-900 dark:text-white'
-                    }`}>
-                      {formatCur(row.totalNetWorth)}
-                    </td>
-
-                    {/* Baseline Delta */}
-                    <td className={`py-2 px-3 text-right tabular-nums text-[10.5px] ${
-                      nwDelta < -100
-                        ? 'text-rose-600 dark:text-rose-400 font-semibold'
-                        : nwDelta > 100
-                        ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
-                        : 'text-slate-400 dark:text-slate-500'
-                    }`}>
-                      {nwDelta === 0 ? '-' : `${nwDelta > 0 ? '+' : ''}${formatCur(nwDelta)}`}
-                    </td>
-
-                    {/* Investment Growth */}
-                    <td className={`py-2 px-3 text-right tabular-nums ${
-                      row.totalInvestmentGrowth < 0
-                        ? 'text-rose-600 dark:text-rose-400 font-bold'
-                        : row.totalInvestmentGrowth > 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-slate-400'
-                    }`}>
-                      {row.totalInvestmentGrowth === 0 ? '-' : `${row.totalInvestmentGrowth > 0 ? '+' : ''}${formatCur(row.totalInvestmentGrowth)}`}
-                    </td>
-
-                    {/* Account Balances (if active view) */}
-                    {(columnCategory === 'all' || columnCategory === 'accounts') && (
-                      <>
-                        <td className="py-2 px-3 text-right tabular-nums text-slate-700 dark:text-slate-300">
-                          {formatCur(row.rrspBalance + row.rrifBalance)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-emerald-700 dark:text-emerald-400">
-                          {formatCur(row.tfsaBalance)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-teal-700 dark:text-teal-400">
-                          {formatCur(row.fhsaBalance)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
-                          {formatCur(row.nonRegBalance)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-orange-600 dark:text-orange-400">
-                          {formatCur(row.homeEquity)}
-                        </td>
-                      </>
-                    )}
-
-                    {/* Cash Flow (if active view) */}
-                    {(columnCategory === 'all' || columnCategory === 'cashflow' || columnCategory === 'executive') && (
-                      <>
-                        <td className="py-2 px-3 text-right tabular-nums text-slate-800 dark:text-slate-200">
-                          {formatCur(row.targetSpendingNominal)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-indigo-700 dark:text-indigo-400">
-                          {formatCur(row.cppIncome + row.oasNetIncome)}
-                        </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-amber-700 dark:text-amber-400">
-                          {formatCur(row.totalWithdrawals)}
-                        </td>
-                      </>
-                    )}
-
-                    {/* Taxes (if active view) */}
-                    {(columnCategory === 'all' || columnCategory === 'tax') && (
-                      <>
-                        <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                          {formatCur(row.totalTaxPaid)}
-                        </td>
-                        {taxRateMode === 'effective' && (
-                          <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
-                            {row.effectiveTaxRate.toFixed(1)}%
-                          </td>
-                        )}
-                        {taxRateMode === 'marginal' && (
-                          <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
-                            {row.marginalTaxRate.toFixed(1)}%
-                          </td>
-                        )}
-                        {taxRateMode === 'both' && (
-                          <>
-                            <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
-                              {row.effectiveTaxRate.toFixed(1)}%
-                            </td>
-                            <td className="py-2 px-3 text-right tabular-nums text-slate-600 dark:text-slate-400">
-                              {row.marginalTaxRate.toFixed(1)}%
-                            </td>
-                          </>
-                        )}
-                        <td className={`py-2 px-3 text-right tabular-nums ${row.oasClawback > 0 ? 'text-rose-600 font-semibold' : 'text-slate-400'}`}>
-                          {row.oasClawback > 0 ? formatCur(row.oasClawback) : '-'}
-                        </td>
-                      </>
-                    )}
-
-                    {/* Solvency Status */}
-                    <td className="py-2 px-3 text-center font-sans">
-                      {row.totalNetWorth > 0 ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>Solvent</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded">
-                          <AlertTriangle className="w-3 h-3 text-rose-600" />
-                          <span>Shortfall</span>
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actuarial Notes */}
-                    <td className="py-2 px-3 text-slate-500 dark:text-slate-400 font-sans text-[11px] truncate max-w-[280px]">
-                      {isShockYear ? (
-                        <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                          💥 {scenarioDef.name} shock executed (-{shockDropPercent}% portfolio drop)
-                        </span>
-                      ) : row.notes.length > 0 ? (
-                        <span>{row.notes[0]}</span>
-                      ) : (
-                        <span className="text-slate-400">Normal decumulation & compounding</span>
-                      )}
-                    </td>
-
-                    {/* Inspect Button */}
-                    <td className="py-2 px-3 text-center">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedYearModal(row);
-                        }}
-                        className="p-1 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 transition"
-                        title={`Inspect Age ${row.age} mathematical formulas and account breakdown`}
-                      >
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
+                    row={row}
+                    shockAge={shockAge}
+                    shockDropPercent={shockDropPercent}
+                    scenarioName={scenarioDef.name}
+                    depletionAge={depletionAge}
+                    retirementAge={retirementAge}
+                    isHighlighted={highlightedAge === row.age}
+                    baselineNetWorth={baselineNetWorth}
+                    columnCategory={columnCategory}
+                    taxRateMode={taxRateMode}
+                    onSelectRow={handleSelectRow}
+                  />
                 );
               })}
             </tbody>
@@ -1315,7 +1445,7 @@ const StressScenarioLedgerComponent: React.FC<StressScenarioLedgerProps> = (prop
 
                 {/* Baseline Comparison Callout */}
                 {(() => {
-                  const bRow = baselineResults.find((b) => b.age === selectedYearModal.age);
+                  const bRow = baselineByAge.get(selectedYearModal.age);
                   const bNw = bRow ? bRow.totalNetWorth : selectedYearModal.totalNetWorth;
                   const delta = selectedYearModal.totalNetWorth - bNw;
                   return (

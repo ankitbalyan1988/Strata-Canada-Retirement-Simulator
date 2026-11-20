@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { YearSimulationResult, RetirementInputs } from '../types/retirement';
 import { 
   Table, 
@@ -21,8 +21,8 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import { exportCashFlowLedgerToExcel } from '../utils/excelExport';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
 
 export interface CashFlowLedgerTableProps {
   yearlyResults?: YearSimulationResult[];
@@ -30,6 +30,227 @@ export interface CashFlowLedgerTableProps {
 }
 
 type FilterMode = 'all' | 'working' | 'retirement' | 'milestones';
+
+const SEARCH_DEBOUNCE_MS = 140;
+
+const formatCur = (val: number | undefined, allowZeroDash = true) => {
+  if (val === undefined || isNaN(val)) return '-';
+  const rounded = Math.round(val);
+  if (rounded === 0 && allowZeroDash) return '-';
+  return `$${rounded.toLocaleString()}`;
+};
+
+interface CashFlowLedgerRowProps {
+  yr: YearSimulationResult;
+  idx: number;
+  isRetirementRow: boolean;
+  isHighlighted: boolean;
+  onMouseEnterAge: (age: number) => void;
+  onMouseLeave: () => void;
+}
+
+const CashFlowLedgerRow: React.FC<CashFlowLedgerRowProps> = React.memo(({
+  yr,
+  idx,
+  isRetirementRow,
+  isHighlighted,
+  onMouseEnterAge,
+  onMouseLeave
+}) => {
+  const earnedIncome = yr.employmentIncome || 0;
+  const pensions = (yr.cppIncome || 0) + (yr.oasNetIncome || 0);
+  const withdrawals = yr.totalWithdrawals || 0;
+  const totalInflow = earnedIncome + pensions + withdrawals;
+  const rentMortgage = yr.rentOrMortgagePayment ?? 0;
+  const livingExpenses = yr.livingExpensesNominal ?? Math.max(0, (yr.targetSpendingNominal || 0) - rentMortgage);
+  const debt = yr.debtPayment || 0;
+  const totalOutflow = livingExpenses + rentMortgage + debt;
+  const taxes = yr.totalTaxPaid || 0;
+  const savings = (yr.rrspContribution || 0) + (yr.tfsaContribution || 0) + (yr.fhsaContribution || 0) + (yr.nonRegContribution || 0);
+  const netSurplus = yr.netSpendableCashflow !== undefined ? yr.netSpendableCashflow : (totalInflow - totalOutflow - taxes);
+  const discrScaled = !yr.isRetired && yr.discretionaryScaleFactor !== undefined && yr.discretionaryScaleFactor < 0.99;
+  const discrCutPct = discrScaled ? Math.round((1 - yr.discretionaryScaleFactor!) * 100) : 0;
+
+  return (
+    <tr
+      onMouseEnter={() => onMouseEnterAge(yr.age)}
+      onMouseLeave={onMouseLeave}
+      className={`transition-colors ${
+        isRetirementRow
+          ? 'bg-amber-50/70 dark:bg-amber-950/35 border-y-2 border-amber-300/80 dark:border-amber-600/60 font-medium'
+          : isHighlighted
+          ? 'bg-slate-50/90 dark:bg-slate-800/80'
+          : idx % 2 === 0
+          ? 'bg-white dark:bg-slate-900'
+          : 'bg-slate-50/40 dark:bg-slate-900/60'
+      }`}
+    >
+      {/* Age */}
+      <td className="py-2 px-3 text-center font-bold text-slate-900 dark:text-white">
+        <div className="flex items-center justify-center gap-1">
+          <span>{yr.age}</span>
+          {isRetirementRow && (
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-2xs">
+              RETIRE
+            </span>
+          )}
+        </div>
+      </td>
+
+      {/* Year */}
+      <td className="py-2 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+        {yr.year}
+      </td>
+
+      {/* Phase */}
+      <td className="py-2 px-3 text-center border-r border-slate-100 dark:border-slate-800">
+        <span
+          className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
+            yr.isRetired
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
+              : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60'
+          }`}
+        >
+          {yr.isRetired ? 'Retirement' : 'Working'}
+        </span>
+      </td>
+
+      {/* Salary */}
+      <td className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200">
+        {formatCur(earnedIncome)}
+      </td>
+
+      {/* CPP & OAS */}
+      <td className="py-2 px-3 text-right font-medium text-indigo-700 dark:text-indigo-400">
+        {formatCur(pensions)}
+      </td>
+
+      {/* Withdrawals */}
+      <td className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200">
+        {formatCur(withdrawals)}
+      </td>
+
+      {/* Total Inflow */}
+      <td className="py-2 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/25 border-r border-slate-100 dark:border-slate-800">
+        {formatCur(totalInflow, false)}
+      </td>
+
+      {/* Living Expenses */}
+      <td
+        className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200"
+        title={
+          discrScaled
+            ? `Discretionary living costs scaled down ${discrCutPct}% with lower income (utilities & ownership fees fixed at 100%)`
+            : 'Utilities, discretionary spending, property tax & condo fees'
+        }
+      >
+        <span>{formatCur(livingExpenses)}</span>
+        {discrScaled && discrCutPct > 0 && (
+          <span className="ml-1 text-[9px] font-bold px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
+            -{discrCutPct}%
+          </span>
+        )}
+      </td>
+
+      {/* Rent / Mortgage */}
+      <td
+        className="py-2 px-3 text-right font-medium text-blue-700 dark:text-blue-400"
+        title={
+          yr.housingCostType === 'mortgage'
+            ? 'Annual fixed mortgage principal & interest payments'
+            : yr.housingCostType === 'rent'
+            ? 'Annual residential rent (inflation-adjusted)'
+            : 'Mortgage-free / $0 housing payment'
+        }
+      >
+        <div className="inline-flex items-center justify-end gap-1">
+          {rentMortgage > 0 && yr.housingCostType && yr.housingCostType !== 'none' && (
+            <span
+              className={`text-[9px] font-bold uppercase px-1 py-0.2 rounded ${
+                yr.housingCostType === 'mortgage'
+                  ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700'
+              }`}
+            >
+              {yr.housingCostType === 'mortgage' ? 'Mort' : 'Rent'}
+            </span>
+          )}
+          <span>{formatCur(rentMortgage)}</span>
+        </div>
+      </td>
+
+      {/* Debts */}
+      <td className="py-2 px-3 text-right font-medium text-orange-700 dark:text-orange-400">
+        {formatCur(debt)}
+      </td>
+
+      {/* Total Outflow */}
+      <td className="py-2 px-3 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/25 border-r border-slate-100 dark:border-slate-800">
+        {formatCur(totalOutflow, false)}
+      </td>
+
+      {/* CRA Tax Paid */}
+      <td className="py-2 px-3 text-right font-bold text-purple-700 dark:text-purple-400">
+        {formatCur(taxes)}
+      </td>
+
+      {/* Effective Tax % */}
+      <td className="py-2 px-2.5 text-center text-slate-600 dark:text-slate-400 font-mono text-[11px]">
+        {yr.effectiveTaxRate ? `${(yr.effectiveTaxRate * 100).toFixed(1)}%` : '0.0%'}
+      </td>
+
+      {/* Marginal Tax % */}
+      <td className="py-2 px-2.5 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px] border-r border-slate-100 dark:border-slate-800">
+        {yr.marginalTaxRate ? `${(yr.marginalTaxRate * 100).toFixed(1)}%` : '0.0%'}
+      </td>
+
+      {/* Savings */}
+      <td
+        className="py-2 px-3 text-right font-medium text-teal-700 dark:text-teal-400 border-r border-slate-100 dark:border-slate-800"
+        title={
+          yr.surplusSaved && yr.surplusSaved > 0
+            ? `RRSP: ${formatCur(yr.rrspContribution, false)} | TFSA: ${formatCur(yr.tfsaContribution, false)} | FHSA: ${formatCur(yr.fhsaContribution, false)} | Non-Reg: ${formatCur(yr.nonRegContribution, false)} (includes ${formatCur(yr.surplusSaved, false)} surplus swept to savings)`
+            : `RRSP: ${formatCur(yr.rrspContribution, false)} | TFSA: ${formatCur(yr.tfsaContribution, false)} | FHSA: ${formatCur(yr.fhsaContribution, false)} | Non-Reg: ${formatCur(yr.nonRegContribution, false)}`
+        }
+      >
+        {formatCur(savings)}
+      </td>
+
+      {/* Net Spendable Surplus */}
+      <td className={`py-2 px-3 text-right font-bold border-r border-slate-100 dark:border-slate-800 ${
+        netSurplus >= 0
+          ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/30'
+          : 'text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/30'
+      }`}>
+        {formatCur(netSurplus, false)}
+      </td>
+
+      {/* Strategic Notes & Badges */}
+      <td className="py-2 px-4 text-left">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {yr.milestoneBadges?.map((b, bIdx) => (
+            <span
+              key={bIdx}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-700/60 shadow-2xs"
+            >
+              {b.shortLabel || b.label}
+            </span>
+          ))}
+          {yr.notes && yr.notes.length > 0 && (
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate max-w-[280px]" title={yr.notes.join(' • ')}>
+              {yr.notes[0]}
+            </span>
+          )}
+          {(!yr.milestoneBadges || yr.milestoneBadges.length === 0) && (!yr.notes || yr.notes.length === 0) && (
+            <span className="text-slate-300 dark:text-slate-600">-</span>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
+CashFlowLedgerRow.displayName = 'CashFlowLedgerRow';
 
 export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.memo(({
   yearlyResults: propYearlyResults,
@@ -44,12 +265,57 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
   const province = propInputs?.province ?? storeProvince;
 
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [hasSearchText, setHasSearchText] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightedAge, setHighlightedAge] = useState<number | null>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setHasSearchText((prev) => (prev === Boolean(val) ? prev : Boolean(val)));
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (!val) {
+      setDebouncedSearchTerm('');
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(val);
+    }, SEARCH_DEBOUNCE_MS);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (searchInputRef.current) {
+      searchInputRef.current.value = '';
+    }
+    setHasSearchText(false);
+    setDebouncedSearchTerm('');
+  }, []);
+
+  const handleRowMouseEnter = useCallback((age: number) => {
+    setHighlightedAge(age);
+  }, []);
+
+  const handleRowMouseLeave = useCallback(() => {
+    setHighlightedAge(null);
+  }, []);
 
   // Handle escape key to exit fullscreen
   useEffect(() => {
@@ -62,20 +328,29 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
 
-  // Format currency
-  const formatCur = (val: number | undefined, allowZeroDash = true) => {
-    if (val === undefined || isNaN(val)) return '-';
-    const rounded = Math.round(val);
-    if (rounded === 0 && allowZeroDash) return '-';
-    return `$${rounded.toLocaleString()}`;
-  };
+  // Memoized phase counts for filter tabs
+  const phaseCounts = useMemo(() => {
+    let working = 0;
+    let retirement = 0;
+    for (const y of yearlyResults) {
+      if (y.isRetired) {
+        retirement++;
+      } else {
+        working++;
+      }
+    }
+    return { working, retirement };
+  }, [yearlyResults]);
 
   // Filtered dataset
   const filteredData = useMemo(() => {
+    const query = debouncedSearchTerm.trim().toLowerCase();
+    const firstAge = yearlyResults[0]?.age;
+    const lastAge = yearlyResults[yearlyResults.length - 1]?.age;
+
     return yearlyResults.filter((yr) => {
       // Search query filter
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
+      if (query) {
         const matchAge = String(yr.age).includes(query);
         const matchYear = String(yr.year).includes(query);
         const matchNotes = yr.notes?.some((n) => n.toLowerCase().includes(query));
@@ -94,9 +369,9 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
         return yr.isRetired;
       }
       if (filterMode === 'milestones') {
-        const isStart = yr.age === yearlyResults[0]?.age;
+        const isStart = yr.age === firstAge;
         const isRetire = yr.age === retirementAge;
-        const isEnd = yr.age === yearlyResults[yearlyResults.length - 1]?.age;
+        const isEnd = yr.age === lastAge;
         const hasBadges = Boolean(yr.milestoneBadges && yr.milestoneBadges.length > 0);
         const hasSignificantNotes = Boolean(yr.notes && yr.notes.length > 0);
         const isCrossover = Boolean(yr.isCrossoverMilestone);
@@ -108,7 +383,7 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
 
       return true;
     });
-  }, [yearlyResults, filterMode, searchTerm, retirementAge]);
+  }, [yearlyResults, filterMode, debouncedSearchTerm, retirementAge]);
 
   // Totals calculations for filtered view
   const summaryTotals = useMemo(() => {
@@ -171,18 +446,28 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
   }, [filteredData]);
 
   // Handle Export to Excel
-  const handleExportExcel = async () => {
+  const handleExportExcel = useCallback(async () => {
     if (isExporting) return;
     try {
       setIsExporting(true);
       const resolvedInputs = propInputs ?? useSimulationStore.getState().inputs;
-      await exportCashFlowLedgerToExcel({
-        data: yearlyResults,
-        filterMode,
-        retirementAge,
-        province,
-        inputs: resolvedInputs
-      });
+      await runWithExcelExportOverlay(
+        {
+          title: 'Exporting Cash Flow & Tax Ledger',
+          processingSubtitle:
+            'Formatting annual inflows, living outflows, CRA tax schedules, and net surplus formulas...',
+          successMessage: 'Your Annual Cash Flow & Tax Ledger (.xlsx) has started downloading.'
+        },
+        async ({ exportCashFlowLedgerToExcel }) => {
+          await exportCashFlowLedgerToExcel({
+            data: yearlyResults,
+            filterMode,
+            retirementAge,
+            province,
+            inputs: resolvedInputs
+          });
+        }
+      );
       setExportSuccess(true);
       setTimeout(() => setExportSuccess(false), 3000);
     } catch (err) {
@@ -190,7 +475,7 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [isExporting, propInputs, yearlyResults, filterMode, retirementAge, province]);
 
   return (
     <div
@@ -297,7 +582,7 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Working Phase ({yearlyResults.filter((y) => !y.isRetired).length})
+            Working Phase ({phaseCounts.working})
           </button>
           <button
             type="button"
@@ -308,7 +593,7 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Retirement ({yearlyResults.filter((y) => y.isRetired).length})
+            Retirement ({phaseCounts.retirement})
           </button>
           <button
             type="button"
@@ -327,16 +612,17 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
         <div className="relative w-full sm:w-64">
           <Search className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
+            ref={searchInputRef}
             type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            defaultValue=""
+            onChange={handleSearchChange}
             placeholder="Search age, year, note..."
             className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:focus:border-indigo-400 transition-all"
           />
-          {searchTerm && (
+          {hasSearchText && (
             <button
               type="button"
-              onClick={() => setSearchTerm('')}
+              onClick={clearSearch}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-pointer"
             >
               ×
@@ -428,7 +714,7 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
                       type="button"
                       onClick={() => {
                         setFilterMode('all');
-                        setSearchTerm('');
+                        clearSearch();
                       }}
                       className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-semibold cursor-pointer underline"
                     >
@@ -438,202 +724,17 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
                 </td>
               </tr>
             ) : (
-              filteredData.map((yr, idx) => {
-                const isRetirementRow = yr.age === retirementAge;
-                const isHighlighted = highlightedAge === yr.age;
-                const earnedIncome = yr.employmentIncome || 0;
-                const pensions = (yr.cppIncome || 0) + (yr.oasNetIncome || 0);
-                const withdrawals = yr.totalWithdrawals || 0;
-                const totalInflow = earnedIncome + pensions + withdrawals;
-                const rentMortgage = yr.rentOrMortgagePayment ?? 0;
-                const livingExpenses = yr.livingExpensesNominal ?? Math.max(0, (yr.targetSpendingNominal || 0) - rentMortgage);
-                const debt = yr.debtPayment || 0;
-                const totalOutflow = livingExpenses + rentMortgage + debt;
-                const taxes = yr.totalTaxPaid || 0;
-                const savings = (yr.rrspContribution || 0) + (yr.tfsaContribution || 0) + (yr.fhsaContribution || 0) + (yr.nonRegContribution || 0);
-                const netSurplus = yr.netSpendableCashflow !== undefined ? yr.netSpendableCashflow : (totalInflow - totalOutflow - taxes);
-                const discrScaled = !yr.isRetired && yr.discretionaryScaleFactor !== undefined && yr.discretionaryScaleFactor < 0.99;
-                const discrCutPct = discrScaled ? Math.round((1 - yr.discretionaryScaleFactor!) * 100) : 0;
-
-                return (
-                  <tr
-                    key={yr.age}
-                    onMouseEnter={() => setHighlightedAge(yr.age)}
-                    onMouseLeave={() => setHighlightedAge(null)}
-                    className={`transition-colors ${
-                      isRetirementRow
-                        ? 'bg-amber-50/70 dark:bg-amber-950/35 border-y-2 border-amber-300/80 dark:border-amber-600/60 font-medium'
-                        : isHighlighted
-                        ? 'bg-slate-50/90 dark:bg-slate-800/80'
-                        : idx % 2 === 0
-                        ? 'bg-white dark:bg-slate-900'
-                        : 'bg-slate-50/40 dark:bg-slate-900/60'
-                    }`}
-                  >
-                    {/* Age */}
-                    <td className="py-2 px-3 text-center font-bold text-slate-900 dark:text-white">
-                      <div className="flex items-center justify-center gap-1">
-                        <span>{yr.age}</span>
-                        {isRetirementRow && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-amber-500 text-white shadow-2xs">
-                            RETIRE
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Year */}
-                    <td className="py-2 px-3 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                      {yr.year}
-                    </td>
-
-                    {/* Phase */}
-                    <td className="py-2 px-3 text-center border-r border-slate-100 dark:border-slate-800">
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide ${
-                          yr.isRetired
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
-                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60'
-                        }`}
-                      >
-                        {yr.isRetired ? 'Retirement' : 'Working'}
-                      </span>
-                    </td>
-
-                    {/* Salary */}
-                    <td className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200">
-                      {formatCur(earnedIncome)}
-                    </td>
-
-                    {/* CPP & OAS */}
-                    <td className="py-2 px-3 text-right font-medium text-indigo-700 dark:text-indigo-400">
-                      {formatCur(pensions)}
-                    </td>
-
-                    {/* Withdrawals */}
-                    <td className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200">
-                      {formatCur(withdrawals)}
-                    </td>
-
-                    {/* Total Inflow */}
-                    <td className="py-2 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/25 border-r border-slate-100 dark:border-slate-800">
-                      {formatCur(totalInflow, false)}
-                    </td>
-
-                    {/* Living Expenses */}
-                    <td
-                      className="py-2 px-3 text-right font-medium text-slate-800 dark:text-slate-200"
-                      title={
-                        discrScaled
-                          ? `Discretionary living costs scaled down ${discrCutPct}% with lower income (utilities & ownership fees fixed at 100%)`
-                          : 'Utilities, discretionary spending, property tax & condo fees'
-                      }
-                    >
-                      <span>{formatCur(livingExpenses)}</span>
-                      {discrScaled && discrCutPct > 0 && (
-                        <span className="ml-1 text-[9px] font-bold px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300">
-                          -{discrCutPct}%
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Rent / Mortgage */}
-                    <td
-                      className="py-2 px-3 text-right font-medium text-blue-700 dark:text-blue-400"
-                      title={
-                        yr.housingCostType === 'mortgage'
-                          ? 'Annual fixed mortgage principal & interest payments'
-                          : yr.housingCostType === 'rent'
-                          ? 'Annual residential rent (inflation-adjusted)'
-                          : 'Mortgage-free / $0 housing payment'
-                      }
-                    >
-                      <div className="inline-flex items-center justify-end gap-1">
-                        {rentMortgage > 0 && yr.housingCostType && yr.housingCostType !== 'none' && (
-                          <span
-                            className={`text-[9px] font-bold uppercase px-1 py-0.2 rounded ${
-                              yr.housingCostType === 'mortgage'
-                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/70 dark:border-blue-800/60'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200/70 dark:border-slate-700'
-                            }`}
-                          >
-                            {yr.housingCostType === 'mortgage' ? 'Mort' : 'Rent'}
-                          </span>
-                        )}
-                        <span>{formatCur(rentMortgage)}</span>
-                      </div>
-                    </td>
-
-                    {/* Debts */}
-                    <td className="py-2 px-3 text-right font-medium text-orange-700 dark:text-orange-400">
-                      {formatCur(debt)}
-                    </td>
-
-                    {/* Total Outflow */}
-                    <td className="py-2 px-3 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/25 border-r border-slate-100 dark:border-slate-800">
-                      {formatCur(totalOutflow, false)}
-                    </td>
-
-                    {/* CRA Tax Paid */}
-                    <td className="py-2 px-3 text-right font-bold text-purple-700 dark:text-purple-400">
-                      {formatCur(taxes)}
-                    </td>
-
-                    {/* Effective Tax % */}
-                    <td className="py-2 px-2.5 text-center text-slate-600 dark:text-slate-400 font-mono text-[11px]">
-                      {yr.effectiveTaxRate ? `${(yr.effectiveTaxRate * 100).toFixed(1)}%` : '0.0%'}
-                    </td>
-
-                    {/* Marginal Tax % */}
-                    <td className="py-2 px-2.5 text-center text-slate-500 dark:text-slate-400 font-mono text-[11px] border-r border-slate-100 dark:border-slate-800">
-                      {yr.marginalTaxRate ? `${(yr.marginalTaxRate * 100).toFixed(1)}%` : '0.0%'}
-                    </td>
-
-                    {/* Savings */}
-                    <td
-                      className="py-2 px-3 text-right font-medium text-teal-700 dark:text-teal-400 border-r border-slate-100 dark:border-slate-800"
-                      title={
-                        yr.surplusSaved && yr.surplusSaved > 0
-                          ? `RRSP: ${formatCur(yr.rrspContribution, false)} | TFSA: ${formatCur(yr.tfsaContribution, false)} | FHSA: ${formatCur(yr.fhsaContribution, false)} | Non-Reg: ${formatCur(yr.nonRegContribution, false)} (includes ${formatCur(yr.surplusSaved, false)} surplus swept to savings)`
-                          : `RRSP: ${formatCur(yr.rrspContribution, false)} | TFSA: ${formatCur(yr.tfsaContribution, false)} | FHSA: ${formatCur(yr.fhsaContribution, false)} | Non-Reg: ${formatCur(yr.nonRegContribution, false)}`
-                      }
-                    >
-                      {formatCur(savings)}
-                    </td>
-
-                    {/* Net Spendable Surplus */}
-                    <td className={`py-2 px-3 text-right font-bold border-r border-slate-100 dark:border-slate-800 ${
-                      netSurplus >= 0
-                        ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/30'
-                        : 'text-rose-700 dark:text-rose-400 bg-rose-50/40 dark:bg-rose-950/30'
-                    }`}>
-                      {formatCur(netSurplus, false)}
-                    </td>
-
-                    {/* Strategic Notes & Badges */}
-                    <td className="py-2 px-4 text-left">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {yr.milestoneBadges?.map((b, bIdx) => (
-                          <span
-                            key={bIdx}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-700/60 shadow-2xs"
-                          >
-                            {b.shortLabel || b.label}
-                          </span>
-                        ))}
-                        {yr.notes && yr.notes.length > 0 && (
-                          <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate max-w-[280px]" title={yr.notes.join(' • ')}>
-                            {yr.notes[0]}
-                          </span>
-                        )}
-                        {(!yr.milestoneBadges || yr.milestoneBadges.length === 0) && (!yr.notes || yr.notes.length === 0) && (
-                          <span className="text-slate-300 dark:text-slate-600">-</span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+              filteredData.map((yr, idx) => (
+                <CashFlowLedgerRow
+                  key={yr.age}
+                  yr={yr}
+                  idx={idx}
+                  isRetirementRow={yr.age === retirementAge}
+                  isHighlighted={highlightedAge === yr.age}
+                  onMouseEnterAge={handleRowMouseEnter}
+                  onMouseLeave={handleRowMouseLeave}
+                />
+              ))
             )}
           </tbody>
 
