@@ -21,14 +21,15 @@ import {
   Moon, 
   RotateCcw, 
   X,
-  Command,
   Monitor,
   Apple,
-  Keyboard
+  Keyboard,
+  Target
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab } from '../store/useSimulationStore';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
 import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
+import { AppIcon } from './AppIcon';
 
 export interface PaletteCommand {
   id: string;
@@ -129,6 +130,22 @@ export const CommandPaletteModal: React.FC = () => {
         }
       },
       {
+        id: 'tab_readiness',
+        title: 'Retirement Readiness Check',
+        subtitle: 'Retirement progress today & Monte Carlo suggested retirement age optimizer',
+        category: 'Dashboard Tabs',
+        icon: Target,
+        iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+        iconColor: 'text-emerald-600 dark:text-emerald-400',
+        shortcutMac: '⌘4',
+        shortcutWin: 'Ctrl+4',
+        keywords: ['readiness', 'progress', 'suggested retirement age', 'optimizer', 'monte carlo', 'check'],
+        action: () => {
+          setActiveView('dashboard');
+          setActiveDashboardTab('readiness');
+        }
+      },
+      {
         id: 'tab_stresstest',
         title: 'Plan Stress Test',
         subtitle: 'Economic resilience, market crashes, inflation spikes & sequence risk',
@@ -136,8 +153,8 @@ export const CommandPaletteModal: React.FC = () => {
         icon: ShieldAlert,
         iconBg: 'bg-rose-50 dark:bg-rose-950/60',
         iconColor: 'text-rose-600 dark:text-rose-400',
-        shortcutMac: '⌘4',
-        shortcutWin: 'Ctrl+4',
+        shortcutMac: '⌘5',
+        shortcutWin: 'Ctrl+5',
         keywords: ['crash', '1970', 'stagflation', 'dot-com', '2008', 'gfc', 'sequence', 'resilience'],
         action: () => {
           setActiveView('dashboard');
@@ -152,8 +169,8 @@ export const CommandPaletteModal: React.FC = () => {
         icon: Sliders,
         iconBg: 'bg-purple-50 dark:bg-purple-950/60',
         iconColor: 'text-purple-600 dark:text-purple-400',
-        shortcutMac: '⌘5',
-        shortcutWin: 'Ctrl+5',
+        shortcutMac: '⌘6',
+        shortcutWin: 'Ctrl+6',
         keywords: ['sensitivity', 'slider', 'returns', 'inflation', 'appreciation', 'scenarios'],
         action: () => {
           setActiveView('dashboard');
@@ -495,9 +512,7 @@ export const CommandPaletteModal: React.FC = () => {
       >
         {/* Search Header Bar */}
         <div className="relative flex items-center px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 gap-3">
-          <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 shrink-0">
-            <Command className="w-5 h-5" />
-          </div>
+          <AppIcon size="sm" alt="Strata" />
 
           <input
             ref={inputRef}

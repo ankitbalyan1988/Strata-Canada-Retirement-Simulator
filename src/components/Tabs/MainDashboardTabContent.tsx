@@ -5,7 +5,6 @@ import { RetirementMilestoneTimeline } from '../RetirementMilestoneTimeline';
 import { RetirementScorecard } from '../RetirementScorecard';
 import { SavingsRateIndicator } from '../SavingsRateIndicator';
 import { ModuleLoadingFallback } from '../ModuleLoadingFallback';
-import { RetirementProgress } from '../RetirementProgress';
 import { HeroRetirementSlider } from '../HeroRetirementSlider';
 import { SavingsPulse } from '../SavingsPulse';
 import { NetWorthChart } from '../Charts/NetWorthChart';
@@ -15,8 +14,8 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const RetirementAgeOptimizer = React.lazy(() =>
-  import('../RetirementAgeOptimizer').then((m) => ({ default: m.RetirementAgeOptimizer }))
+const NetWorthOverTimeVisualizer = React.lazy(() =>
+  import('../Charts/NetWorthOverTimeVisualizer').then((m) => ({ default: m.NetWorthOverTimeVisualizer }))
 );
 
 export const MainDashboardTabContent: React.FC = () => {
@@ -36,26 +35,10 @@ export const MainDashboardTabContent: React.FC = () => {
       {/* 1b. Savings Rate Indicator benchmarked against Canadian retirement guidelines */}
       <SavingsRateIndicator />
 
-      {/* 1c. Monte Carlo Retirement Age Optimizer (Lazy Loaded) */}
-      <Suspense
-        fallback={
-          <ModuleLoadingFallback
-            moduleName="Retirement Age Optimizer"
-            subtitle="Loading Monte Carlo stochastic simulation engine and interactive probability charts..."
-            themeColor="emerald"
-          />
-        }
-      >
-        <RetirementAgeOptimizer />
-      </Suspense>
-
-      {/* 2. Retirement Progress Circular Gauge & Real-time Readiness Today */}
-      <RetirementProgress />
-
-      {/* 3. Hero Interactive Retirement Age Simulator */}
+      {/* 2. Hero Interactive Retirement Age Simulator */}
       <HeroRetirementSlider />
 
-      {/* 4. Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
+      {/* 3. Savings Pulse: Live Monthly Goal Pacing & Trajectory Comparison */}
       <SavingsPulse />
 
       {/* Section Divider & Header for Dedicated Visual Portlets */}
@@ -73,9 +56,23 @@ export const MainDashboardTabContent: React.FC = () => {
         </span>
       </div>
 
+      {/* Recharts Balance Sheet Visualizer: Assets vs. Liabilities Over Time (Lazy Loaded) */}
+      <Suspense
+        fallback={
+          <ModuleLoadingFallback
+            moduleName="Net Worth Over Time Visualizer"
+            subtitle="Loading interactive Recharts balance-sheet projection of assets versus liabilities..."
+            themeColor="emerald"
+          />
+        }
+      >
+        <NetWorthOverTimeVisualizer />
+      </Suspense>
+
       {/* Dedicated Portlet 1: Net Worth Trajectory */}
       <div className="flex flex-col gap-2">
         <NetWorthChart
+          sectionId="netWorthChart"
           yearlyResults={yearlyResults}
           retirementAge={retirementAge}
           showStressTestToggle={false}

@@ -60,6 +60,9 @@ export default defineConfig(() => {
               ) {
                 return 'vendor-pdf';
               }
+              if (normalizedId.includes('node_modules/pdfjs-dist/')) {
+                return 'vendor-pdfjs';
+              }
               if (normalizedId.includes('node_modules/canvas-confetti/')) {
                 return 'vendor-confetti';
               }

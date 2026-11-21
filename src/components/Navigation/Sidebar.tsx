@@ -34,7 +34,8 @@ import {
   ArrowRightLeft,
   HelpCircle,
   Command,
-  Loader2
+  Loader2,
+  Target
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab, InputTab } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -42,6 +43,7 @@ import { PROVINCIAL_BRACKETS } from '../../utils/canadianTax';
 import { CanadianProvince } from '../../types/retirement';
 import { isMacPlatform } from '../../utils/keyboardShortcuts';
 import { getDebtQualifierFlags } from '../../utils/debtCalculator';
+import { AppIcon } from '../AppIcon';
 
 export const Sidebar: React.FC = () => {
   const activeView = useSimulationStore((state) => state.activeView);
@@ -130,6 +132,7 @@ export const Sidebar: React.FC = () => {
     { id: 'dashboard', label: 'Main Dashboard', icon: LayoutDashboard, badge: 'KPIs' },
     { id: 'ledger', label: 'Simulation Ledger', icon: Calendar, badge: 'Annual' },
     { id: 'cashflows', label: 'Cash Flows', icon: ArrowRightLeft, badge: 'Flows' },
+    { id: 'readiness', label: 'Retirement Readiness Check', icon: Target, badge: `${Math.round(readinessScore)}%` },
     { id: 'stresstest', label: 'Plan Stress Test', icon: ShieldAlert, badge: isStressTestActive ? 'Active' : undefined },
     { id: 'whatif', label: 'What-If Analysis', icon: Sliders, badge: hasWhatIfActive ? 'Active' : undefined }
   ];
@@ -229,13 +232,9 @@ export const Sidebar: React.FC = () => {
             }`}
             title="Strata Canada — Canadian Wealth Intelligence"
           >
-            {/* Architectural Monogram Icon */}
-            <div className="relative flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 via-emerald-500 to-teal-500 text-white shadow-xs shadow-emerald-500/20 shrink-0 group-hover:scale-105 transition-transform">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M4 7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V7C20 8.10457 19.1046 9 18 9H6C4.89543 9 4 8.10457 4 7V7Z" fill="white" fillOpacity="0.95" />
-                <path d="M7 12C7 10.8954 7.89543 10 9 10H20C20 11.1046 19.1046 12 18 12H9C7.89543 12 7 11.1046 7 12V12Z" fill="white" fillOpacity="0.75" />
-                <path d="M4 17C4 15.8954 4.89543 15 6 15H17C18.1046 15 19 15.8954 19 17V17C19 18.1046 18.1046 19 17 19H6C4.89543 19 4 18.1046 4 17V17Z" fill="white" fillOpacity="0.95" />
-              </svg>
+            {/* Strata App Icon */}
+            <div className="relative shrink-0 group-hover:scale-105 transition-transform">
+              <AppIcon size="md" alt="Strata Canada" />
               <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full border-2 border-white dark:border-[#11141A]" />
             </div>
 

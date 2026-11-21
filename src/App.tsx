@@ -8,6 +8,7 @@ import { ToastBanner } from './components/ToastBanner';
 import { ExcelExportOverlay } from './components/ExcelExportOverlay';
 import { FocusModeHUD } from './components/FocusModeHUD';
 import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
+import { AppIcon } from './components/AppIcon';
 import { useSimulationStore } from './store/useSimulationStore';
 import { 
   Users,
@@ -30,6 +31,9 @@ const LedgerTabContent = React.lazy(() =>
 );
 const CashFlowTabContent = React.lazy(() =>
   import('./components/Tabs/CashFlowTabContent').then((m) => ({ default: m.CashFlowTabContent }))
+);
+const ReadinessCheckTabContent = React.lazy(() =>
+  import('./components/Tabs/ReadinessCheckTabContent').then((m) => ({ default: m.ReadinessCheckTabContent }))
 );
 const StressTestTabContent = React.lazy(() =>
   import('./components/Tabs/StressTestTabContent').then((m) => ({ default: m.StressTestTabContent }))
@@ -67,6 +71,9 @@ const CommandPaletteModal = React.lazy(() =>
 const SimulationHistoryPanel = React.lazy(() =>
   import('./components/SimulationHistoryPanel').then((m) => ({ default: m.SimulationHistoryPanel }))
 );
+const PdfPreviewModal = React.lazy(() =>
+  import('./components/PdfPreviewModal').then((m) => ({ default: m.PdfPreviewModal }))
+);
 import { useGlobalKeyboardShortcuts } from './hooks/useGlobalKeyboardShortcuts';
 import { useFocusModeNavigation } from './hooks/useFocusModeNavigation';
 
@@ -82,6 +89,7 @@ export default function App() {
   const isWealthGuideModalOpen = useSimulationStore((state) => state.isWealthGuideModalOpen);
   const isHelpGuideModalOpen = useSimulationStore((state) => state.isHelpGuideModalOpen);
   const isHistoryPanelOpen = useSimulationStore((state) => state.isHistoryPanelOpen);
+  const isPdfPreviewOpen = useSimulationStore((state) => Boolean(state.pdfPreview));
   const theme = useSimulationStore((state) => state.theme);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
   const resetToBlankCanvas = useSimulationStore((state) => state.resetToBlankCanvas);
@@ -146,7 +154,14 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 4: Plan Stress Test & Economic Resilience */}
+              {/* Tab 4: Retirement Readiness Check (Readiness Today + Suggested Retirement Age) */}
+              {activeDashboardTab === 'readiness' && (
+                <div role="tabpanel" id="dashboard-tabpanel-readiness" aria-labelledby="dashboard-tab-readiness" data-focus-zone="dashboard-content">
+                  <ReadinessCheckTabContent />
+                </div>
+              )}
+
+              {/* Tab 5: Plan Stress Test & Economic Resilience */}
               {activeDashboardTab === 'stresstest' && (
                 <div role="tabpanel" id="dashboard-tabpanel-stresstest" aria-labelledby="dashboard-tab-stresstest" data-focus-zone="dashboard-content">
                   <StressTestTabContent />
@@ -252,6 +267,11 @@ export default function App() {
           {isHistoryPanelOpen && <SimulationHistoryPanel />}
         </Suspense>
 
+        {/* Browser-Based Executive PDF Previewer Modal (Lazy Loaded) */}
+        <Suspense fallback={null}>
+          {isPdfPreviewOpen && <PdfPreviewModal />}
+        </Suspense>
+
         {/* Global Toast Notification Banner (Export start / completion) */}
         <ToastBanner />
 
@@ -265,13 +285,7 @@ export default function App() {
         <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-6 text-slate-500 dark:text-slate-400 text-xs transition-colors mt-auto">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 7H20V9H4V7Z" fill="white" />
-                  <path d="M7 12H20V14H7V12Z" fill="white" fillOpacity="0.8" />
-                  <path d="M4 17H18V19H4V17Z" fill="white" />
-                </svg>
-              </div>
+              <AppIcon size="xs" alt="Strata" />
               <span className="font-semibold text-slate-900 dark:text-white">Strata</span>
               <span>— Canadian Wealth & Retirement Intelligence</span>
             </div>

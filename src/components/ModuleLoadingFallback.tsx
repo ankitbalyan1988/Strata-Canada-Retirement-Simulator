@@ -1,5 +1,6 @@
 import React from 'react';
-import { Loader2, Landmark, Globe, Layers, Sparkles } from 'lucide-react';
+import { Loader2, Landmark, Globe } from 'lucide-react';
+import { AppIcon } from './AppIcon';
 
 export interface ModuleLoadingFallbackProps {
   moduleName?: string;
@@ -46,15 +47,17 @@ export const ModuleLoadingFallback: React.FC<ModuleLoadingFallbackProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text} ${theme.border} border shrink-0 flex items-center justify-center relative`}>
-              {icon === 'estate' ? (
-                <Landmark className="w-6 h-6 animate-pulse" />
-              ) : icon === 'expat' ? (
-                <Globe className="w-6 h-6 animate-pulse" />
-              ) : (
-                <Layers className="w-6 h-6 animate-pulse" />
-              )}
-            </div>
+            {icon === 'default' ? (
+              <AppIcon size="xl" alt="Strata" className="animate-pulse" />
+            ) : (
+              <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text} ${theme.border} border shrink-0 flex items-center justify-center relative`}>
+                {icon === 'estate' ? (
+                  <Landmark className="w-6 h-6 animate-pulse" />
+                ) : (
+                  <Globe className="w-6 h-6 animate-pulse" />
+                )}
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">

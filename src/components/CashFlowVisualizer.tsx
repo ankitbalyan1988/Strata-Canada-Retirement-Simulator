@@ -18,6 +18,7 @@ import {
   ArrowUpRight,
   ArrowDownRight
 } from 'lucide-react';
+import { SectionCollapseButton } from './SectionCollapseButton';
 
 export interface CashFlowVisualizerProps {
   yearlyResults?: YearSimulationResult[];
@@ -46,6 +47,9 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
   const retirementAge = propInputs?.retirementAge ?? storeMeta.retirementAge;
   const lifeExpectancy = propInputs?.lifeExpectancy ?? storeMeta.lifeExpectancy;
   const province = propInputs?.province ?? storeMeta.province;
+
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.cashFlowVisualizer));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [horizonFilter, setHorizonFilter] = useState<HorizonFilter>('all');
@@ -176,8 +180,10 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
           </div>
         </div>
 
-        {/* View Mode & Horizon Toggle Controls */}
+        {/* View Mode, Horizon Toggle Controls & Collapse Toggle */}
         <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
+          {!isCollapsed && (
+            <>
           {/* Horizon Filter (Working / Retirement / All) */}
           <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold">
             <button
@@ -262,8 +268,19 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
               Net Savings Surplus
             </button>
           </div>
+            </>
+          )}
+
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('cashFlowVisualizer')}
+            sectionLabel="Current & Projected Cash Flows"
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* 2. Executive KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -827,6 +844,8 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
     </div>

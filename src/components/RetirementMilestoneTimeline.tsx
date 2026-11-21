@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
+import { SectionCollapseButton } from './SectionCollapseButton';
 import { YearSimulationResult } from '../types/retirement';
 import { getEffectiveDebts, calculateDebtMonthlyPayment } from '../utils/debtCalculator';
 import { getActiveAdditionalProperties, calculateAdditionalPropertySummary } from '../utils/mortgage';
@@ -57,6 +58,8 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
   const inputs = useSimulationStore(useShallow((state) => state.inputs));
   const summary = useSimulationStore(useShallow((state) => state.summary));
   const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.milestoneTimeline));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const [activeCategory, setActiveCategory] = useState<MilestoneCategory>('all');
   const [openPopupAge, setOpenPopupAge] = useState<number | null>(null);
@@ -739,7 +742,11 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-5 sm:p-6 transition-colors duration-200">
       {/* 1. Header Bar: Title, Context Metrics, Category Segmented Control */}
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
+      <div
+        className={`flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 ${
+          isCollapsed ? '' : 'pb-5 border-b border-slate-100 dark:border-slate-800'
+        }`}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex items-start sm:items-center gap-2.5">
             <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100/60 dark:border-indigo-800/60 shadow-xs shrink-0">
@@ -766,54 +773,67 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* Category Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs w-full xl:w-auto xl:shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveCategory('all')}
-            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              activeCategory === 'all'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            All Milestones
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveCategory('pension')}
-            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              activeCategory === 'pension'
-                ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            Govt &amp; Pensions
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveCategory('cra_tax')}
-            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              activeCategory === 'cra_tax'
-                ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            CRA &amp; Tax Rules
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveCategory('wealth')}
-            className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
-              activeCategory === 'wealth'
-                ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs font-semibold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-            }`}
-          >
-            Wealth &amp; Freedom
-          </button>
+        {/* Category Filter Buttons & Collapse Toggle */}
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto xl:shrink-0 justify-between xl:justify-end">
+          {!isCollapsed && (
+            <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveCategory('all')}
+                className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeCategory === 'all'
+                    ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                All Milestones
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('pension')}
+                className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeCategory === 'pension'
+                    ? 'bg-white dark:bg-slate-900 text-blue-700 dark:text-blue-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                Govt &amp; Pensions
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('cra_tax')}
+                className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeCategory === 'cra_tax'
+                    ? 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                CRA &amp; Tax Rules
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory('wealth')}
+                className={`px-2.5 sm:px-3 py-1.5 font-medium rounded-lg transition-all whitespace-nowrap cursor-pointer ${
+                  activeCategory === 'wealth'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs font-semibold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                Wealth &amp; Freedom
+              </button>
+            </div>
+          )}
+
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('milestoneTimeline')}
+            sectionLabel="Interactive Retirement Roadmap & Milestones"
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* 2. Visual Horizontal Interactive Progress Bar & Phase Segments + Anchored Age Popups */}
       <div ref={timelineSectionRef} className="relative pt-6 pb-2">
@@ -1116,6 +1136,8 @@ export const RetirementMilestoneTimeline: React.FC = React.memo(() => {
           {filteredMilestones.length} {filteredMilestones.length === 1 ? 'milestone' : 'milestones'} displayed
         </span>
       </div>
+        </>
+      )}
     </div>
   );
 });

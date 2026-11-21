@@ -16,8 +16,10 @@ import { useSimulationStore } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
 import { WhatIfSensitivityPanel } from './WhatIfSensitivityPanel';
+import { SectionCollapseButton } from '../SectionCollapseButton';
 
 export interface NetWorthChartProps {
+  sectionId?: string;
   yearlyResults: YearSimulationResult[];
   stressYearlyResults?: YearSimulationResult[];
   retirementAge: number;
@@ -31,6 +33,7 @@ export interface NetWorthChartProps {
 }
 
 const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
+  sectionId = 'netWorthChart',
   yearlyResults,
   stressYearlyResults,
   retirementAge,
@@ -42,6 +45,8 @@ const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
   showWhatIfToggle = false,
   showWhatIfOverlayLine = false
 }) => {
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections[sectionId]));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [visibleAccounts, setVisibleAccounts] = useState({
     rrsp: true,
@@ -233,9 +238,10 @@ const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
           </p>
         </div>
 
-        {/* Controls: Stress Test Toggle & Account Toggles */}
+        {/* Controls: Stress Test Toggle, Account Toggles & Collapse Button */}
         <div className="flex items-center flex-wrap gap-2.5">
-          
+          {!isCollapsed && (
+            <>
           {/* MARKET STRESS TEST TOGGLE */}
           {showStressTestToggle && (
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 shadow-xs border border-slate-200 dark:border-slate-700/80 text-xs">
@@ -375,9 +381,19 @@ const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
               Real Estate
             </button>
           </div>
+            </>
+          )}
 
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse(sectionId)}
+            sectionLabel="Net Worth & Account Balances Chart"
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* WHAT-IF SENSITIVITY INTERACTIVE PANEL */}
       {showWhatIfToggle && whatIfSettings.isActive && whatIfResult && (
@@ -1205,6 +1221,8 @@ const NetWorthChartComponent: React.FC<NetWorthChartProps> = ({
           </div>
         )}
       </div>
+        </>
+      )}
 
     </div>
   );

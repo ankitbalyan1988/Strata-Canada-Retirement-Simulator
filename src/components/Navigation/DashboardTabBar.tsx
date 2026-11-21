@@ -8,7 +8,8 @@ import {
   Table,
   ShieldAlert,
   Sparkles,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Target
 } from 'lucide-react';
 
 interface TabItem {
@@ -43,6 +44,14 @@ const TABS: TabItem[] = [
     badge: 'Inflow, Outflow & Taxes',
     description: 'Year-by-year income, living expenses, potential savings & taxes',
     icon: ArrowRightLeft,
+    accentColor: 'emerald'
+  },
+  {
+    id: 'readiness',
+    title: 'Retirement Readiness Check',
+    badge: 'Readiness & Age Optimizer',
+    description: 'Retirement progress today & Monte Carlo suggested retirement age',
+    icon: Target,
     accentColor: 'emerald'
   },
   {

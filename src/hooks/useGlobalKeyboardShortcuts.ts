@@ -105,16 +105,24 @@ export function useGlobalKeyboardShortcuts() {
           return;
         }
 
-        // Tab 4: Plan Stress Test (Cmd+4 / Ctrl+4)
+        // Tab 4: Retirement Readiness Check (Cmd+4 / Ctrl+4)
         if (e.key === '4') {
+          e.preventDefault();
+          setActiveView('dashboard');
+          setActiveDashboardTab('readiness');
+          return;
+        }
+
+        // Tab 5: Plan Stress Test (Cmd+5 / Ctrl+5)
+        if (e.key === '5') {
           e.preventDefault();
           setActiveView('dashboard');
           setActiveDashboardTab('stresstest');
           return;
         }
 
-        // Tab 5: What-If Analysis (Cmd+5 / Ctrl+5)
-        if (e.key === '5') {
+        // Tab 6: What-If Analysis (Cmd+6 / Ctrl+6)
+        if (e.key === '6') {
           e.preventDefault();
           setActiveView('dashboard');
           setActiveDashboardTab('whatif');

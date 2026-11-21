@@ -51,7 +51,26 @@ export interface MasterExcelExportOptions {
   customStressAge?: number;
 }
 
+export type ExcelProgressLogger = (message: string) => Promise<void> | void;
+
+let activeExcelProgressLogger: ExcelProgressLogger | null = null;
+
+/**
+ * Registers a transient progress callback used by the global ExcelExportOverlay
+ * to display live granular steps during asynchronous workbook construction.
+ */
+export function setActiveExcelProgressLogger(logger: ExcelProgressLogger | null): void {
+  activeExcelProgressLogger = logger;
+}
+
+async function emitExcelProgress(message: string): Promise<void> {
+  if (activeExcelProgressLogger) {
+    await activeExcelProgressLogger(message);
+  }
+}
+
 export async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
+  await emitExcelProgress('Serializing .xlsx workbook archive...');
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -481,6 +500,7 @@ export function populateSimulationLedgerSheet(
 }
 
 export async function exportMilestoneTableToExcel(options: ExcelExportOptions): Promise<void> {
+  await emitExcelProgress('Calculating tax liabilities & CRA marginal brackets...');
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Strata Canadian Wealth Platform';
   workbook.lastModifiedBy = 'Strata';
@@ -493,12 +513,14 @@ export async function exportMilestoneTableToExcel(options: ExcelExportOptions): 
     ? 'Retirement Phase'
     : 'Full Simulation';
 
+  await emitExcelProgress('Generating investment schedules & registered account balances...');
   const worksheet = workbook.addWorksheet(sheetName, {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
   populateSimulationLedgerSheet(worksheet, options);
 
+  await emitExcelProgress('Formatting workbook headers, currency styles & live formulas...');
   const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
   const safeModeName = options.filterMode.replace(/\s+/g, '_');
@@ -903,6 +925,7 @@ export function populateEstateLedgerSheet(
 }
 
 export async function exportEstateLedgerToExcel(options: EstateExcelExportOptions): Promise<void> {
+  await emitExcelProgress('Calculating terminal deemed disposition & probate tax liabilities...');
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Strata Canadian Wealth & Estate Platform';
   workbook.lastModifiedBy = 'Strata';
@@ -915,12 +938,14 @@ export async function exportEstateLedgerToExcel(options: EstateExcelExportOption
     ? 'Estate in Retirement'
     : 'Full Estate Projection';
 
+  await emitExcelProgress('Generating estate asset & net inheritance schedules...');
   const worksheet = workbook.addWorksheet(sheetName, {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
   populateEstateLedgerSheet(worksheet, options);
 
+  await emitExcelProgress('Formatting workbook probate columns & accounting totals...');
   const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
   const safeModeName = options.filterMode.replace(/\s+/g, '_');
@@ -1423,6 +1448,7 @@ export function populateExpatLedgerSheet(
 }
 
 export async function exportExpatLedgerToExcel(options: ExpatExcelExportOptions): Promise<void> {
+  await emitExcelProgress('Calculating Section 128.1 departure & Part XIII tax liabilities...');
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Strata Cross-Border & Expat Platform';
   workbook.lastModifiedBy = 'Strata';
@@ -1437,12 +1463,14 @@ export async function exportExpatLedgerToExcel(options: ExpatExcelExportOptions)
     ? 'Retirement Phase'
     : 'Full Expat Lifecycle';
 
+  await emitExcelProgress('Generating cross-border investment & FX conversion schedules...');
   const worksheet = workbook.addWorksheet(sheetName.slice(0, 31), {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
   populateExpatLedgerSheet(worksheet, options);
 
+  await emitExcelProgress('Formatting workbook treaty columns & currency styles...');
   const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
   const safeCountry = options.destinationCountry.name.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -1898,6 +1926,7 @@ export async function exportMasterComprehensiveExcel({
   const todayStr = new Date().toLocaleDateString('en-CA');
 
   // 1. Tab: Annual Simulation Ledger
+  await emitExcelProgress('Calculating tax liabilities & annual simulation ledger...');
   const wsSim = workbook.addWorksheet('Annual Simulation Ledger', {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
@@ -1913,6 +1942,7 @@ export async function exportMasterComprehensiveExcel({
   });
 
   // 2. Tab: Estate Planning Ledger
+  await emitExcelProgress('Generating investment & estate terminal tax schedules...');
   const effEstateInputs: EstatePlanningInputs = estateInputs || {
     ...DEFAULT_ESTATE_INPUTS,
     passingAge: inputs.lifeExpectancy || 85,
@@ -1934,6 +1964,7 @@ export async function exportMasterComprehensiveExcel({
   });
 
   // 3. Tabs: The Different Historical Stress Test Ledgers
+  await emitExcelProgress('Generating 6 historical crash & inflation stress schedules...');
   const scenarioTabNames: Record<string, string> = {
     gfc_2008: 'Stress - 2008 Crisis',
     stagflation_1973: 'Stress - 1970s Stagflation',
@@ -1943,7 +1974,7 @@ export async function exportMasterComprehensiveExcel({
     longevity_95: 'Stress - Longevity 95'
   };
 
-  HISTORICAL_SCENARIOS.forEach((scen) => {
+  for (const scen of HISTORICAL_SCENARIOS) {
     const tabName = scenarioTabNames[scen.id] || `Stress - ${scen.name.slice(0, 20)}`;
     const stressDetails = runStressScenarioSimulation(inputs, scen.id, stressTiming, customStressAge);
     const wsStress = workbook.addWorksheet(tabName, {
@@ -1957,9 +1988,10 @@ export async function exportMasterComprehensiveExcel({
       province: inputs.province,
       inputs
     });
-  });
+  }
 
   // 4. Tab: Expat Planning Ledger
+  await emitExcelProgress('Compiling expat departure & cross-border tax worksheets...');
   const effExpatInputs: ExpatInputs = expatInputs || inputs.expat || DEFAULT_EXPAT_INPUTS;
   const expatSummary = calculateExpatRetirementPlan(effExpatInputs, inputs, yearlyResults, summary);
   const wsExpat = workbook.addWorksheet('Expat Planning Ledger', {
@@ -2071,6 +2103,7 @@ export async function exportMasterComprehensiveExcel({
   });
 
   // 5. Tab: Current and Projected Cash Flows
+  await emitExcelProgress('Formatting workbook cash flow sheets, styles & live formulas...');
   const wsCashFlow = workbook.addWorksheet('Cash Flow Projections', {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
@@ -2476,18 +2509,21 @@ export function populateCashFlowLedgerSheet(
 }
 
 export async function exportCashFlowLedgerToExcel(options: CashFlowExcelExportOptions): Promise<void> {
+  await emitExcelProgress('Calculating tax liabilities & annual cash flow deductions...');
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Strata Canadian Wealth Platform';
   workbook.lastModifiedBy = 'Strata';
   workbook.created = new Date();
   workbook.modified = new Date();
 
+  await emitExcelProgress('Generating investment income & spending cash flow schedules...');
   const worksheet = workbook.addWorksheet('Cash Flow Projections', {
     views: [{ state: 'frozen', ySplit: 5, showGridLines: true }]
   });
 
   populateCashFlowLedgerSheet(worksheet, options);
 
+  await emitExcelProgress('Formatting workbook cash flow columns & SUM formulas...');
   const clientName = options.inputs?.userName?.trim();
   const safeClient = clientName ? `${clientName.replace(/[^a-zA-Z0-9_-]/g, '_')}_` : '';
   const todayStr = new Date().toLocaleDateString('en-CA');

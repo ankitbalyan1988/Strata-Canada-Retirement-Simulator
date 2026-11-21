@@ -40,6 +40,7 @@ export const StressTestTabContent: React.FC = () => {
         </div>
 
         <NetWorthChart
+          sectionId="stressTestChart"
           yearlyResults={yearlyResults}
           stressYearlyResults={memoizedStressYearlyResults}
           retirementAge={retirementAge}

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
-  BookOpen,
   Code,
   Layers,
   Compass,
@@ -33,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
+import { AppIcon } from './AppIcon';
 
 export interface ApplicationHelpGuideModalProps {
   isOpen?: boolean;
@@ -537,9 +537,7 @@ export const ApplicationHelpGuideModal: React.FC<ApplicationHelpGuideModalProps>
         {/* Modal Top Header Bar */}
         <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-4 bg-slate-50/60 dark:bg-slate-900/60">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 rounded-xl border border-indigo-100/60 dark:border-indigo-800/60 shadow-xs">
-              <BookOpen className="w-5 h-5" />
-            </div>
+            <AppIcon size="lg" alt="Strata Manual" />
             <div>
               <div className="flex items-center gap-2">
                 <h2 id="help-guide-title" className="text-lg sm:text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">

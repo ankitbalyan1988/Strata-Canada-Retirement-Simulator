@@ -47,6 +47,8 @@ export async function runWithExcelExportOverlay(
     return;
   }
 
+  let loadedExcelModule: ExcelExportModule | null = null;
+
   try {
     // Phase 1: Show overlay immediately & fetch the lazy ExcelJS chunk in parallel with paint
     store.startExcelExportOverlay(
@@ -58,6 +60,14 @@ export async function runWithExcelExportOverlay(
       import('./excelExport'),
       waitForNextPaint()
     ]);
+    loadedExcelModule = excelModule;
+
+    // Install granular progress logger so each workbook step paints cleanly in the live log
+    excelModule.setActiveExcelProgressLogger(async (message: string) => {
+      useSimulationStore.getState().appendExcelExportLog(message);
+      await waitForNextPaint();
+      await sleep(75);
+    });
 
     // Phase 2: Transition to data processing & workbook generation
     useSimulationStore.getState().updateExcelExportOverlayPhase(
@@ -75,7 +85,11 @@ export async function runWithExcelExportOverlay(
       'downloading',
       'Finalizing .xlsx package and triggering browser download...'
     );
-    await sleep(220);
+    useSimulationStore.getState().appendExcelExportLog('Workbook ready — starting browser download...');
+    await waitForNextPaint();
+    await sleep(160);
+    useSimulationStore.getState().completeExcelExportLogs();
+    await sleep(180);
 
     useSimulationStore.getState().showToast(
       {
@@ -99,6 +113,9 @@ export async function runWithExcelExportOverlay(
     );
     throw err;
   } finally {
+    if (loadedExcelModule) {
+      loadedExcelModule.setActiveExcelProgressLogger(null);
+    }
     useSimulationStore.getState().finishExcelExportOverlay();
   }
 }

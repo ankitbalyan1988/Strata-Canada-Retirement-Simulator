@@ -50,6 +50,7 @@ export interface PdfExportOptions {
   whatIfSettings?: WhatIfSettings;
   stressTest?: PdfStressTestConfig;
   savedScenarios?: SimulationSnapshot[];
+  brandIconDataUrl?: string;
 }
 
 /**
@@ -219,7 +220,12 @@ export function printMarkdownToPdf(
 }
 
 /**
- * Draws the recurring top header bar for pages 2 through 5.
+ * Active brand icon PNG data URL for the currently building PDF document.
+ */
+let activeBrandIconDataUrl: string | undefined;
+
+/**
+ * Draws the recurring top header bar for pages 2 through the end of the report.
  */
 function drawPageHeader(
   doc: jsPDF,
@@ -236,21 +242,32 @@ function drawPageHeader(
   doc.setFillColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
   doc.rect(0, 40, pageWidth, 2.5, 'F');
 
+  // Brand App Icon (when preloaded)
+  let brandStartX = 40;
+  if (activeBrandIconDataUrl) {
+    try {
+      doc.addImage(activeBrandIconDataUrl, 'PNG', 40, 12, 16, 16);
+      brandStartX = 62;
+    } catch {
+      brandStartX = 40;
+    }
+  }
+
   // Brand Name
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-  doc.text('Strata', 40, 24);
+  doc.text('Strata', brandStartX, 24);
 
   const brandWidth = doc.getTextWidth('Strata');
 
   // Separator & Page Title
   doc.setTextColor(BRAND.slate500[0], BRAND.slate500[1], BRAND.slate500[2]);
-  doc.text(' | ', 40 + brandWidth, 24);
+  doc.text(' | ', brandStartX + brandWidth, 24);
 
   doc.setTextColor(BRAND.slate200[0], BRAND.slate200[1], BRAND.slate200[2]);
   doc.setFont('helvetica', 'normal');
-  doc.text(pageTitle, 40 + brandWidth + 12, 24);
+  doc.text(pageTitle, brandStartX + brandWidth + 12, 24);
 
   // Section Tag & Client Name on Top Right
   doc.setFontSize(7.5);
@@ -1829,12 +1846,15 @@ export function buildRetirementPdfDocument(
       'pulse' in narrativeOrOptions ||
       'whatIfSettings' in narrativeOrOptions ||
       'stressTest' in narrativeOrOptions ||
-      'savedScenarios' in narrativeOrOptions
+      'savedScenarios' in narrativeOrOptions ||
+      'brandIconDataUrl' in narrativeOrOptions
     )
   );
   const options: PdfExportOptions = isOptionsObj
     ? (narrativeOrOptions as PdfExportOptions)
     : { aiNarrative: (narrativeOrOptions as AiPlanNarrative | undefined) };
+
+  activeBrandIconDataUrl = options.brandIconDataUrl;
 
   const isCouple = inputs.maritalStatus === 'married';
   const primaryName = inputs.userName?.trim();
@@ -1871,14 +1891,25 @@ export function buildRetirementPdfDocument(
     doc.setFillColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
     doc.rect(0, 74, pageWidth, 3, 'F');
 
+    // Brand App Icon Top Left (when preloaded)
+    let coverBrandX = 40;
+    if (options.brandIconDataUrl) {
+      try {
+        doc.addImage(options.brandIconDataUrl, 'PNG', 40, 18, 38, 38);
+        coverBrandX = 88;
+      } catch {
+        coverBrandX = 40;
+      }
+    }
+
     // Brand Title Top Left
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-    doc.text('Strata', 40, 36);
+    doc.text('Strata', coverBrandX, 36);
 
     // Pill badge: Canada
-    const badgeX = 40 + doc.getTextWidth('Strata') + 10;
+    const badgeX = coverBrandX + doc.getTextWidth('Strata') + 10;
     doc.setFillColor(BRAND.emerald[0], BRAND.emerald[1], BRAND.emerald[2]);
     doc.roundedRect(badgeX, 23, 40, 15, 3, 3, 'F');
     doc.setFontSize(7.5);
@@ -1889,7 +1920,7 @@ export function buildRetirementPdfDocument(
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(BRAND.slate300[0], BRAND.slate300[1], BRAND.slate300[2]);
-    doc.text('Comprehensive Wealth Dossier • Actuarial Retirement Plan', 40, 56);
+    doc.text('Comprehensive Wealth Dossier • Actuarial Retirement Plan', coverBrandX, 54);
 
     // Header Right Meta
     doc.setFontSize(7.5);
@@ -2881,16 +2912,26 @@ export function buildRetirementPdfDocument(
         doc.setFillColor(BRAND.mapleRed[0], BRAND.mapleRed[1], BRAND.mapleRed[2]);
         doc.rect(0, 38, pageWidth, 2.5, 'F');
 
+        let appendixBrandX = 35;
+        if (activeBrandIconDataUrl) {
+          try {
+            doc.addImage(activeBrandIconDataUrl, 'PNG', 35, 11, 16, 16);
+            appendixBrandX = 57;
+          } catch {
+            appendixBrandX = 35;
+          }
+        }
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(BRAND.white[0], BRAND.white[1], BRAND.white[2]);
-        doc.text('Strata', 35, 23);
+        doc.text('Strata', appendixBrandX, 23);
 
         const mWidth = doc.getTextWidth('Strata');
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(BRAND.slate300[0], BRAND.slate300[1], BRAND.slate300[2]);
-        doc.text(' | Annual Simulation Ledger & Cash Flow Projections', 35 + mWidth, 23);
+        doc.text(' | Annual Simulation Ledger & Cash Flow Projections', appendixBrandX + mWidth, 23);
 
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'bold');
@@ -3267,17 +3308,22 @@ export function buildRetirementPdfDocument(
   return doc;
 }
 
-/**
- * Primary function that generates and saves the complete, multi-page bespoke advisory report.
- */
-export function generateRetirementPdfReport(
-  inputs: RetirementInputs,
-  summary: SimulationSummary,
-  yearlyResults: YearSimulationResult[],
-  narrativeOrOptions?: AiPlanNarrative | PdfExportOptions
-) {
-  const doc = buildRetirementPdfDocument(inputs, summary, yearlyResults, narrativeOrOptions);
+export interface GeneratedPdfPreview {
+  blob: Blob;
+  blobUrl: string;
+  fileName: string;
+  pageCount: number;
+  sizeBytes: number;
+  generatedAt: string;
+  clientName: string;
+  retirementAge: number;
+  province: string;
+}
 
+function resolvePdfClientName(
+  inputs: RetirementInputs,
+  narrativeOrOptions?: AiPlanNarrative | PdfExportOptions
+): string {
   const isCouple = inputs.maritalStatus === 'married';
   const primaryName = inputs.userName?.trim();
   const defaultClientName = isCouple && inputs.spouse
@@ -3288,7 +3334,50 @@ export function generateRetirementPdfReport(
     narrativeOrOptions && 'clientName' in narrativeOrOptions && narrativeOrOptions.clientName
       ? narrativeOrOptions.clientName
       : undefined;
-  const clientName = explicitClientName || defaultClientName;
+  return explicitClientName || defaultClientName;
+}
+
+/**
+ * Generates the complete multi-page retirement PDF report as an in-memory Blob URL
+ * so users can inspect it inside the browser preview modal before downloading.
+ */
+export function createRetirementPdfPreview(
+  inputs: RetirementInputs,
+  summary: SimulationSummary,
+  yearlyResults: YearSimulationResult[],
+  narrativeOrOptions?: AiPlanNarrative | PdfExportOptions
+): GeneratedPdfPreview {
+  const doc = buildRetirementPdfDocument(inputs, summary, yearlyResults, narrativeOrOptions);
+  const clientName = resolvePdfClientName(inputs, narrativeOrOptions);
+  const cleanClient = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const fileName = `Strata_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`;
+  const blob = doc.output('blob');
+  const blobUrl = URL.createObjectURL(blob);
+
+  return {
+    blob,
+    blobUrl,
+    fileName,
+    pageCount: doc.getNumberOfPages(),
+    sizeBytes: blob.size,
+    generatedAt: new Date().toISOString(),
+    clientName,
+    retirementAge: inputs.retirementAge,
+    province: inputs.province
+  };
+}
+
+/**
+ * Primary function that generates and immediately saves the complete, multi-page bespoke advisory report.
+ */
+export function generateRetirementPdfReport(
+  inputs: RetirementInputs,
+  summary: SimulationSummary,
+  yearlyResults: YearSimulationResult[],
+  narrativeOrOptions?: AiPlanNarrative | PdfExportOptions
+) {
+  const doc = buildRetirementPdfDocument(inputs, summary, yearlyResults, narrativeOrOptions);
+  const clientName = resolvePdfClientName(inputs, narrativeOrOptions);
 
   // Save PDF with descriptive filename
   const cleanClient = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');

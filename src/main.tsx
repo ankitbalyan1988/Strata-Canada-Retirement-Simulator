@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { installMobileSliderKeyboardGuard } from './utils/mobileSliderGuard';
+import { installAppFavicon } from './components/AppIcon';
 
 // Suppress benign browser ResizeObserver notification loop warnings
 if (typeof window !== 'undefined') {
@@ -42,6 +43,7 @@ if (typeof document !== 'undefined') {
 }
 
 installMobileSliderKeyboardGuard();
+installAppFavicon();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

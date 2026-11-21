@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { YearSimulationResult } from '../../types/retirement';
 import { Wallet, AlertCircle, TrendingDown } from 'lucide-react';
+import { useSimulationStore } from '../../store/useSimulationStore';
+import { SectionCollapseButton } from '../SectionCollapseButton';
 
 interface IncomeStreamChartProps {
   yearlyResults: YearSimulationResult[];
@@ -11,6 +13,8 @@ const IncomeStreamChartComponent: React.FC<IncomeStreamChartProps> = ({
   yearlyResults,
   retirementAge
 }) => {
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.incomeStreamChart));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const [hoveredAge, setHoveredAge] = useState<number | null>(null);
 
   // Filter to retirement years only
@@ -119,36 +123,46 @@ const IncomeStreamChartComponent: React.FC<IncomeStreamChartProps> = ({
           </p>
         </div>
 
-        {/* Legend */}
+        {/* Legend & Collapse Toggle */}
         <div className="flex items-center flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-2.5 h-2.5 rounded-sm bg-blue-700"></span>
-            CPP
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
-            OAS (Net)
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500"></span>
-            RRSP/RRIF Draw
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
-            TFSA (Tax-Free)
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span>
-            Non-Reg Draw
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
-            <span className="w-3 h-0.5 bg-emerald-500"></span>
-            Target Spending
-          </span>
+          {!isCollapsed && (
+            <>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-2.5 h-2.5 rounded-sm bg-blue-700"></span>
+                CPP
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
+                OAS (Net)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-2.5 h-2.5 rounded-sm bg-indigo-500"></span>
+                RRSP/RRIF Draw
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+                TFSA (Tax-Free)
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span>
+                Non-Reg Draw
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium">
+                <span className="w-3 h-0.5 bg-emerald-500"></span>
+                Target Spending
+              </span>
+            </>
+          )}
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('incomeStreamChart')}
+            sectionLabel="Post-Retirement Income Streams & Cash Flow"
+          />
         </div>
       </div>
 
-      {/* SVG Chart */}
+      {!isCollapsed && (
+      /* SVG Chart */
       <div className="relative w-full overflow-x-auto pb-1">
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
@@ -421,6 +435,7 @@ const IncomeStreamChartComponent: React.FC<IncomeStreamChartProps> = ({
           </div>
         )}
       </div>
+      )}
 
     </div>
   );

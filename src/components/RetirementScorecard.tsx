@@ -18,6 +18,7 @@ import { RetirementInputs, SimulationSummary, YearSimulationResult } from '../ty
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEmployerRrspMatch } from '../utils/employerMatch';
+import { SectionCollapseButton } from './SectionCollapseButton';
 
 export interface RetirementScorecardProps {
   inputs?: RetirementInputs;
@@ -31,6 +32,8 @@ const RetirementScorecardComponent: React.FC<RetirementScorecardProps> = (props)
   const storeOptimisticSummary = useSimulationStore(useShallow((state) => state.optimisticSummary));
   const storeSummary = useSimulationStore(useShallow((state) => state.summary));
   const storeYearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.scorecard));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const inputs = props.inputs ?? storeInputs;
   const summary = props.optimisticSummary ?? props.summary ?? storeOptimisticSummary ?? storeSummary;
@@ -117,9 +120,45 @@ const RetirementScorecardComponent: React.FC<RetirementScorecardProps> = (props)
     : 0;
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* 6 Primary Financial KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3.5">
+    <section aria-label="Executive Retirement KPI Scorecard" className="flex flex-col gap-3">
+      {/* Compact Collapsible Header Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl px-4 sm:px-5 py-3 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="p-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/60 shrink-0">
+            <ShieldCheck className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-50 tracking-tight truncate">
+              Executive Financial KPI Scorecard
+            </h3>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
+              Portfolio balance, annual contributions, nest egg at Age {inputs.retirementAge}, and lifetime tax summary
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {isCollapsed && (
+            <div className="hidden md:flex items-center gap-3 text-xs font-mono text-slate-600 dark:text-slate-300">
+              <span>Portfolio <strong className="text-slate-900 dark:text-white">{formatCur(totalCurrentBalance)}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span>Retire @ {inputs.retirementAge}: <strong className="text-emerald-600 dark:text-emerald-400">{formatCur(summary.netWorthAtRetirement)}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span>Monthly: <strong className="text-slate-900 dark:text-white">{formatCur(monthlyRetirementSpend)}/mo</strong></span>
+            </div>
+          )}
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('scorecard')}
+            sectionLabel="Executive Financial KPI Scorecard"
+          />
+        </div>
+      </div>
+
+      {!isCollapsed && (
+        <>
+          {/* 6 Primary Financial KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3.5">
         
         {/* KPI 1: Current Portfolio Balance */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-4.5 border border-slate-200/80 dark:border-slate-700/80 shadow-xs hover:border-slate-300 dark:hover:border-slate-600 transition flex flex-col justify-between">
@@ -479,7 +518,9 @@ const RetirementScorecardComponent: React.FC<RetirementScorecardProps> = (props)
           </div>
         )}
       </div>
-    </div>
+        </>
+      )}
+    </section>
   );
 };
 

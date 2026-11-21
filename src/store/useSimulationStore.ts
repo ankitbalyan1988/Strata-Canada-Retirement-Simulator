@@ -23,7 +23,60 @@ import { triggerConfetti } from '../utils/confettiHelper';
 import { SimulationSnapshot } from '../types/history';
 
 export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
-export type DashboardTab = 'dashboard' | 'ledger' | 'cashflows' | 'stresstest' | 'whatif';
+export type DashboardTab = 'dashboard' | 'ledger' | 'cashflows' | 'readiness' | 'stresstest' | 'whatif';
+
+/**
+ * Single source of truth mapping every view & dashboard tab to the exact collapsible section keys rendered on that page.
+ * Used by both the Header "Collapse All / Expand All" toggle and store.toggleCollapseAll().
+ */
+export function getSectionKeysForPage(activeView: AppView, activeDashboardTab: DashboardTab): string[] {
+  if (activeView === 'inputs') {
+    return ['planning'];
+  }
+  if (activeView === 'estate') {
+    return ['estate'];
+  }
+  if (activeView === 'expat') {
+    return ['expat'];
+  }
+
+  switch (activeDashboardTab) {
+    case 'dashboard':
+      return [
+        'milestoneTimeline',
+        'scorecard',
+        'savingsRate',
+        'retirementAgeSimulator',
+        'pulse',
+        'netWorthOverTime',
+        'netWorthChart',
+        'incomeStreamChart',
+        'taxBracketChart'
+      ];
+    case 'ledger':
+      return ['ledger', 'breakEven'];
+    case 'cashflows':
+      return ['cashFlowVisualizer', 'cashFlowLedger'];
+    case 'readiness':
+      return ['progress', 'retirementAgeOptimizer'];
+    case 'stresstest':
+      return ['stressTest', 'stressTestChart'];
+    case 'whatif':
+      return ['whatIfOverview', 'whatIfSensitivity', 'whatIfChart'];
+    default:
+      return [
+        'milestoneTimeline',
+        'scorecard',
+        'savingsRate',
+        'retirementAgeSimulator',
+        'pulse',
+        'netWorthOverTime',
+        'netWorthChart',
+        'incomeStreamChart',
+        'taxBracketChart'
+      ];
+  }
+}
 export type InputTab = 
   | 'personal'
   | 'expenses'
@@ -38,10 +91,31 @@ export type InputTab =
 
 export type ExcelExportPhase = 'loading_chunk' | 'processing' | 'downloading';
 
+export interface ExcelExportLogEntry {
+  id: string;
+  message: string;
+  status: 'active' | 'done';
+  elapsedMs: number;
+}
+
 export interface ExcelExportOverlayState {
   phase: ExcelExportPhase;
   title: string;
   subtitle: string;
+  startedAt: number;
+  logs: ExcelExportLogEntry[];
+}
+
+export interface PdfPreviewData {
+  blob: Blob;
+  blobUrl: string;
+  fileName: string;
+  pageCount: number;
+  sizeBytes: number;
+  generatedAt: string;
+  clientName: string;
+  retirementAge: number;
+  province: string;
 }
 
 export interface SimulationState {
@@ -76,12 +150,14 @@ export interface SimulationState {
   theme: 'light' | 'dark';
   activeChartTab: 'networth' | 'cashflow' | 'taxbracket';
   isExportingPdf: boolean;
+  pdfPreview: PdfPreviewData | null;
   excelExportOverlay: ExcelExportOverlayState | null;
   toastNotification: {
     id: number;
     status: 'loading' | 'success' | 'error';
     title: string;
     message?: string;
+    variant?: 'default' | 'subtle';
   } | null;
   isCompareModalOpen: boolean;
   isSnapshotCompareModalOpen: boolean;
@@ -154,11 +230,19 @@ export interface SimulationState {
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
+  closePdfPreview: () => void;
   startExcelExportOverlay: (title: string, subtitle?: string) => void;
   updateExcelExportOverlayPhase: (phase: ExcelExportPhase, subtitle?: string) => void;
+  appendExcelExportLog: (message: string) => void;
+  completeExcelExportLogs: () => void;
   finishExcelExportOverlay: () => void;
   showToast: (
-    toast: { status: 'loading' | 'success' | 'error'; title: string; message?: string },
+    toast: {
+      status: 'loading' | 'success' | 'error';
+      title: string;
+      message?: string;
+      variant?: 'default' | 'subtle';
+    },
     autoDismissMs?: number
   ) => number;
   dismissToast: () => void;
@@ -519,6 +603,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   theme: getInitialTheme(),
   activeChartTab: 'networth',
   isExportingPdf: false,
+  pdfPreview: null,
   excelExportOverlay: null,
   toastNotification: null,
   isCompareModalOpen: false,
@@ -534,10 +619,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     personaSelection: false,
     aiPersona: false,
     planning: false,
+    milestoneTimeline: false,
+    scorecard: false,
+    savingsRate: false,
+    progress: false,
     retirementAgeOptimizer: false,
     retirementAgeSimulator: false,
     stressTest: false,
+    stressTestChart: false,
+    whatIfOverview: false,
+    whatIfSensitivity: false,
+    whatIfChart: false,
+    cashFlowVisualizer: false,
+    cashFlowLedger: false,
     pulse: false,
+    netWorthOverTime: false,
+    netWorthChart: false,
+    incomeStreamChart: false,
+    taxBracketChart: false,
     charts: false,
     ledger: false,
     breakEven: false,
@@ -964,34 +1063,38 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   toggleCollapseAll: () => {
     set((state) => {
-      const activeView = state.activeView;
-      const viewSectionsMap: Record<AppView, string[]> = {
-        inputs: ['planning'],
-        dashboard: ['retirementAgeOptimizer', 'retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
-        estate: ['estate'],
-        expat: ['expat']
-      };
-      const relevantKeys = viewSectionsMap[activeView] || Object.keys(state.collapsedSections);
-      // Check if any visible section on this view is currently expanded (i.e. not collapsed)
+      const relevantKeys = getSectionKeysForPage(state.activeView, state.activeDashboardTab);
+      // Check if any visible section on this page/tab is currently expanded (i.e. not collapsed)
       const hasAnyExpanded = relevantKeys.some((k) => !state.collapsedSections[k]);
-      // If at least one section is expanded, collapse all; otherwise expand all
+      // If at least one section on the current page is expanded, collapse all on this page; otherwise expand all
       const nextCollapsedState = hasAnyExpanded;
       const next: Record<string, boolean> = { ...state.collapsedSections };
-      for (const k of Object.keys(state.collapsedSections)) {
+      for (const k of relevantKeys) {
         next[k] = nextCollapsedState;
       }
       return { collapsedSections: next };
     });
   },
 
-  startExcelExportOverlay: (title, subtitle) =>
+  startExcelExportOverlay: (title, subtitle) => {
+    const now = Date.now();
     set({
       excelExportOverlay: {
         phase: 'loading_chunk',
         title,
-        subtitle: subtitle || 'Fetching ExcelJS workbook engine & formula modules...'
+        subtitle: subtitle || 'Fetching ExcelJS workbook engine & formula modules...',
+        startedAt: now,
+        logs: [
+          {
+            id: `log-${now}-0`,
+            message: 'Loading ExcelJS workbook engine chunk...',
+            status: 'active',
+            elapsedMs: 0
+          }
+        ]
       }
-    }),
+    });
+  },
 
   updateExcelExportOverlayPhase: (phase, subtitle) =>
     set((state) => {
@@ -1001,6 +1104,45 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           ...state.excelExportOverlay,
           phase,
           subtitle: subtitle ?? state.excelExportOverlay.subtitle
+        }
+      };
+    }),
+
+  appendExcelExportLog: (message) =>
+    set((state) => {
+      const current = state.excelExportOverlay;
+      if (!current) return {};
+      const now = Date.now();
+      const elapsedMs = Math.max(0, now - current.startedAt);
+      const completedPrevious: ExcelExportLogEntry[] = current.logs.map((entry) =>
+        entry.status === 'done' ? entry : { ...entry, status: 'done' }
+      );
+      return {
+        excelExportOverlay: {
+          ...current,
+          logs: [
+            ...completedPrevious,
+            {
+              id: `log-${now}-${completedPrevious.length}`,
+              message,
+              status: 'active',
+              elapsedMs
+            }
+          ]
+        }
+      };
+    }),
+
+  completeExcelExportLogs: () =>
+    set((state) => {
+      const current = state.excelExportOverlay;
+      if (!current) return {};
+      return {
+        excelExportOverlay: {
+          ...current,
+          logs: current.logs.map((entry) =>
+            entry.status === 'done' ? entry : { ...entry, status: 'done' }
+          )
         }
       };
     }),
@@ -1027,6 +1169,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   dismissToast: () => set({ toastNotification: null }),
 
+  closePdfPreview: () => {
+    const current = get().pdfPreview;
+    if (current?.blobUrl && typeof URL !== 'undefined') {
+      try {
+        URL.revokeObjectURL(current.blobUrl);
+      } catch (_) {}
+    }
+    set({ pdfPreview: null });
+  },
+
   exportPdf: async () => {
     const {
       inputs,
@@ -1038,7 +1190,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       stressTiming,
       customStressAge,
       stressSimulation,
-      history
+      history,
+      pdfPreview: previousPreview
     } = get();
     const toastId = Date.now();
     try {
@@ -1051,8 +1204,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           message: 'Loading PDF engine and building your retirement report.'
         }
       });
-      const [{ generateRetirementPdfReport }] = await Promise.all([
+      const [{ createRetirementPdfPreview }, { loadCroppedAppIconDataUrl }] = await Promise.all([
         import('../utils/pdfExport'),
+        import('../components/AppIcon'),
         new Promise<void>((resolve) => {
           if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(() => resolve());
@@ -1061,7 +1215,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           }
         })
       ]);
-      const fileName = generateRetirementPdfReport(inputs, summary, yearlyResults, {
+      const brandIconDataUrl = await loadCroppedAppIconDataUrl(128);
+      const preview = createRetirementPdfPreview(inputs, summary, yearlyResults, {
         pulse,
         whatIfSettings,
         stressTest: isStressTestActive
@@ -1074,15 +1229,34 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
               yearlyResults: stressSimulation?.yearlyResults
             }
           : undefined,
-        savedScenarios: history
+        savedScenarios: history,
+        brandIconDataUrl: brandIconDataUrl ?? undefined
       });
 
+      // Cleanly revoke any prior preview Blob URL before storing the new one
+      if (previousPreview?.blobUrl && typeof URL !== 'undefined') {
+        try {
+          URL.revokeObjectURL(previousPreview.blobUrl);
+        } catch (_) {}
+      }
+
       set({
+        pdfPreview: {
+          blob: preview.blob,
+          blobUrl: preview.blobUrl,
+          fileName: preview.fileName,
+          pageCount: preview.pageCount,
+          sizeBytes: preview.sizeBytes,
+          generatedAt: preview.generatedAt,
+          clientName: preview.clientName,
+          retirementAge: preview.retirementAge,
+          province: preview.province
+        },
         toastNotification: {
           id: toastId,
           status: 'success',
-          title: 'PDF Export Complete',
-          message: fileName ? `Saved ${fileName}` : 'Your executive PDF report has finished generating.'
+          title: 'PDF Report Ready to Preview',
+          message: `${preview.pageCount}-page retirement dossier generated. Review and download below.`
         }
       });
       if (typeof window !== 'undefined') {
@@ -1090,7 +1264,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           if (get().toastNotification?.id === toastId) {
             set({ toastNotification: null });
           }
-        }, 4500);
+        }, 4000);
       }
     } catch (err) {
       console.error('PDF export error:', err);

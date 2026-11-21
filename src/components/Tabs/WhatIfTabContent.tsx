@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { calculateWhatIfSimulation } from '../../utils/whatIfCalculator';
 import { WhatIfSensitivityPanel } from '../Charts/WhatIfSensitivityPanel';
 import { NetWorthChart } from '../Charts/NetWorthChart';
+import { SectionCollapseButton } from '../SectionCollapseButton';
 import {
   Sliders,
   RotateCcw,
@@ -25,6 +26,8 @@ export const WhatIfTabContent: React.FC = () => {
   const whatIfSettings = useSimulationStore(useShallow((state) => state.whatIfSettings));
   const setWhatIfSettings = useSimulationStore((state) => state.setWhatIfSettings);
   const resetWhatIfSettings = useSimulationStore((state) => state.resetWhatIfSettings);
+  const isOverviewCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.whatIfOverview));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const retirementAge = inputs.retirementAge;
 
   // Ensure what-if is active when user is in this tab
@@ -102,11 +105,16 @@ export const WhatIfTabContent: React.FC = () => {
                 <span>Reset to Baseline</span>
               </button>
             )}
+            <SectionCollapseButton
+              isCollapsed={isOverviewCollapsed}
+              onToggle={() => toggleSectionCollapse('whatIfOverview')}
+              sectionLabel="What-If Sensitivity Overview"
+            />
           </div>
         </div>
 
         {/* Quick Comparative Impact Cards */}
-        {whatIfResult && (
+        {!isOverviewCollapsed && whatIfResult && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5 pt-5 border-t border-slate-100 dark:border-slate-800">
             {/* Crossover Age */}
             <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between">
@@ -238,6 +246,7 @@ export const WhatIfTabContent: React.FC = () => {
           <span>Interactive Trajectory Comparison (Baseline vs What-If Overlay)</span>
         </div>
         <NetWorthChart
+          sectionId="whatIfChart"
           yearlyResults={yearlyResults}
           retirementAge={retirementAge}
           showStressTestToggle={false}

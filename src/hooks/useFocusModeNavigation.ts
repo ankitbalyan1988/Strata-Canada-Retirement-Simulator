@@ -232,7 +232,8 @@ export function useFocusModeNavigation() {
         state.isAIPersonaModalOpen ||
         state.isWealthGuideModalOpen ||
         state.isHistoryPanelOpen ||
-        state.excelExportOverlay !== null
+        state.excelExportOverlay !== null ||
+        state.pdfPreview !== null
       ) {
         return;
       }

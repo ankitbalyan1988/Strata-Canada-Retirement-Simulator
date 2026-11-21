@@ -11,12 +11,43 @@ export const ToastBanner: React.FC = () => {
   const isLoading = toast.status === 'loading';
   const isSuccess = toast.status === 'success';
   const isError = toast.status === 'error';
+  const isSubtle = toast.variant === 'subtle';
+
+  if (isSubtle) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        className="fixed top-16 sm:top-[72px] right-4 sm:right-6 z-[68] pointer-events-auto animate-in fade-in slide-in-from-top-1 duration-200"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-emerald-200/80 dark:border-emerald-500/30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md shadow-md shadow-slate-900/5 dark:shadow-black/30 text-xs">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span className="font-semibold text-slate-800 dark:text-slate-100 whitespace-nowrap">
+            {toast.title}
+          </span>
+          {toast.message && (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono hidden sm:inline whitespace-nowrap">
+              {toast.message}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={dismissToast}
+            aria-label="Dismiss notification"
+            className="ml-0.5 p-0.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer shrink-0"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className="fixed top-16 sm:top-[72px] right-4 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-auto animate-in fade-in slide-in-from-top-2 duration-200"
+      className="fixed top-16 sm:top-[72px] right-4 sm:right-6 z-[68] max-w-sm w-[calc(100vw-2rem)] sm:w-auto pointer-events-auto animate-in fade-in slide-in-from-top-2 duration-200"
     >
       <div
         className={`flex items-start gap-3 p-3.5 rounded-2xl border backdrop-blur-md shadow-lg transition-colors ${

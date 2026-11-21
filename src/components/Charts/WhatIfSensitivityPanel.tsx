@@ -34,6 +34,7 @@ import {
   WHAT_IF_PRESETS
 } from '../../utils/whatIfCalculator';
 import { fetchWhatIfNarrative, WhatIfNarrativeData } from '../../utils/whatIfNarrativeClient';
+import { SectionCollapseButton } from '../SectionCollapseButton';
 
 interface WhatIfSensitivityPanelProps {
   whatIfResult: ReturnType<typeof calculateWhatIfSimulation>;
@@ -52,6 +53,8 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
   const summary = useSimulationStore(useShallow((state) => state.summary));
   const yearlyResults = useSimulationStore(useShallow((state) => state.yearlyResults));
   const whatIfSettings = useSimulationStore(useShallow((state) => state.whatIfSettings));
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.whatIfSensitivity));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const handleUpdateDelta = (field: 'returnDelta' | 'appreciationDelta' | 'inflationDelta', value: number) => {
     startTransition(() => {
@@ -146,7 +149,11 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
     <div className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-2xl p-4 sm:p-5 border border-purple-300/80 dark:border-purple-500/30 shadow-xs dark:shadow-md flex flex-col gap-4 animate-in fade-in duration-200 transition-colors">
       
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+      <div
+        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          isCollapsed ? '' : 'border-b border-slate-200 dark:border-slate-800 pb-3'
+        }`}
+      >
         <div className="flex items-center gap-2.5">
           <span className="p-2 rounded-xl bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/30">
             <Sliders className="w-4 h-4" />
@@ -166,38 +173,52 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          {hasModifications && (
-            <button
-              type="button"
-              onClick={onReset}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
-              title="Reset all deltas to baseline"
-            >
-              <RefreshCw className="w-3 h-3" />
-              <span>Reset to Base</span>
-            </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {!isCollapsed && (
+            <>
+              {hasModifications && (
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer"
+                  title="Reset all deltas to baseline"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Reset to Base</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsMatrixOpen((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                  isMatrixOpen
+                    ? 'bg-purple-600 text-white border-purple-500 shadow-xs'
+                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                <Grid3X3 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-300" />
+                <span>Sensitivity Matrix</span>
+                {isMatrixOpen ? (
+                  <ChevronUp className="w-3 h-3 ml-0.5 text-white dark:text-purple-200" />
+                ) : (
+                  <ChevronDown className="w-3 h-3 ml-0.5 text-slate-400" />
+                )}
+              </button>
+            </>
           )}
 
-          <button
-            type="button"
-            onClick={() => setIsMatrixOpen((prev) => !prev)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
-              isMatrixOpen
-                ? 'bg-purple-600 text-white border-purple-500 shadow-xs'
-                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            <Grid3X3 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-300" />
-            <span>Sensitivity Matrix</span>
-            {isMatrixOpen ? (
-              <ChevronUp className="w-3 h-3 ml-0.5 text-white dark:text-purple-200" />
-            ) : (
-              <ChevronDown className="w-3 h-3 ml-0.5 text-slate-400" />
-            )}
-          </button>
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('whatIfSensitivity')}
+            sectionLabel="What-If Sensitivity Analysis"
+            compact
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* Preset Scenario Quick-Pills */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs scrollbar-none">
@@ -920,6 +941,8 @@ const WhatIfSensitivityPanelComponent: React.FC<WhatIfSensitivityPanelProps> = (
             </span>
           </div>
         </div>
+      )}
+        </>
       )}
 
     </div>

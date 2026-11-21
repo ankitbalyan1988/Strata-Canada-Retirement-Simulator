@@ -14,6 +14,7 @@ import {
 import { useSimulationStore } from '../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
 import { calculateEmployerRrspMatch } from '../utils/employerMatch';
+import { SectionCollapseButton } from './SectionCollapseButton';
 
 interface BenchmarkTier {
   id: 'below' | 'starter' | 'standard' | 'accelerated';
@@ -109,6 +110,8 @@ export const SavingsRateIndicator: React.FC = React.memo(() => {
   const applyMonthlyBoost = useSimulationStore((state) => state.applyMonthlyBoost);
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.savingsRate));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
 
   const metrics = useMemo(() => {
     const isCouple = maritalStatus === 'married';
@@ -299,34 +302,45 @@ export const SavingsRateIndicator: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* Hero Readout: Current Savings Rate vs Recommended Target */}
-        <div className="flex items-center gap-5 self-start lg:self-auto bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/70 rounded-xl px-4 py-2.5">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-              Current Rate
-            </span>
-            <div className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${statusTone.rateText}`}>
-              {metrics.isBlankCanvas ? '0.0%' : `${metrics.savingsRate.toFixed(1)}%`}
+        {/* Hero Readout + Collapse Toggle */}
+        <div className="flex items-center gap-3 self-start lg:self-auto flex-wrap">
+          <div className="flex items-center gap-5 bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/70 rounded-xl px-4 py-2.5">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                Current Rate
+              </span>
+              <div className={`text-2xl sm:text-3xl font-extrabold font-mono tracking-tight ${statusTone.rateText}`}>
+                {metrics.isBlankCanvas ? '0.0%' : `${metrics.savingsRate.toFixed(1)}%`}
+              </div>
+            </div>
+
+            <div className="h-9 w-px bg-slate-200 dark:bg-slate-700" />
+
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                CA Guideline Target
+              </span>
+              <div className="text-lg sm:text-xl font-bold font-mono text-slate-800 dark:text-slate-100 flex items-baseline gap-1.5">
+                <span>{metrics.recommendedRate}%</span>
+                {metrics.totalHouseholdIncome > 0 && (
+                  <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                    ({formatCur(metrics.recommendedAnnualDollars)}/yr)
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="h-9 w-px bg-slate-200 dark:bg-slate-700" />
-
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-              CA Guideline Target
-            </span>
-            <div className="text-lg sm:text-xl font-bold font-mono text-slate-800 dark:text-slate-100 flex items-baseline gap-1.5">
-              <span>{metrics.recommendedRate}%</span>
-              {metrics.totalHouseholdIncome > 0 && (
-                <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                  ({formatCur(metrics.recommendedAnnualDollars)}/yr)
-                </span>
-              )}
-            </div>
-          </div>
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('savingsRate')}
+            sectionLabel="Savings Rate & Canadian Benchmark"
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* Middle Row: Interactive Canadian Guideline Spectrum Bar (0% to 30%+) */}
       <div className="flex flex-col gap-2">
@@ -494,6 +508,8 @@ export const SavingsRateIndicator: React.FC = React.memo(() => {
           </button>
         </div>
       </div>
+        </>
+      )}
     </section>
   );
 });

@@ -16,6 +16,8 @@ import {
   Calendar,
   Info
 } from 'lucide-react';
+import { useSimulationStore } from '../../store/useSimulationStore';
+import { SectionCollapseButton } from '../SectionCollapseButton';
 
 interface MarginalTaxBracketChartProps {
   yearlyResults: YearSimulationResult[];
@@ -30,6 +32,8 @@ const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> =
   province = 'ON',
   isCouple = false
 }) => {
+  const isCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.taxBracketChart));
+  const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const [hoveredAge, setHoveredAge] = useState<number | null>(null);
   const [showEffectiveRate, setShowEffectiveRate] = useState<boolean>(true);
   const [highTaxThreshold, setHighTaxThreshold] = useState<number>(40); // 40% default high-tax mark
@@ -327,7 +331,7 @@ const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> =
   return (
     <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-7 border border-slate-200 dark:border-slate-800 shadow-sm transition-all">
       {/* Header & Controls Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+      <div className={`flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${isCollapsed ? '' : 'mb-6'}`}>
         <div>
           <div className="flex items-center gap-2.5 flex-wrap">
             <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
@@ -347,7 +351,7 @@ const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> =
           </div>
         </div>
 
-        {/* Actionable Top Summary Stats */}
+        {/* Actionable Top Summary Stats & Collapse Toggle */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs flex items-center gap-2">
             <span className="text-slate-500 dark:text-slate-400">Peak Bracket:</span>
@@ -375,8 +379,17 @@ const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> =
               <span>100% OAS Preserved</span>
             </div>
           )}
+
+          <SectionCollapseButton
+            isCollapsed={isCollapsed}
+            onToggle={() => toggleSectionCollapse('taxBracketChart')}
+            sectionLabel="Projected Marginal Tax Bracket Over Time"
+          />
         </div>
       </div>
+
+      {!isCollapsed && (
+        <>
 
       {/* Chart Interactive Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 p-3 mb-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs">
@@ -1006,6 +1019,8 @@ const MarginalTaxBracketChartComponent: React.FC<MarginalTaxBracketChartProps> =
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 };

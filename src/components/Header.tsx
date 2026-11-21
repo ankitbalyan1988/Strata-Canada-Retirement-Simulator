@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Menu,
   SlidersHorizontal,
@@ -13,12 +13,173 @@ import {
   FileSpreadsheet,
   Loader2,
   Command,
-  Keyboard
+  Keyboard,
+  CheckCircle2
 } from 'lucide-react';
-import { useSimulationStore, AppView } from '../store/useSimulationStore';
+import {
+  useSimulationStore,
+  AppView,
+  AUTOSAVE_PLAN_STORAGE_KEY,
+  getSectionKeysForPage
+} from '../store/useSimulationStore';
 import { TopScenarioSwitcher } from './TopScenarioSwitcher';
+import { AppIcon } from './AppIcon';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
 import { runWithExcelExportOverlay } from '../utils/excelExportRunner';
+
+const AUTOSAVE_DEBOUNCE_MS = 2000;
+
+/**
+ * Isolated Header Auto-Save Indicator:
+ * Subscribes directly to `useSimulationStore` input reference changes without
+ * causing Header re-renders on every slider tick. After a 2-second debounce,
+ * persists updated inputs to localStorage and fires a subtle 'Changes saved' toast.
+ */
+const HeaderAutoSaveIndicator: React.FC = React.memo(() => {
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem(AUTOSAVE_PLAN_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed?.timestamp) {
+            const parsedDate = new Date(parsed.timestamp);
+            if (!isNaN(parsedDate.getTime())) return parsedDate;
+          }
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
+
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const unsubscribe = useSimulationStore.subscribe((state, prevState) => {
+      if (state.inputs === prevState.inputs) return;
+
+      // If the user explicitly wiped the canvas to $0, clear pending timers without re-writing storage
+      if (state.activePresetId === 'blank' && prevState.activePresetId !== 'blank') {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        if (settleTimer) clearTimeout(settleTimer);
+        setLastSavedAt(null);
+        setStatus('idle');
+        return;
+      }
+
+      setStatus('saving');
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (settleTimer) clearTimeout(settleTimer);
+
+      debounceTimer = setTimeout(() => {
+        const latestState = useSimulationStore.getState();
+        const now = new Date();
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(
+              AUTOSAVE_PLAN_STORAGE_KEY,
+              JSON.stringify({
+                inputs: latestState.inputs,
+                timestamp: now.toISOString(),
+                version: '2026.1'
+              })
+            );
+          }
+        } catch (err) {
+          console.warn('Header auto-save persistence failed:', err);
+        }
+
+        setLastSavedAt(now);
+        setStatus('saved');
+
+        // Trigger a subtle 'Changes saved' toast unless a blocking export toast is active
+        const activeToast = latestState.toastNotification;
+        const isExportBusy =
+          latestState.isExportingPdf ||
+          latestState.excelExportOverlay !== null ||
+          activeToast?.status === 'loading';
+
+        if (!isExportBusy) {
+          const timeLabel = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          latestState.showToast(
+            {
+              status: 'success',
+              title: 'Changes saved',
+              message: timeLabel,
+              variant: 'subtle'
+            },
+            2500
+          );
+        }
+
+        settleTimer = setTimeout(() => {
+          setStatus('idle');
+        }, 2800);
+      }, AUTOSAVE_DEBOUNCE_MS);
+    });
+
+    return () => {
+      unsubscribe();
+      if (debounceTimer) clearTimeout(debounceTimer);
+      if (settleTimer) clearTimeout(settleTimer);
+    };
+  }, []);
+
+  const savedTimeText = lastSavedAt
+    ? lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      title={
+        status === 'saving'
+          ? 'Saving recent plan changes...'
+          : savedTimeText
+          ? `All plan changes auto-saved at ${savedTimeText}`
+          : 'Auto-save is active for all plan changes'
+      }
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors shrink-0 ${
+        status === 'saving'
+          ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60'
+          : status === 'saved'
+          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-700/60'
+          : 'bg-zinc-100/80 dark:bg-zinc-800/70 text-zinc-500 dark:text-zinc-400 border-zinc-200/70 dark:border-zinc-700/60'
+      }`}
+    >
+      {status === 'saving' ? (
+        <>
+          <Loader2 className="w-3 h-3 animate-spin text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>Saving...</span>
+        </>
+      ) : (
+        <>
+          <CheckCircle2
+            className={`w-3 h-3 shrink-0 ${
+              status === 'saved'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-emerald-500/80 dark:text-emerald-400/70'
+            }`}
+          />
+          <span>{status === 'saved' ? 'Changes saved' : 'Saved'}</span>
+          {savedTimeText && status !== 'saved' && (
+            <span className="hidden xl:inline font-mono text-[9.5px] text-zinc-400 dark:text-zinc-500">
+              {savedTimeText}
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+});
+
+HeaderAutoSaveIndicator.displayName = 'HeaderAutoSaveIndicator';
 
 export const Header: React.FC = () => {
   const isCalculating = useSimulationStore((state) => state.isCalculating);
@@ -69,15 +230,9 @@ export const Header: React.FC = () => {
     }
   };
 
-  // Granular atomic boolean selector: only re-renders when the collapsed state boolean actually flips
+  // Granular atomic boolean selector: reflects whether all sections on the active page/tab are collapsed
   const areAllSectionsCollapsed = useSimulationStore((state) => {
-    const viewSectionsMap: Record<AppView, string[]> = {
-      inputs: ['planning'],
-      dashboard: ['retirementAgeSimulator', 'stressTest', 'pulse', 'charts', 'ledger', 'breakEven'],
-      estate: ['estate'],
-      expat: ['expat']
-    };
-    const relevantKeys = viewSectionsMap[state.activeView] || Object.keys(state.collapsedSections);
+    const relevantKeys = getSectionKeysForPage(state.activeView, state.activeDashboardTab);
     return relevantKeys.length > 0 && relevantKeys.every((k) => Boolean(state.collapsedSections[k]));
   });
 
@@ -125,6 +280,9 @@ export const Header: React.FC = () => {
               <Menu className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </button>
 
+            {/* Mobile/Tablet Brand App Icon (visible when desktop sidebar is hidden) */}
+            <AppIcon size="sm" className="lg:hidden" alt="Strata" />
+
             {/* Current View Title & Status */}
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50 shrink-0">
@@ -135,6 +293,7 @@ export const Header: React.FC = () => {
                   <h1 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 font-['Plus_Jakarta_Sans'] leading-snug">
                     {currentViewMeta.title}
                   </h1>
+                  <HeaderAutoSaveIndicator />
                   {isCalculating && (
                     <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/60 dark:border-emerald-800/50 px-2 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
