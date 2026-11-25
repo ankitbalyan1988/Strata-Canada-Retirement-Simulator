@@ -21,6 +21,9 @@ import {
 } from '../utils/simulator';
 import { triggerConfetti } from '../utils/confettiHelper';
 import { SimulationSnapshot } from '../types/history';
+import { requestExportPassword } from '../utils/exportPasswordPrompt';
+import type { ExportPasswordPromptRequest } from '../utils/exportPasswordPrompt';
+import { dynamicImportWithRetry } from '../utils/dynamicImportWithRetry';
 
 export type AppView = 'dashboard' | 'inputs' | 'estate' | 'expat';
 export type DashboardTab = 'dashboard' | 'ledger' | 'cashflows' | 'readiness' | 'stresstest' | 'whatif';
@@ -80,6 +83,7 @@ export function getSectionKeysForPage(activeView: AppView, activeDashboardTab: D
 export type InputTab = 
   | 'personal'
   | 'expenses'
+  | 'events'
   | 'accounts'
   | 'debts'
   | 'realestate'
@@ -116,6 +120,9 @@ export interface PdfPreviewData {
   clientName: string;
   retirementAge: number;
   province: string;
+  isPasswordProtected?: boolean;
+  /** Strictly ephemeral in-memory password so PDF.js can render the preview; cleared on closePdfPreview. */
+  sessionPassword?: string;
 }
 
 export interface SimulationState {
@@ -152,6 +159,7 @@ export interface SimulationState {
   isExportingPdf: boolean;
   pdfPreview: PdfPreviewData | null;
   excelExportOverlay: ExcelExportOverlayState | null;
+  exportPasswordPrompt: ExportPasswordPromptRequest | null;
   toastNotification: {
     id: number;
     status: 'loading' | 'success' | 'error';
@@ -230,7 +238,9 @@ export interface SimulationState {
   setSectionCollapse: (sectionId: string, collapsed: boolean) => void;
   toggleCollapseAll: () => void;
   exportPdf: () => Promise<void>;
+  regeneratePdfWithPassword: (password: string | null) => Promise<void>;
   closePdfPreview: () => void;
+  setExportPasswordPrompt: (prompt: ExportPasswordPromptRequest | null) => void;
   startExcelExportOverlay: (title: string, subtitle?: string) => void;
   updateExcelExportOverlayPhase: (phase: ExcelExportPhase, subtitle?: string) => void;
   appendExcelExportLog: (message: string) => void;
@@ -605,6 +615,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   isExportingPdf: false,
   pdfPreview: null,
   excelExportOverlay: null,
+  exportPasswordPrompt: null,
   toastNotification: null,
   isCompareModalOpen: false,
   isSnapshotCompareModalOpen: false,
@@ -1169,6 +1180,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   dismissToast: () => set({ toastNotification: null }),
 
+  setExportPasswordPrompt: (prompt) => set({ exportPasswordPrompt: prompt }),
+
   closePdfPreview: () => {
     const current = get().pdfPreview;
     if (current?.blobUrl && typeof URL !== 'undefined') {
@@ -1180,6 +1193,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   exportPdf: async () => {
+    const promptResult = await requestExportPassword({
+      format: 'pdf',
+      documentTitle: 'Executive Canadian Retirement Report (.pdf)'
+    });
+    if (!promptResult.confirmed) {
+      return;
+    }
+    await get().regeneratePdfWithPassword(promptResult.password);
+  },
+
+  regeneratePdfWithPassword: async (password: string | null) => {
     const {
       inputs,
       summary,
@@ -1194,19 +1218,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       pdfPreview: previousPreview
     } = get();
     const toastId = Date.now();
+    const isProtected = Boolean(password && password.length > 0);
     try {
       set({
         isExportingPdf: true,
         toastNotification: {
           id: toastId,
           status: 'loading',
-          title: 'Generating Executive PDF Plan...',
-          message: 'Loading PDF engine and building your retirement report.'
+          title: isProtected
+            ? 'Encrypting Executive PDF Plan...'
+            : 'Generating Executive PDF Plan...',
+          message: isProtected
+            ? 'Applying PDF password encryption and compiling your retirement report.'
+            : 'Loading PDF engine and building your retirement report.'
         }
       });
       const [{ createRetirementPdfPreview }, { loadCroppedAppIconDataUrl }] = await Promise.all([
-        import('../utils/pdfExport'),
-        import('../components/AppIcon'),
+        dynamicImportWithRetry(() => import('../utils/pdfExport')),
+        dynamicImportWithRetry(() => import('../components/AppIcon')),
         new Promise<void>((resolve) => {
           if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
             window.requestAnimationFrame(() => resolve());
@@ -1230,7 +1259,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
             }
           : undefined,
         savedScenarios: history,
-        brandIconDataUrl: brandIconDataUrl ?? undefined
+        brandIconDataUrl: brandIconDataUrl ?? undefined,
+        password: password || undefined
       });
 
       // Cleanly revoke any prior preview Blob URL before storing the new one
@@ -1250,13 +1280,19 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
           generatedAt: preview.generatedAt,
           clientName: preview.clientName,
           retirementAge: preview.retirementAge,
-          province: preview.province
+          province: preview.province,
+          isPasswordProtected: preview.isPasswordProtected,
+          sessionPassword: password || undefined
         },
         toastNotification: {
           id: toastId,
           status: 'success',
-          title: 'PDF Report Ready to Preview',
-          message: `${preview.pageCount}-page retirement dossier generated. Review and download below.`
+          title: preview.isPasswordProtected
+            ? 'Password-Protected PDF Ready'
+            : 'PDF Report Ready to Preview',
+          message: preview.isPasswordProtected
+            ? `${preview.pageCount}-page encrypted dossier ready. Opening the downloaded file will require your password.`
+            : `${preview.pageCount}-page retirement dossier generated. Review and download below.`
         }
       });
       if (typeof window !== 'undefined') {

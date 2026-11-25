@@ -11,6 +11,11 @@ export default defineConfig(() => {
         '@': path.resolve(import.meta.dirname, '.'),
       },
     },
+    optimizeDeps: {
+      // Pre-bundle lazy-loaded export engines at dev server startup so on-demand dynamic imports
+      // never trigger mid-session re-optimization (504 Outdated Optimize Dep) when HMR is disabled.
+      include: ['jspdf', 'jspdf-autotable', 'exceljs', 'pdfjs-dist'],
+    },
     build: {
       rollupOptions: {
         output: {

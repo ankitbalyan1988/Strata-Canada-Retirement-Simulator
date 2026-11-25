@@ -36,6 +36,12 @@ import {
   getEffectiveDebts
 } from './debtCalculator';
 import { fastSimulateEndNetWorth, FastSimulationResult } from './engine/fastSimulator';
+import {
+  evaluateLifeEventsForYear,
+  fundLiquidCashDeficit,
+  formatLifeEventYearNotes,
+  LiquidDeficitDrawResult
+} from './engine/calculateLifeEvents';
 
 export { fastSimulateEndNetWorth };
 export type { FastSimulationResult };
@@ -298,6 +304,8 @@ export function runRetirementSimulation(
   const totalInitialDebt = effectiveDebts.reduce((sum, d) => sum + (Number(d.initialBalance) || 0), 0);
   let debtAtRetirement = 0;
   let lifetimeDebtInterest = 0;
+  let totalLifeEventInflows = 0;
+  let totalLifeEventOutflows = 0;
 
   // 4. Primary Multi-Year Simulation Loop
   for (let i = 0; i < totalYears; i++) {
@@ -345,6 +353,11 @@ export function runRetirementSimulation(
       });
     }
 
+    // Sub-Routine 2B: Evaluate Discrete Life Events & Cash Flow Shocks for this age
+    const lifeEventsResult = evaluateLifeEventsForYear(age, inflationFactor, inputs, isCouple);
+    totalLifeEventInflows += lifeEventsResult.totalInflowNominal;
+    totalLifeEventOutflows += lifeEventsResult.outflowNominal;
+
     // Sub-Routine 3: Contributions, Wage Growth & Discretionary Scaling Factor
     const contributionResult = calculateContributionsForYear(
       age,
@@ -359,9 +372,24 @@ export function runRetirementSimulation(
       isPrimaryRetired,
       isSpouseRetired,
       housingParams.initialAnnualExpenses,
-      simulationOptions?.stopContributionsAge
+      simulationOptions?.stopContributionsAge,
+      lifeEventsResult.hasEvents
+        ? {
+            pIncomeMultiplier: lifeEventsResult.pIncomeMultiplier,
+            sIncomeMultiplier: lifeEventsResult.sIncomeMultiplier,
+            taxableInflowNominal: !isPrimaryRetired ? lifeEventsResult.taxableInflowNominal : 0
+          }
+        : undefined
     );
     yearNotes.push(...contributionResult.notes);
+
+    const pIncomeLostThisYear = !isPrimaryRetired && lifeEventsResult.pIncomeMultiplier < 1
+      ? Math.max(0, contributionState.pEmploymentIncome - contributionResult.pYearIncome)
+      : 0;
+    const sIncomeLostThisYear = isCouple && spouse && !isSpouseRetired && lifeEventsResult.sIncomeMultiplier < 1
+      ? Math.max(0, contributionState.sEmploymentIncome - contributionResult.sYearIncome)
+      : 0;
+    const totalIncomeLostThisYear = pIncomeLostThisYear + sIncomeLostThisYear;
 
     // Sync FHSA active status back to housingState so future loop iterations never reactivate it
     if (!contributionState.pFhsaActive) {
@@ -371,7 +399,7 @@ export function runRetirementSimulation(
       housingState.sFhsaActive = false;
     }
 
-    // Sub-Routine 4: Separate Cash Outflows (Living Expenses, Rent/Mortgage, Debts)
+    // Sub-Routine 4: Separate Cash Outflows (Living Expenses, Rent/Mortgage, Debts, Discrete Life Event Shocks)
     const rentPaymentNominal = housingResult.rentPaidThisYear > 0 ? Math.round(housingResult.rentPaidThisYear * inflationFactor) : 0;
     const mortgagePaymentNominal = housingResult.mortgagePaidThisYear > 0 ? Math.round(housingResult.mortgagePaidThisYear) : 0;
     const rentOrMortgagePayment = rentPaymentNominal + mortgagePaymentNominal;
@@ -408,8 +436,9 @@ export function runRetirementSimulation(
     }
 
     const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
-    // Net any optional gross rental income against non-living property carrying outflows so surplus sweep reflects rental cashflow
-    const totalOutflowsBeforeRental = targetSpendingNominal + debtResult.totalAnnualPayment;
+    // Net any optional gross rental income against non-living property carrying outflows, plus discrete life event outflows
+    const totalOutflowsBeforeRental =
+      targetSpendingNominal + debtResult.totalAnnualPayment + lifeEventsResult.outflowNominal;
     const totalOutflows = Math.max(0, totalOutflowsBeforeRental - rentalIncomeNominal);
 
     // Sub-Routine 5: Pre-Retirement Outflow Reconciliation & Surplus-to-Savings Sweep
@@ -426,9 +455,35 @@ export function runRetirementSimulation(
       contributionResult,
       contributionState,
       balances,
-      simulationOptions?.stopContributionsAge
+      simulationOptions?.stopContributionsAge,
+      false,
+      !isPrimaryRetired ? lifeEventsResult.totalInflowNominal : 0,
+      !isPrimaryRetired ? lifeEventsResult.taxableInflowNominal : 0
     );
     let surplusSavedThisYear = sweepResult.surplusSaved;
+
+    // Fund any remaining pre-retirement cash shock shortfall from liquid reserves (Non-Reg -> TFSA -> RRSP)
+    let preRetDeficitDraw: LiquidDeficitDrawResult | undefined;
+    if (!isPrimaryRetired && sweepResult.unfundedDeficit > 1 && lifeEventsResult.hasEvents) {
+      preRetDeficitDraw = fundLiquidCashDeficit(
+        sweepResult.unfundedDeficit,
+        balances,
+        isCouple,
+        province,
+        age,
+        contributionResult.pTaxable
+      );
+      if (preRetDeficitDraw.rrspWithdrawn > 0) {
+        contributionResult.pTaxable += preRetDeficitDraw.rrspWithdrawn;
+        contributionResult.pTaxPaid += preRetDeficitDraw.rrspWithdrawalTax;
+      }
+    }
+
+    if (lifeEventsResult.hasEvents) {
+      yearNotes.push(
+        ...formatLifeEventYearNotes(age, lifeEventsResult, totalIncomeLostThisYear, preRetDeficitDraw)
+      );
+    }
 
     // Sub-Routine 6: Investment Returns, Yield Drag, GIC Maturity & Stress Testing
     const investmentResult = calculateInvestmentReturnsForYear(
@@ -456,13 +511,13 @@ export function runRetirementSimulation(
 
     // Decumulation & Retirement Cashflow variables
     let pensions: GovernmentPensionsResult = { pCppIncome: 0, sCppIncome: 0, pGrossOas: 0, sGrossOas: 0 };
-    let pRrspWithdrawal = 0;
+    let pRrspWithdrawal = preRetDeficitDraw?.rrspWithdrawn ?? 0;
     let sRrspWithdrawal = 0;
     let pRrifWithdrawal = 0;
     let sRrifWithdrawal = 0;
-    let pTfsaWithdrawal = 0;
+    let pTfsaWithdrawal = preRetDeficitDraw?.tfsaWithdrawn ?? 0;
     let sTfsaWithdrawal = 0;
-    let pNonRegWithdrawal = 0;
+    let pNonRegWithdrawal = preRetDeficitDraw?.nonRegWithdrawn ?? 0;
     let sNonRegWithdrawal = 0;
     const isPrimaryRrif = age >= 72;
     const isSpouseRrif = Boolean(isCouple && spouse && spouseAge !== undefined && spouseAge >= 72);
@@ -478,7 +533,7 @@ export function runRetirementSimulation(
     let sOasClawback = 0;
     let pNetOas = 0;
     let sNetOas = 0;
-    let cashflowGap = 0;
+    let cashflowGap = preRetDeficitDraw?.remainingGap ?? 0;
     let surplusReinvestedThisYear = 0;
 
     if (isRetired) {
@@ -494,9 +549,11 @@ export function runRetirementSimulation(
         pensions.pGrossOas +
         pensions.sCppIncome +
         pensions.sGrossOas +
+        lifeEventsResult.taxFreeInflowNominal +
+        lifeEventsResult.taxableInflowNominal +
         (!isSpouseRetired ? contributionResult.sYearIncome - contributionResult.sTaxPaid : 0);
 
-      // Sub-Routine 4B: Decumulation Sequencing (funds totalOutflows = living + rent/mortgage + consumer debt)
+      // Sub-Routine 4B: Decumulation Sequencing (funds totalOutflows = living + rent/mortgage + consumer debt + life event shocks)
       const decumulationResult = calculateDecumulationForYear(
         age,
         spouseAge,
@@ -555,8 +612,28 @@ export function runRetirementSimulation(
       sNetOas = taxCashflowResult.sNetOas;
       pTaxPaid = taxCashflowResult.pTaxPaid;
       sTaxPaid = taxCashflowResult.sTaxPaid;
+
+      let retLifeEventTaxDelta = 0;
+      if (lifeEventsResult.taxableInflowNominal > 0) {
+        const taxWithEvent = calculateCanadianTax(
+          pTaxable + lifeEventsResult.taxableInflowNominal,
+          province,
+          age,
+          0
+        ).totalTax;
+        retLifeEventTaxDelta = Math.max(0, taxWithEvent - pTaxPaid);
+        pTaxable += lifeEventsResult.taxableInflowNominal;
+        pTaxPaid += retLifeEventTaxDelta;
+      }
+
+      const netRetirementLifeEventCash =
+        lifeEventsResult.taxFreeInflowNominal +
+        Math.max(0, lifeEventsResult.taxableInflowNominal - retLifeEventTaxDelta);
       const spouseWorkingAfterTax = !isSpouseRetired ? Math.max(0, contributionResult.sYearIncome - contributionResult.sTaxPaid) : 0;
-      const netAvailableForOutflows = Math.max(0, taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax);
+      const netAvailableForOutflows = Math.max(
+        0,
+        taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax + netRetirementLifeEventCash
+      );
       cashflowGap = Math.max(0, totalOutflows - netAvailableForOutflows);
       lifetimeOasReceived += pNetOas + sNetOas;
       yearNotes.push(...taxCashflowResult.notes);
@@ -746,9 +823,10 @@ export function runRetirementSimulation(
       pensions.sCppIncome +
       pNetOas +
       sNetOas +
-      yearTotalWithdrawals;
+      yearTotalWithdrawals +
+      lifeEventsResult.totalInflowNominal;
 
-    // Consistent ledger surplus: Inflows - Total Outflows (Living + Rent/Mortgage + Debts) - CRA Income Tax
+    // Consistent ledger surplus: Inflows - Total Outflows (Living + Rent/Mortgage + Debts + Life Events) - CRA Income Tax
     const unifiedNetCashSurplus = ledgerInflow - totalOutflows - totalTaxPaid;
 
     const isMeltdownActiveThisPlan = drawdownStrategy === 'rrsp_meltdown';
@@ -836,7 +914,11 @@ export function runRetirementSimulation(
       isRrspMeltdownStartMilestone,
       isRrspMeltdownActive,
       rrspMeltdownDrawdown,
-      rrspMeltdownSurplusReinvested: Math.round(surplusReinvestedThisYear)
+      rrspMeltdownSurplusReinvested: Math.round(surplusReinvestedThisYear),
+      lifeEventInflow: Math.round(lifeEventsResult.totalInflowNominal),
+      lifeEventOutflow: Math.round(lifeEventsResult.outflowNominal),
+      lifeEventIncomeImpact: totalIncomeLostThisYear > 0 ? -Math.round(totalIncomeLostThisYear) : 0,
+      lifeEventNames: lifeEventsResult.eventNames.length > 0 ? lifeEventsResult.eventNames : undefined
     });
   }
 
@@ -955,7 +1037,10 @@ export function runRetirementSimulation(
     spouseRetirementAge: isCouple && spouse ? spouse.retirementAge : undefined,
     isMeltdownActive: inputs.drawdownStrategy === 'rrsp_meltdown',
     meltdownStartAge: inputs.drawdownStrategy === 'rrsp_meltdown' ? (inputs.meltdownStartAge ?? inputs.retirementAge) : undefined,
-    meltdownTargetStrategy: inputs.meltdownTargetStrategy ?? 'bracket1'
+    meltdownTargetStrategy: inputs.meltdownTargetStrategy ?? 'bracket1',
+    lifeEventsCount: (inputs.lifeEvents || []).filter((e) => e.enabled).length,
+    totalLifeEventInflows: Math.round(totalLifeEventInflows),
+    totalLifeEventOutflows: Math.round(totalLifeEventOutflows)
   };
 
   return { yearlyResults, summary };

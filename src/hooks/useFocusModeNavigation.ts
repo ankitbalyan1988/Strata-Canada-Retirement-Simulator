@@ -233,6 +233,7 @@ export function useFocusModeNavigation() {
         state.isWealthGuideModalOpen ||
         state.isHistoryPanelOpen ||
         state.excelExportOverlay !== null ||
+        state.exportPasswordPrompt !== null ||
         state.pdfPreview !== null
       ) {
         return;

@@ -6,6 +6,7 @@ import { InputTabBar } from './components/Navigation/InputTabBar';
 import { MainDashboardTabContent } from './components/Tabs/MainDashboardTabContent';
 import { ToastBanner } from './components/ToastBanner';
 import { ExcelExportOverlay } from './components/ExcelExportOverlay';
+import { ExportPasswordModal } from './components/ExportPasswordModal';
 import { FocusModeHUD } from './components/FocusModeHUD';
 import { ModuleLoadingFallback } from './components/ModuleLoadingFallback';
 import { AppIcon } from './components/AppIcon';
@@ -277,6 +278,9 @@ export default function App() {
 
         {/* Global Excel Export Loading Overlay (Chunk loading & workbook processing) */}
         <ExcelExportOverlay />
+
+        {/* Global Document Password Protection Prompt Modal (PDF & Excel exports) */}
+        <ExportPasswordModal />
 
         {/* Floating Keyboard Focus Mode Navigation HUD */}
         <FocusModeHUD />

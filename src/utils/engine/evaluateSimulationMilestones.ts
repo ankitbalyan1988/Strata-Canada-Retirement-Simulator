@@ -453,6 +453,64 @@ export function evaluateSimulationMilestones(
     }
   }
 
+  // 11. Discrete Life Events & Cash Flow Shocks
+  const activeLifeEvents = (inputs.lifeEvents || []).filter((e) => e.enabled);
+  for (const ev of activeLifeEvents) {
+    const startAge = Math.round(ev.startAge);
+    const evRow = yearlyResults.find((r) => r.age === startAge);
+    if (!evRow) continue;
+
+    evRow.milestoneBadges = evRow.milestoneBadges || [];
+    const durationLabel = ev.durationYears > 1 ? ` (${ev.durationYears} yrs)` : '';
+    const iconEmoji =
+      ev.kind === 'inflow'
+        ? '💰'
+        : ev.category === 'education_resp'
+        ? '🎓'
+        : ev.category === 'home_renovation'
+        ? '🔨'
+        : ev.category === 'vehicle_purchase'
+        ? '🚗'
+        : ev.category === 'sabbatical_travel'
+        ? '✈️'
+        : ev.category === 'temporary_layoff'
+        ? '⏸️'
+        : '⚡';
+
+    const color =
+      ev.kind === 'inflow' ? 'emerald' : ev.kind === 'income_shock' ? 'amber' : 'rose';
+
+    const shortAmt =
+      ev.kind === 'inflow' && ev.amount > 0
+        ? ` +$${Math.round(ev.amount / 1000)}k`
+        : ev.kind === 'outflow' && ev.amount > 0
+        ? ` -$${Math.round(ev.amount / 1000)}k`
+        : ev.kind === 'income_shock' && (ev.incomeReductionPercent || 0) > 0
+        ? ` -${ev.incomeReductionPercent}% pay`
+        : '';
+
+    evRow.milestoneBadges.push({
+      id: `life_event_${ev.id}`,
+      label: `${ev.name}${durationLabel}`,
+      shortLabel: `${iconEmoji} ${ev.name}${shortAmt}`,
+      type: 'life_event',
+      icon: ev.kind === 'inflow' ? 'trending-up' : 'zap',
+      color,
+      description:
+        ev.kind === 'inflow'
+          ? `Expected ${ev.isTaxable ? 'taxable' : 'tax-free'} cash windfall starting at Age ${startAge}`
+          : ev.kind === 'income_shock'
+          ? `Temporary income shock (-${ev.incomeReductionPercent || 0}% salary)${durationLabel}`
+          : `Discrete planned cash outflow${durationLabel} at Age ${startAge}`,
+      metricsSummary:
+        ev.kind === 'inflow'
+          ? `+$${Math.round(evRow.lifeEventInflow || ev.amount).toLocaleString()} nominal`
+          : ev.kind === 'outflow'
+          ? `-$${Math.round(evRow.lifeEventOutflow || ev.amount).toLocaleString()}/yr nominal`
+          : `Income impact: $${Math.round(Math.abs(evRow.lifeEventIncomeImpact || 0)).toLocaleString()}`
+    });
+  }
+
   return {
     crossoverAge,
     crossoverYear,

@@ -54,6 +54,7 @@ export interface MasterExcelExportOptions {
 export type ExcelProgressLogger = (message: string) => Promise<void> | void;
 
 let activeExcelProgressLogger: ExcelProgressLogger | null = null;
+let activeExcelExportPassword: string | null = null;
 
 /**
  * Registers a transient progress callback used by the global ExcelExportOverlay
@@ -61,6 +62,23 @@ let activeExcelProgressLogger: ExcelProgressLogger | null = null;
  */
 export function setActiveExcelProgressLogger(logger: ExcelProgressLogger | null): void {
   activeExcelProgressLogger = logger;
+}
+
+/**
+ * Registers a transient open-password applied during workbook serialization.
+ * Cleared immediately after the export completes or fails.
+ */
+export function setActiveExcelExportPassword(password: string | null): void {
+  activeExcelExportPassword = password && password.length > 0 ? password : null;
+}
+
+function encodeUtf8ToBase64(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 async function emitExcelProgress(message: string): Promise<void> {
@@ -71,8 +89,35 @@ async function emitExcelProgress(message: string): Promise<void> {
 
 export async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
   await emitExcelProgress('Serializing .xlsx workbook archive...');
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
+  const rawBuffer = await workbook.xlsx.writeBuffer();
+  let outputBuffer: ArrayBuffer | Uint8Array = rawBuffer as ArrayBuffer;
+
+  if (activeExcelExportPassword) {
+    await emitExcelProgress('Applying AES-256 OOXML password encryption...');
+    const response = await fetch('/api/encrypt-excel', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/octet-stream',
+        'X-Export-Password-B64': encodeUtf8ToBase64(activeExcelExportPassword)
+      },
+      body: new Uint8Array(rawBuffer as ArrayBuffer)
+    });
+
+    if (!response.ok) {
+      let detail = 'Unable to apply password encryption to the Excel workbook.';
+      try {
+        const errJson = await response.json();
+        if (errJson?.error) detail = String(errJson.error);
+      } catch {
+        // Use fallback detail
+      }
+      throw new Error(detail);
+    }
+
+    outputBuffer = await response.arrayBuffer();
+  }
+
+  const blob = new Blob([outputBuffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
   const url = window.URL.createObjectURL(blob);

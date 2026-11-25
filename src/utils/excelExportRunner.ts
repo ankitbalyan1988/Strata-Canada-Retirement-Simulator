@@ -1,4 +1,6 @@
 import { useSimulationStore } from '../store/useSimulationStore';
+import { requestExportPassword } from './exportPasswordPrompt';
+import { dynamicImportWithRetry } from './dynamicImportWithRetry';
 
 type ExcelExportModule = typeof import('./excelExport');
 
@@ -33,8 +35,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Orchestrates any Excel export with the global loading overlay while keeping
- * `excelExport.ts` and `exceljs` strictly code-split into on-demand lazy chunks.
+ * Orchestrates any Excel export with an optional password protection prompt and
+ * the global loading overlay while keeping `excelExport.ts` and `exceljs` strictly
+ * code-split into on-demand lazy chunks.
  */
 export async function runWithExcelExportOverlay(
   options: ExcelExportRunnerOptions,
@@ -47,22 +50,36 @@ export async function runWithExcelExportOverlay(
     return;
   }
 
+  // Ask whether the user wants to password-protect this Excel workbook before downloading
+  const promptResult = await requestExportPassword({
+    format: 'excel',
+    documentTitle: options.title.replace(/^Exporting\s+/i, '')
+  });
+
+  if (!promptResult.confirmed) {
+    return;
+  }
+
+  const exportPassword = promptResult.password;
+  const isProtected = Boolean(exportPassword && exportPassword.length > 0);
+
   let loadedExcelModule: ExcelExportModule | null = null;
 
   try {
     // Phase 1: Show overlay immediately & fetch the lazy ExcelJS chunk in parallel with paint
-    store.startExcelExportOverlay(
+    useSimulationStore.getState().startExcelExportOverlay(
       options.title,
       'Fetching ExcelJS workbook engine & formula modules...'
     );
 
     const [excelModule] = await Promise.all([
-      import('./excelExport'),
+      dynamicImportWithRetry(() => import('./excelExport')),
       waitForNextPaint()
     ]);
     loadedExcelModule = excelModule;
 
-    // Install granular progress logger so each workbook step paints cleanly in the live log
+    // Install granular progress logger & transient encryption password
+    excelModule.setActiveExcelExportPassword(exportPassword);
     excelModule.setActiveExcelProgressLogger(async (message: string) => {
       useSimulationStore.getState().appendExcelExportLog(message);
       await waitForNextPaint();
@@ -77,15 +94,21 @@ export async function runWithExcelExportOverlay(
     );
     await waitForNextPaint();
 
-    // Execute the actual workbook assembly and file save
+    // Execute the actual workbook assembly, optional encryption, and file save
     await task(excelModule);
 
     // Phase 3: Brief visual confirmation of file handoff before dismissing overlay
     useSimulationStore.getState().updateExcelExportOverlayPhase(
       'downloading',
-      'Finalizing .xlsx package and triggering browser download...'
+      isProtected
+        ? 'Finalizing password-protected .xlsx package and triggering browser download...'
+        : 'Finalizing .xlsx package and triggering browser download...'
     );
-    useSimulationStore.getState().appendExcelExportLog('Workbook ready — starting browser download...');
+    useSimulationStore.getState().appendExcelExportLog(
+      isProtected
+        ? 'Encrypted workbook ready — starting browser download...'
+        : 'Workbook ready — starting browser download...'
+    );
     await waitForNextPaint();
     await sleep(160);
     useSimulationStore.getState().completeExcelExportLogs();
@@ -94,12 +117,13 @@ export async function runWithExcelExportOverlay(
     useSimulationStore.getState().showToast(
       {
         status: 'success',
-        title: 'Excel Export Complete',
-        message:
-          options.successMessage ||
-          'Your formatted .xlsx workbook has finished generating and started downloading.'
+        title: isProtected ? 'Password-Protected Excel Export Complete' : 'Excel Export Complete',
+        message: isProtected
+          ? 'Your encrypted .xlsx workbook has started downloading. Opening it will require your password.'
+          : options.successMessage ||
+            'Your formatted .xlsx workbook has finished generating and started downloading.'
       },
-      4500
+      5000
     );
   } catch (err) {
     console.error('Excel export failed:', err);
@@ -107,7 +131,10 @@ export async function runWithExcelExportOverlay(
       {
         status: 'error',
         title: 'Excel Export Failed',
-        message: 'Something went wrong while generating your Excel workbook. Please try again.'
+        message:
+          err instanceof Error && err.message
+            ? err.message
+            : 'Something went wrong while generating your Excel workbook. Please try again.'
       },
       5000
     );
@@ -115,6 +142,7 @@ export async function runWithExcelExportOverlay(
   } finally {
     if (loadedExcelModule) {
       loadedExcelModule.setActiveExcelProgressLogger(null);
+      loadedExcelModule.setActiveExcelExportPassword(null);
     }
     useSimulationStore.getState().finishExcelExportOverlay();
   }

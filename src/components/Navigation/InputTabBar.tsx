@@ -11,7 +11,8 @@ import {
   Landmark,
   TrendingUp,
   ArrowRightLeft,
-  Globe
+  Globe,
+  Sparkles
 } from 'lucide-react';
 import { getDebtQualifierFlags, getEffectiveDebts } from '../../utils/debtCalculator';
 import { getActiveAdditionalProperties } from '../../utils/mortgage';
@@ -41,7 +42,8 @@ export const InputTabBar: React.FC = React.memo(() => {
     futurePurchaseDisplayAge,
     propertyCount,
     additionalPropertiesCount,
-    planExpatExit
+    planExpatExit,
+    activeLifeEventsCount
   } = useSimulationStore(
     useShallow((state) => {
       const inp = state.inputs;
@@ -58,6 +60,7 @@ export const InputTabBar: React.FC = React.memo(() => {
       );
       const primaryCount = (hStatus === 'own' || (hStatus === 'rent' && planFutureHome)) ? 1 : 0;
       const totalProps = primaryCount + activeAdditional.length;
+      const enabledLifeEvents = (inp.lifeEvents || []).filter((e) => e.enabled).length;
       return {
         isMarried: inp.maritalStatus === 'married',
         hasDebts: debtFlags.hasDebtModule,
@@ -71,7 +74,8 @@ export const InputTabBar: React.FC = React.memo(() => {
         futurePurchaseDisplayAge: inp.realEstate?.futurePurchaseAge || inp.currentAge + 3,
         propertyCount: totalProps,
         additionalPropertiesCount: activeAdditional.length,
-        planExpatExit: inp.planExpatExit ?? Boolean(inp.expat?.planToEmigrate)
+        planExpatExit: inp.planExpatExit ?? Boolean(inp.expat?.planToEmigrate),
+        activeLifeEventsCount: enabledLifeEvents
       };
     })
   );
@@ -90,6 +94,14 @@ export const InputTabBar: React.FC = React.memo(() => {
       badge: 'Monthly Budget',
       icon: Receipt,
       show: true
+    },
+    {
+      id: 'events',
+      title: 'Life Events & Shocks',
+      badge: 'Windfalls & Pauses',
+      icon: Sparkles,
+      show: true,
+      extraBadge: activeLifeEventsCount > 0 ? activeLifeEventsCount : undefined
     },
     {
       id: 'accounts',

@@ -35,7 +35,8 @@ import {
   HelpCircle,
   Command,
   Loader2,
-  Target
+  Target,
+  Sparkles
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab, InputTab } from '../../store/useSimulationStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -144,6 +145,7 @@ export const Sidebar: React.FC = () => {
   }> = [
     { id: 'personal', label: 'Primary Profile', icon: User },
     { id: 'expenses', label: 'Living Expenses', icon: Receipt },
+    { id: 'events', label: 'Life Events & Shocks', icon: Sparkles },
     { id: 'accounts', label: 'Primary Accounts', icon: PiggyBank },
     ...(showRealEstateSection ? [{ id: 'realestate' as InputTab, label: housingStatus === 'rent' ? 'Future Home' : 'Real Estate', icon: Home }] : []),
     ...(hasDebts ? [{ id: 'debts' as InputTab, label: isFutureOnlyDebtMode ? 'Future Debts & Loans' : 'Debts & Loans', icon: CreditCard }] : []),

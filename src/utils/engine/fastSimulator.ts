@@ -18,6 +18,7 @@ import {
   calculateRetirementTaxesAndCashflow
 } from './calculatePensionsAndTaxes';
 import { initializeDebtStates, calculateDebtsForYear, DebtYearState, getEffectiveDebts } from '../debtCalculator';
+import { evaluateLifeEventsForYear, fundLiquidCashDeficit } from './calculateLifeEvents';
 
 export interface FastSimulationResult {
   isFullyFunded: boolean;
@@ -179,6 +180,9 @@ export function fastSimulateEndNetWorth(
     // 2. Advance Debts
     const debtResult = calculateDebtsForYear(debtStates, age, inputs.debtStrategy);
 
+    // 2B. Discrete Life Events & Cash Flow Shocks
+    const lifeEventsResult = evaluateLifeEventsForYear(age, inflationFactor, inputs, isCouple);
+
     // 3. Contributions, Income & Discretionary Scaling Factor
     const contributionResult = calculateContributionsForYear(
       age,
@@ -193,7 +197,14 @@ export function fastSimulateEndNetWorth(
       isPrimaryRetired,
       isSpouseRetired,
       housingParams.initialAnnualExpenses,
-      stopContributionsAge
+      stopContributionsAge,
+      lifeEventsResult.hasEvents
+        ? {
+            pIncomeMultiplier: lifeEventsResult.pIncomeMultiplier,
+            sIncomeMultiplier: lifeEventsResult.sIncomeMultiplier,
+            taxableInflowNominal: !isPrimaryRetired ? lifeEventsResult.taxableInflowNominal : 0
+          }
+        : undefined
     );
 
     if (!contributionState.pFhsaActive) {
@@ -203,7 +214,7 @@ export function fastSimulateEndNetWorth(
       housingState.sFhsaActive = false;
     }
 
-    // 4. Separate Cash Outflows: Living Expenses, Rent/Mortgage, Debts
+    // 4. Separate Cash Outflows: Living Expenses, Rent/Mortgage, Debts, Discrete Life Events
     const rentPaymentNominal = housingResult.rentPaidThisYear > 0 ? Math.round(housingResult.rentPaidThisYear * inflationFactor) : 0;
     const mortgagePaymentNominal = housingResult.mortgagePaidThisYear > 0 ? Math.round(housingResult.mortgagePaidThisYear) : 0;
     const rentOrMortgagePayment = rentPaymentNominal + mortgagePaymentNominal;
@@ -229,10 +240,13 @@ export function fastSimulateEndNetWorth(
     }
 
     const targetSpendingNominal = livingExpensesNominal + rentOrMortgagePayment;
-    const totalOutflows = Math.max(0, targetSpendingNominal + debtResult.totalAnnualPayment - rentalIncomeNominal);
+    const totalOutflows = Math.max(
+      0,
+      targetSpendingNominal + debtResult.totalAnnualPayment + lifeEventsResult.outflowNominal - rentalIncomeNominal
+    );
 
     // 5. Pre-Retirement Cashflow Reconciliation & Surplus-to-Savings Sweep
-    reconcilePreRetirementOutflowsAndSurplus(
+    const sweepResult = reconcilePreRetirementOutflowsAndSurplus(
       age,
       spouseAge,
       inputs,
@@ -246,8 +260,21 @@ export function fastSimulateEndNetWorth(
       contributionState,
       balances,
       stopContributionsAge,
-      fastOptions?.disableAutoSurplusSweep
+      fastOptions?.disableAutoSurplusSweep,
+      !isPrimaryRetired ? lifeEventsResult.totalInflowNominal : 0,
+      !isPrimaryRetired ? lifeEventsResult.taxableInflowNominal : 0
     );
+
+    if (!isPrimaryRetired && sweepResult.unfundedDeficit > 1 && lifeEventsResult.hasEvents) {
+      fundLiquidCashDeficit(
+        sweepResult.unfundedDeficit,
+        balances,
+        isCouple,
+        province,
+        age,
+        contributionResult.pTaxable
+      );
+    }
 
     // 6. Compounding & Returns
     calculateInvestmentReturnsForYear(
@@ -278,6 +305,8 @@ export function fastSimulateEndNetWorth(
         pensions.pGrossOas +
         pensions.sCppIncome +
         pensions.sGrossOas +
+        lifeEventsResult.taxFreeInflowNominal +
+        lifeEventsResult.taxableInflowNominal +
         (!isSpouseRetired ? contributionResult.sYearIncome - contributionResult.sTaxPaid : 0);
 
       const decumulationResult = calculateDecumulationForYear(
@@ -317,8 +346,21 @@ export function fastSimulateEndNetWorth(
         inflationFactor
       );
 
+      let retLifeEventTaxDelta = 0;
+      if (lifeEventsResult.taxableInflowNominal > 0) {
+        const taxWithEvent = calculateCanadianTax(
+          taxCashflowResult.pTaxable + lifeEventsResult.taxableInflowNominal,
+          province,
+          age,
+          0
+        ).totalTax;
+        retLifeEventTaxDelta = Math.max(0, taxWithEvent - taxCashflowResult.pTaxPaid);
+      }
+      const netRetLifeEventCash =
+        lifeEventsResult.taxFreeInflowNominal +
+        Math.max(0, lifeEventsResult.taxableInflowNominal - retLifeEventTaxDelta);
       const spouseWorkingAfterTax = !isSpouseRetired ? Math.max(0, contributionResult.sYearIncome - contributionResult.sTaxPaid) : 0;
-      const netSpendable = Math.max(0, taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax);
+      const netSpendable = Math.max(0, taxCashflowResult.netSpendableCashflow + spouseWorkingAfterTax + netRetLifeEventCash);
       if (netSpendable > totalOutflows) {
         const surplus = netSpendable - totalOutflows;
         const tfsaAnnualLimit = 7000 * inflationFactor;

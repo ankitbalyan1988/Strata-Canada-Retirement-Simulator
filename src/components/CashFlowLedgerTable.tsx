@@ -61,11 +61,13 @@ const CashFlowLedgerRow: React.FC<CashFlowLedgerRowProps> = React.memo(({
   const earnedIncome = yr.employmentIncome || 0;
   const pensions = (yr.cppIncome || 0) + (yr.oasNetIncome || 0);
   const withdrawals = yr.totalWithdrawals || 0;
-  const totalInflow = earnedIncome + pensions + withdrawals;
+  const eventInflow = yr.lifeEventInflow || 0;
+  const totalInflow = earnedIncome + pensions + withdrawals + eventInflow;
   const rentMortgage = yr.rentOrMortgagePayment ?? 0;
   const livingExpenses = yr.livingExpensesNominal ?? Math.max(0, (yr.targetSpendingNominal || 0) - rentMortgage);
   const debt = yr.debtPayment || 0;
-  const totalOutflow = livingExpenses + rentMortgage + debt;
+  const eventOutflow = yr.lifeEventOutflow || 0;
+  const totalOutflow = livingExpenses + rentMortgage + debt + eventOutflow;
   const taxes = yr.totalTaxPaid || 0;
   const savings = (yr.rrspContribution || 0) + (yr.tfsaContribution || 0) + (yr.fhsaContribution || 0) + (yr.nonRegContribution || 0);
   const netSurplus = yr.netSpendableCashflow !== undefined ? yr.netSpendableCashflow : (totalInflow - totalOutflow - taxes);
@@ -132,7 +134,14 @@ const CashFlowLedgerRow: React.FC<CashFlowLedgerRowProps> = React.memo(({
       </td>
 
       {/* Total Inflow */}
-      <td className="py-2 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/25 border-r border-slate-100 dark:border-slate-800">
+      <td
+        className="py-2 px-3 text-right font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/25 border-r border-slate-100 dark:border-slate-800"
+        title={
+          eventInflow > 0
+            ? `Includes +${formatCur(eventInflow, false)} discrete life event windfall / offset`
+            : undefined
+        }
+      >
         {formatCur(totalInflow, false)}
       </td>
 
@@ -186,7 +195,14 @@ const CashFlowLedgerRow: React.FC<CashFlowLedgerRowProps> = React.memo(({
       </td>
 
       {/* Total Outflow */}
-      <td className="py-2 px-3 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/25 border-r border-slate-100 dark:border-slate-800">
+      <td
+        className="py-2 px-3 text-right font-bold text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/25 border-r border-slate-100 dark:border-slate-800"
+        title={
+          eventOutflow > 0
+            ? `Includes ${formatCur(eventOutflow, false)} discrete life event expense`
+            : undefined
+        }
+      >
         {formatCur(totalOutflow, false)}
       </td>
 
@@ -229,14 +245,23 @@ const CashFlowLedgerRow: React.FC<CashFlowLedgerRowProps> = React.memo(({
       {/* Strategic Notes & Badges */}
       <td className="py-2 px-4 text-left">
         <div className="flex flex-wrap items-center gap-1.5">
-          {yr.milestoneBadges?.map((b, bIdx) => (
-            <span
-              key={bIdx}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-700/60 shadow-2xs"
-            >
-              {b.shortLabel || b.label}
-            </span>
-          ))}
+          {yr.milestoneBadges?.map((b, bIdx) => {
+            const badgeStyle =
+              b.color === 'emerald'
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-700/60'
+                : b.color === 'rose'
+                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-200/80 dark:border-rose-700/60'
+                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-200/80 dark:border-amber-700/60';
+            return (
+              <span
+                key={bIdx}
+                title={b.metricsSummary ? `${b.description} (${b.metricsSummary})` : b.description}
+                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold border shadow-2xs ${badgeStyle}`}
+              >
+                {b.shortLabel || b.label}
+              </span>
+            );
+          })}
           {yr.notes && yr.notes.length > 0 && (
             <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate max-w-[280px]" title={yr.notes.join(' • ')}>
               {yr.notes[0]}
@@ -407,11 +432,13 @@ export const CashFlowLedgerTable: React.FC<CashFlowLedgerTableProps> = React.mem
       const sal = yr.employmentIncome || 0;
       const pen = (yr.cppIncome || 0) + (yr.oasNetIncome || 0);
       const wth = yr.totalWithdrawals || 0;
-      const inflow = sal + pen + wth;
+      const evIn = yr.lifeEventInflow || 0;
+      const inflow = sal + pen + wth + evIn;
       const rentMort = yr.rentOrMortgagePayment ?? 0;
       const living = yr.livingExpensesNominal ?? Math.max(0, (yr.targetSpendingNominal || 0) - rentMort);
       const dbt = yr.debtPayment || 0;
-      const outflow = living + rentMort + dbt;
+      const evOut = yr.lifeEventOutflow || 0;
+      const outflow = living + rentMort + dbt + evOut;
       const tax = yr.totalTaxPaid || 0;
       const sav = (yr.rrspContribution || 0) + (yr.tfsaContribution || 0) + (yr.fhsaContribution || 0) + (yr.nonRegContribution || 0);
       const surplus = inflow - outflow - tax;

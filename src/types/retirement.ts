@@ -99,6 +99,44 @@ export interface CareerDisruption {
   recoveryYears: number; // years before income recovers
 }
 
+export type LifeEventCategory =
+  | 'inheritance'
+  | 'education_resp'
+  | 'home_renovation'
+  | 'vehicle_purchase'
+  | 'sabbatical_travel'
+  | 'temporary_layoff'
+  | 'custom_inflow'
+  | 'custom_outflow';
+
+export type LifeEventKind = 'inflow' | 'outflow' | 'income_shock';
+
+export interface LifeEvent {
+  id: string;
+  name: string;
+  category: LifeEventCategory;
+  kind: LifeEventKind;
+  enabled: boolean;
+  startAge: number;
+  /** Consecutive years the event applies (1 = discrete one-time event; e.g. 4 for university funding) */
+  durationYears: number;
+  /** Annual dollar amount (today's $ when inflationAdjusted is true, or fixed nominal $).
+   *  For 'inflow': cash received/yr. For 'outflow': extra expense/yr.
+   *  For 'income_shock': optional extra annual expense (e.g., sabbatical travel budget). */
+  amount: number;
+  /** Whether dollar amounts scale with CPI inflation from today to event age */
+  inflationAdjusted: boolean;
+  /** For 'inflow': whether the cash windfall is taxable under CRA rules (false for Canadian inheritances & gifts) */
+  isTaxable?: boolean;
+  /** For 'income_shock' (layoff / sabbatical): % drop in employment income during active years (0-100) */
+  incomeReductionPercent?: number;
+  /** For 'income_shock': optional taxable EI / severance replacement income per year */
+  replacementIncome?: number;
+  /** For 'income_shock' in couple plans: which earner's income is affected */
+  affectsPerson?: 'primary' | 'spouse' | 'both';
+  notes?: string;
+}
+
 export interface MonthlyExpenseEstimates {
   rentOrMortgage: number; // monthly rent or mortgage payment
   utilities: number; // electricity, heat, water, internet, phone
@@ -331,6 +369,9 @@ export interface RetirementInputs {
   planFutureHomePurchase?: boolean;
   planExpatExit?: boolean;
 
+  // Discrete Life Events & Cash Flow Shocks (inheritances, renovations, RESP, vehicles, sabbaticals, layoffs)
+  lifeEvents?: LifeEvent[];
+
   // Expat Emigration Planning
   expat?: ExpatInputs;
 }
@@ -339,7 +380,7 @@ export interface MilestoneBadge {
   id: string;
   label: string;
   shortLabel: string;
-  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'debt_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'meltdown' | 'general';
+  type: 'crossover' | 'coast_fire' | 'millionaire' | 'mortgage_free' | 'debt_free' | 'home_purchase' | 'retirement' | 'pension' | 'rrif' | 'peak_net_worth' | 'fhsa' | 'meltdown' | 'life_event' | 'general';
   icon: string;
   color: string;
   description: string;
@@ -455,6 +496,12 @@ export interface YearSimulationResult {
   rrspMeltdownDrawdown?: number;
   rrspMeltdownSurplusReinvested?: number;
   milestoneBadges?: MilestoneBadge[];
+
+  // Discrete Life Events & Cash Flow Shocks
+  lifeEventInflow?: number;
+  lifeEventOutflow?: number;
+  lifeEventIncomeImpact?: number;
+  lifeEventNames?: string[];
 }
 
 export interface SimulationSummary {
@@ -528,6 +575,11 @@ export interface SimulationSummary {
   // Couple details
   isCouple: boolean;
   spouseRetirementAge?: number;
+
+  // Discrete Life Events summary
+  lifeEventsCount?: number;
+  totalLifeEventInflows?: number;
+  totalLifeEventOutflows?: number;
 }
 
 export interface ScenarioPreset {

@@ -6,16 +6,21 @@ import {
   ChevronDown,
   ChevronUp,
   Save,
-  Loader2
+  Loader2,
+  ArrowLeft,
+  ArrowRight,
+  LayoutDashboard
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { MaritalStatus, RetirementInputs } from '../types/retirement';
 import { DEFAULT_SPOUSE_INPUTS } from '../utils/presets';
 import { getDebtQualifierFlags } from '../utils/debtCalculator';
-import { useSimulationStore, AUTOSAVE_PLAN_STORAGE_KEY } from '../store/useSimulationStore';
+import { getActiveAdditionalProperties } from '../utils/mortgage';
+import { useSimulationStore, AUTOSAVE_PLAN_STORAGE_KEY, InputTab } from '../store/useSimulationStore';
 import { useInputTabDispatch } from './InputTabs/inputTabHelpers';
 import { PrimaryProfileTab } from './InputTabs/PrimaryProfileTab';
 import { LivingExpensesTab } from './InputTabs/LivingExpensesTab';
+import { LifeEventsTab } from './InputTabs/LifeEventsTab';
 import { PrimaryAccountsTab } from './InputTabs/PrimaryAccountsTab';
 import { DebtsTab } from './InputTabs/DebtsTab';
 import { RealEstateTab } from './InputTabs/RealEstateTab';
@@ -177,8 +182,10 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
   const isPlanningCollapsed = useSimulationStore((state) => Boolean(state.collapsedSections.planning));
   const activeTab = useSimulationStore((state) => state.activeInputTab);
   const setActiveTab = useSimulationStore((state) => state.setActiveInputTab);
+  const setActiveView = useSimulationStore((state) => state.setActiveView);
   const toggleSectionCollapse = useSimulationStore((state) => state.toggleSectionCollapse);
   const setSectionCollapse = useSimulationStore((state) => state.setSectionCollapse);
+  const panelTopRef = useRef<HTMLDivElement>(null);
 
   const { dispatchInputsChange } = useInputTabDispatch(props.onChange);
 
@@ -198,6 +205,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
   const storeQualifiers = useSimulationStore(
     useShallow((state) => {
       const dFlags = getDebtQualifierFlags(state.inputs);
+      const activeAdditional = getActiveAdditionalProperties(state.inputs);
       const hStatus: 'own' | 'rent' = state.inputs.housingStatus ?? (
         state.inputs.realEstate?.ownsHome && state.inputs.realEstate?.purchaseType !== 'future'
           ? 'own'
@@ -206,10 +214,13 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
       const planFutureHome: boolean = state.inputs.planFutureHomePurchase ?? Boolean(
         state.inputs.realEstate?.ownsHome && state.inputs.realEstate?.purchaseType === 'future'
       );
-      const showRealEstate = hStatus === 'own' || (hStatus === 'rent' && planFutureHome);
+      const showRealEstate = hStatus === 'own' || (hStatus === 'rent' && planFutureHome) || activeAdditional.length > 0;
       const planExpat: boolean = state.inputs.planExpatExit ?? Boolean(state.inputs.expat?.planToEmigrate);
       return {
         hasDebtModule: dFlags.hasDebtModule,
+        isFutureOnlyDebtMode: dFlags.isFutureOnlyDebtMode,
+        housingStatus: hStatus,
+        additionalPropertiesCount: activeAdditional.length,
         showRealEstateSection: showRealEstate,
         planExpatExit: planExpat
       };
@@ -245,6 +256,7 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
   const propQualifiers = useMemo(() => {
     if (!props.inputs) return null;
     const dFlags = getDebtQualifierFlags(props.inputs);
+    const activeAdditional = getActiveAdditionalProperties(props.inputs);
     const hStatus: 'own' | 'rent' = props.inputs.housingStatus ?? (
       props.inputs.realEstate?.ownsHome && props.inputs.realEstate?.purchaseType !== 'future'
         ? 'own'
@@ -255,14 +267,80 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
     );
     return {
       hasDebtModule: dFlags.hasDebtModule,
-      showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome),
+      isFutureOnlyDebtMode: dFlags.isFutureOnlyDebtMode,
+      housingStatus: hStatus,
+      additionalPropertiesCount: activeAdditional.length,
+      showRealEstateSection: hStatus === 'own' || (hStatus === 'rent' && planFutureHome) || activeAdditional.length > 0,
       planExpatExit: props.inputs.planExpatExit ?? Boolean(props.inputs.expat?.planToEmigrate)
     };
   }, [props.inputs]);
 
   const hasDebts = propQualifiers ? propQualifiers.hasDebtModule : storeQualifiers.hasDebtModule;
+  const isFutureOnlyDebtMode = propQualifiers ? propQualifiers.isFutureOnlyDebtMode : storeQualifiers.isFutureOnlyDebtMode;
+  const housingStatus = propQualifiers ? propQualifiers.housingStatus : storeQualifiers.housingStatus;
+  const additionalPropertiesCount = propQualifiers ? propQualifiers.additionalPropertiesCount : storeQualifiers.additionalPropertiesCount;
   const showRealEstateSection = propQualifiers ? propQualifiers.showRealEstateSection : storeQualifiers.showRealEstateSection;
   const planExpatExit = propQualifiers ? propQualifiers.planExpatExit : storeQualifiers.planExpatExit;
+
+  const visibleStepTabs = useMemo<Array<{ id: InputTab; title: string }>>(() => {
+    const steps: Array<{ id: InputTab; title: string; show: boolean }> = [
+      { id: 'personal', title: 'Primary Profile', show: true },
+      { id: 'expenses', title: 'Living Expenses', show: true },
+      { id: 'events', title: 'Life Events & Shocks', show: true },
+      { id: 'accounts', title: 'Primary Accounts', show: true },
+      {
+        id: 'debts',
+        title: isFutureOnlyDebtMode ? 'Future Debts & Loans' : 'Debts & Loans',
+        show: hasDebts
+      },
+      {
+        id: 'realestate',
+        title: housingStatus === 'rent' && additionalPropertiesCount === 0 ? 'Future Home' : 'Real Estate',
+        show: showRealEstateSection
+      },
+      { id: 'spouse', title: 'Spouse Profile', show: isMarried },
+      { id: 'pensions', title: 'CPP & OAS Pensions', show: true },
+      { id: 'market', title: 'Returns & Inflation', show: true },
+      { id: 'strategy', title: 'Drawdown Strategy', show: true },
+      { id: 'expat', title: 'Expat Relocation', show: planExpatExit }
+    ];
+    return steps.filter((s) => s.show).map(({ id, title }) => ({ id, title }));
+  }, [
+    isFutureOnlyDebtMode,
+    hasDebts,
+    housingStatus,
+    additionalPropertiesCount,
+    showRealEstateSection,
+    isMarried,
+    planExpatExit
+  ]);
+
+  const activeStepIndex = visibleStepTabs.findIndex((t) => t.id === activeTab);
+  const prevStepTab = activeStepIndex > 0 ? visibleStepTabs[activeStepIndex - 1] : null;
+  const nextStepTab =
+    activeStepIndex >= 0 && activeStepIndex < visibleStepTabs.length - 1
+      ? visibleStepTabs[activeStepIndex + 1]
+      : null;
+
+  const navigateToStepTab = useCallback(
+    (tabId: InputTab) => {
+      setActiveTab(tabId);
+      if (typeof window !== 'undefined') {
+        const rect = panelTopRef.current?.getBoundingClientRect();
+        if (rect && rect.top < 0) {
+          panelTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    },
+    [setActiveTab]
+  );
+
+  const handleFinishToDashboard = useCallback(() => {
+    setActiveView('dashboard');
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [setActiveView]);
 
   useEffect(() => {
     if (activeTab === 'debts' && !hasDebts) {
@@ -305,8 +383,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
 
   return (
     <div
+      ref={panelTopRef}
       data-focus-zone="input-content"
-      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-colors"
+      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xs overflow-hidden flex flex-col transition-colors scroll-mt-4"
     >
 
       {/* Marital Status Selector Bar */}
@@ -417,6 +496,9 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
           {activeTab === 'expenses' && (
             <LivingExpensesTab externalInputs={props.inputs} externalOnChange={props.onChange} />
           )}
+          {activeTab === 'events' && (
+            <LifeEventsTab externalInputs={props.inputs} externalOnChange={props.onChange} />
+          )}
           {activeTab === 'accounts' && (
             <PrimaryAccountsTab externalInputs={props.inputs} externalOnChange={props.onChange} />
           )}
@@ -440,6 +522,78 @@ export const InputPanel: React.FC<InputPanelProps> = React.memo((props) => {
           )}
           {activeTab === 'expat' && (
             <ExpatRelocationTab externalInputs={props.inputs} externalOnChange={props.onChange} />
+          )}
+
+          {/* Unified Section Step Navigation Footer across all visible input tabs */}
+          {activeStepIndex >= 0 && (
+            <div className="mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Previous Step Button */}
+              <div className="w-full sm:w-auto flex items-center">
+                {prevStepTab ? (
+                  <button
+                    type="button"
+                    onClick={() => navigateToStepTab(prevStepTab.id)}
+                    className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to {prevStepTab.title}</span>
+                  </button>
+                ) : (
+                  <span className="hidden sm:inline-flex items-center text-[11px] font-medium text-slate-400 dark:text-slate-500">
+                    Start of planning inputs
+                  </span>
+                )}
+              </div>
+
+              {/* Center Step Progress Indicator */}
+              <div className="flex items-center gap-2.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                  Step {activeStepIndex + 1} of {visibleStepTabs.length}
+                </span>
+                <div className="flex items-center gap-1" role="presentation">
+                  {visibleStepTabs.map((step, idx) => (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => navigateToStepTab(step.id)}
+                      title={`Jump to Step ${idx + 1}: ${step.title}`}
+                      aria-label={`Jump to ${step.title}`}
+                      className={`h-1.5 rounded-full transition-all duration-200 cursor-pointer ${
+                        idx === activeStepIndex
+                          ? 'w-4 bg-emerald-500'
+                          : idx < activeStepIndex
+                            ? 'w-1.5 bg-emerald-500/45 hover:bg-emerald-500/70'
+                            : 'w-1.5 bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Next Step / Finish Button */}
+              <div className="w-full sm:w-auto flex items-center justify-end">
+                {nextStepTab ? (
+                  <button
+                    type="button"
+                    onClick={() => navigateToStepTab(nextStepTab.id)}
+                    className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <span>Continue to {nextStepTab.title}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFinishToDashboard}
+                    className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5" />
+                    <span>View Plan Dashboard</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       )}

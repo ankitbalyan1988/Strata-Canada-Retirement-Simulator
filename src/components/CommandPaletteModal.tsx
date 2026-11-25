@@ -24,7 +24,8 @@ import {
   Monitor,
   Apple,
   Keyboard,
-  Target
+  Target,
+  Sparkles
 } from 'lucide-react';
 import { useSimulationStore, AppView, DashboardTab } from '../store/useSimulationStore';
 import { isMacPlatform } from '../utils/keyboardShortcuts';
@@ -50,6 +51,7 @@ export const CommandPaletteModal: React.FC = () => {
   const setIsCommandPaletteOpen = useSimulationStore((state) => state.setIsCommandPaletteOpen);
   const setActiveView = useSimulationStore((state) => state.setActiveView);
   const setActiveDashboardTab = useSimulationStore((state) => state.setActiveDashboardTab);
+  const setActiveInputTab = useSimulationStore((state) => state.setActiveInputTab);
   const toggleTheme = useSimulationStore((state) => state.toggleTheme);
   const theme = useSimulationStore((state) => state.theme);
   const toggleHistoryPanel = useSimulationStore((state) => state.toggleHistoryPanel);
@@ -192,6 +194,36 @@ export const CommandPaletteModal: React.FC = () => {
         keywords: ['inputs', 'profile', 'accounts', 'rrsp', 'tfsa', 'fhsa', 'salary', 'income'],
         action: () => {
           setActiveView('inputs');
+        }
+      },
+      {
+        id: 'view_life_events',
+        title: 'Life Events & Cash Flow Shocks',
+        subtitle: 'Model inheritance, RESP/university, $40k renovation, vehicle, sabbatical or layoff',
+        category: 'App Views',
+        icon: Sparkles,
+        iconBg: 'bg-amber-50 dark:bg-amber-950/60',
+        iconColor: 'text-amber-600 dark:text-amber-400',
+        shortcutMac: '',
+        shortcutWin: '',
+        keywords: [
+          'inheritance',
+          'resp',
+          'university',
+          'tuition',
+          'renovation',
+          'vehicle',
+          'car',
+          'sabbatical',
+          'travel',
+          'layoff',
+          'shock',
+          'windfall',
+          'events'
+        ],
+        action: () => {
+          setActiveView('inputs');
+          setActiveInputTab('events');
         }
       },
       {
@@ -421,6 +453,7 @@ export const CommandPaletteModal: React.FC = () => {
   }, [
     setActiveView,
     setActiveDashboardTab,
+    setActiveInputTab,
     toggleTheme,
     theme,
     toggleHistoryPanel,

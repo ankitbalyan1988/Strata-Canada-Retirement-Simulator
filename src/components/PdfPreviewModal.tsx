@@ -18,9 +18,12 @@ import {
   ChevronLeft,
   ChevronRight,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { useSimulationStore } from '../store/useSimulationStore';
+import { requestExportPassword } from '../utils/exportPasswordPrompt';
 import { AppIcon } from './AppIcon';
 
 // Configure PDF.js worker using Vite's same-origin bundled worker URL
@@ -178,6 +181,8 @@ const ZOOM_STEP = 0.15;
 export const PdfPreviewModal: React.FC = () => {
   const pdfPreview = useSimulationStore((state) => state.pdfPreview);
   const closePdfPreview = useSimulationStore((state) => state.closePdfPreview);
+  const regeneratePdfWithPassword = useSimulationStore((state) => state.regeneratePdfWithPassword);
+  const isExportingPdf = useSimulationStore((state) => state.isExportingPdf);
   const showToast = useSimulationStore((state) => state.showToast);
 
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -249,7 +254,10 @@ export const PdfPreviewModal: React.FC = () => {
         if (isCancelled) return;
 
         const data = new Uint8Array(buffer);
-        loadingTask = pdfjsLib.getDocument({ data });
+        loadingTask = pdfjsLib.getDocument({
+          data,
+          ...(pdfPreview.sessionPassword ? { password: pdfPreview.sessionPassword } : {})
+        });
         loadedDoc = await loadingTask.promise;
 
         if (isCancelled) {
@@ -361,6 +369,7 @@ export const PdfPreviewModal: React.FC = () => {
   useEffect(() => {
     if (!pdfPreview) return;
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (useSimulationStore.getState().exportPasswordPrompt) return;
       if (e.key === 'Escape') {
         e.preventDefault();
         closePdfPreview();
@@ -406,8 +415,10 @@ export const PdfPreviewModal: React.FC = () => {
       showToast(
         {
           status: 'success',
-          title: 'PDF Downloaded',
-          message: `Saved ${pdfPreview.fileName}`
+          title: pdfPreview.isPasswordProtected ? 'Protected PDF Downloaded' : 'PDF Downloaded',
+          message: pdfPreview.isPasswordProtected
+            ? `Saved password-protected ${pdfPreview.fileName}`
+            : `Saved ${pdfPreview.fileName}`
         },
         4000
       );
@@ -567,6 +578,12 @@ export const PdfPreviewModal: React.FC = () => {
                 <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 shrink-0">
                   {formatFileSize(pdfPreview.sizeBytes)}
                 </span>
+                {pdfPreview.isPasswordProtected && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 shrink-0">
+                    <Lock className="w-3 h-3" />
+                    <span>Password Protected</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2.5 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap">
                 <span className="inline-flex items-center gap-1 truncate max-w-[200px]">
@@ -590,8 +607,46 @@ export const PdfPreviewModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Right: Actions (Print, Fullscreen, Download, Close) */}
+          {/* Right: Actions (Password, Print, Fullscreen, Download, Close) */}
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await requestExportPassword({
+                  format: 'pdf',
+                  documentTitle: 'Update PDF Password Protection',
+                  confirmLabel: 'Apply Password to PDF',
+                  initialProtect: !pdfPreview.isPasswordProtected
+                });
+                if (res.confirmed) {
+                  await regeneratePdfWithPassword(res.password);
+                }
+              }}
+              disabled={isExportingPdf}
+              className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed ${
+                pdfPreview.isPasswordProtected
+                  ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-950/80 border-emerald-200 dark:border-emerald-800/70'
+                  : 'text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700'
+              }`}
+              title={
+                pdfPreview.isPasswordProtected
+                  ? 'Change or remove PDF password'
+                  : 'Add password protection to this PDF'
+              }
+            >
+              {pdfPreview.isPasswordProtected ? (
+                <>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>Password</span>
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                  <span>Add Password</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={handlePrint}

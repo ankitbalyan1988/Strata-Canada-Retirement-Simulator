@@ -104,8 +104,14 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
     if (displayData.length === 0) return 100000;
     let peak = 50000;
     displayData.forEach((d) => {
-      const inflow = d.employmentIncome + d.cppIncome + d.oasNetIncome + d.totalWithdrawals + (d.homeSaleProceeds || 0);
-      const outflow = d.targetSpendingNominal + d.debtPayment;
+      const inflow =
+        d.employmentIncome +
+        d.cppIncome +
+        d.oasNetIncome +
+        d.totalWithdrawals +
+        (d.homeSaleProceeds || 0) +
+        (d.lifeEventInflow || 0);
+      const outflow = d.targetSpendingNominal + d.debtPayment + (d.lifeEventOutflow || 0);
       const outflowWithTax = outflow + d.totalTaxPaid;
       peak = Math.max(peak, inflow, outflowWithTax);
     });
@@ -391,6 +397,10 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
               CRA Income Tax
             </span>
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+              <span className="w-2.5 h-2.5 rounded-xs bg-violet-500"></span>
+              Life Events
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px]">
               <span className="w-2.5 h-2.5 rounded-xs bg-emerald-500"></span>
               Savings & Surplus
             </span>
@@ -522,8 +532,14 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
             {/* Bars for Each Year */}
             {displayData.map((d) => {
               const xCenter = getX(d.age);
-              const totalInflow = d.employmentIncome + d.cppIncome + d.oasNetIncome + d.totalWithdrawals + (d.homeSaleProceeds || 0);
-              const totalOutflow = d.targetSpendingNominal + d.debtPayment;
+              const totalInflow =
+                d.employmentIncome +
+                d.cppIncome +
+                d.oasNetIncome +
+                d.totalWithdrawals +
+                (d.homeSaleProceeds || 0) +
+                (d.lifeEventInflow || 0);
+              const totalOutflow = d.targetSpendingNominal + d.debtPayment + (d.lifeEventOutflow || 0);
               const totalTaxes = d.totalTaxPaid;
               const savings = (d.rrspContribution + d.tfsaContribution + d.fhsaContribution + d.nonRegContribution);
               const netSurplus = Math.max(0, d.netSpendableCashflow);
@@ -586,7 +602,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                     </>
                   )}
 
-                  {/* Mode 2: Inflows Breakdown (Salary, CPP/OAS, Withdrawals) */}
+                  {/* Mode 2: Inflows Breakdown (Salary, CPP/OAS, Withdrawals, Life Events) */}
                   {viewMode === 'inflows' && (
                     <>
                       {(() => {
@@ -594,6 +610,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                         const salary = d.employmentIncome;
                         const pensions = d.cppIncome + d.oasNetIncome;
                         const draws = d.totalWithdrawals;
+                        const windfalls = (d.homeSaleProceeds || 0) + (d.lifeEventInflow || 0);
 
                         return (
                           <g>
@@ -627,13 +644,23 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                                 fill="#14B8A6" // Teal
                               />
                             )}
+                            {windfalls > 0 && (
+                              <rect
+                                x={xCenter - barWidth * 0.4}
+                                y={bottom - ((salary + pensions + draws + windfalls) / maxY) * chartHeight}
+                                width={barWidth * 0.8}
+                                height={(windfalls / maxY) * chartHeight}
+                                rx="2"
+                                fill="#8B5CF6" // Violet
+                              />
+                            )}
                           </g>
                         );
                       })()}
                     </>
                   )}
 
-                  {/* Mode 3: Outflows & Taxes Breakdown (Living, Rent/Mortgage, Debts, Taxes) */}
+                  {/* Mode 3: Outflows & Taxes Breakdown (Living, Rent/Mortgage, Debts, Life Events, Taxes) */}
                   {viewMode === 'outflows' && (
                     <>
                       {(() => {
@@ -641,6 +668,7 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                         const rentMort = d.rentOrMortgagePayment ?? 0;
                         const living = d.livingExpensesNominal ?? Math.max(0, d.targetSpendingNominal - rentMort);
                         const debt = d.debtPayment;
+                        const eventOutflow = d.lifeEventOutflow || 0;
                         const tax = d.totalTaxPaid;
 
                         return (
@@ -675,10 +703,20 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                                 fill="#EA580C" // Orange
                               />
                             )}
+                            {eventOutflow > 0 && (
+                              <rect
+                                x={xCenter - barWidth * 0.4}
+                                y={bottom - ((living + rentMort + debt + eventOutflow) / maxY) * chartHeight}
+                                width={barWidth * 0.8}
+                                height={(eventOutflow / maxY) * chartHeight}
+                                rx="2"
+                                fill="#8B5CF6" // Violet
+                              />
+                            )}
                             {tax > 0 && (
                               <rect
                                 x={xCenter - barWidth * 0.4}
-                                y={bottom - ((living + rentMort + debt + tax) / maxY) * chartHeight}
+                                y={bottom - ((living + rentMort + debt + eventOutflow + tax) / maxY) * chartHeight}
                                 width={barWidth * 0.8}
                                 height={(tax / maxY) * chartHeight}
                                 rx="2"
@@ -775,7 +813,8 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                   hoveredRow.cppIncome +
                   hoveredRow.oasNetIncome +
                   hoveredRow.totalWithdrawals +
-                  (hoveredRow.homeSaleProceeds || 0)
+                  (hoveredRow.homeSaleProceeds || 0) +
+                  (hoveredRow.lifeEventInflow || 0)
                 ).toLocaleString()}
               </div>
               <ul className="text-[11px] text-slate-300 space-y-0.5 mt-1">
@@ -788,14 +827,23 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                 {hoveredRow.totalWithdrawals > 0 && (
                   <li>• Withdrawals: ${Math.round(hoveredRow.totalWithdrawals).toLocaleString()}</li>
                 )}
+                {(hoveredRow.lifeEventInflow ?? 0) > 0 && (
+                  <li className="text-violet-300">
+                    • Life Event Inflow: ${Math.round(hoveredRow.lifeEventInflow ?? 0).toLocaleString()}
+                  </li>
+                )}
               </ul>
             </div>
 
             {/* Outflows Breakdown */}
             <div>
-              <span className="text-slate-400 font-semibold block mb-1">Cash Outflows (Living, Housing & Debt)</span>
+              <span className="text-slate-400 font-semibold block mb-1">Cash Outflows (Living, Housing & Events)</span>
               <div className="text-base font-bold font-mono text-amber-400">
-                ${Math.round(hoveredRow.targetSpendingNominal + hoveredRow.debtPayment).toLocaleString()}
+                ${Math.round(
+                  hoveredRow.targetSpendingNominal +
+                  hoveredRow.debtPayment +
+                  (hoveredRow.lifeEventOutflow || 0)
+                ).toLocaleString()}
               </div>
               <ul className="text-[11px] text-slate-300 space-y-0.5 mt-1">
                 <li>
@@ -811,6 +859,11 @@ export const CashFlowVisualizer: React.FC<CashFlowVisualizerProps> = React.memo(
                 )}
                 {hoveredRow.debtPayment > 0 && (
                   <li>• Debts / Loans: ${Math.round(hoveredRow.debtPayment).toLocaleString()}</li>
+                )}
+                {(hoveredRow.lifeEventOutflow ?? 0) > 0 && (
+                  <li className="text-violet-300">
+                    • Life Event Outflow: ${Math.round(hoveredRow.lifeEventOutflow ?? 0).toLocaleString()}
+                  </li>
                 )}
               </ul>
             </div>

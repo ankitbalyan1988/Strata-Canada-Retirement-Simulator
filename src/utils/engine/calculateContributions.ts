@@ -63,6 +63,12 @@ export interface ContributionYearResult {
   notes: string[];
 }
 
+export interface LifeEventContributionParams {
+  pIncomeMultiplier: number;
+  sIncomeMultiplier: number;
+  taxableInflowNominal: number;
+}
+
 /**
  * Handles FHSA lifetime limits/rollovers, wage growth, career disruption scalers,
  * and annual contributions for primary and spouse accounts.
@@ -80,7 +86,8 @@ export function calculateContributionsForYear(
   isPrimaryRetired: boolean,
   isSpouseRetired: boolean,
   initialAnnualExpenses: number,
-  stopContributionsAge?: number
+  stopContributionsAge?: number,
+  lifeEventParams?: LifeEventContributionParams
 ): ContributionYearResult {
   const notes: string[] = [];
   const currentSimYear = 2026 + yearIndex;
@@ -210,7 +217,8 @@ export function calculateContributionsForYear(
       }
     }
 
-    pYearIncome = Math.max(0, state.pEmploymentIncome);
+    const pLifeMult = lifeEventParams ? Math.min(1, Math.max(0, lifeEventParams.pIncomeMultiplier)) : 1;
+    pYearIncome = Math.max(0, state.pEmploymentIncome * pLifeMult);
     state.lifetimeEmploymentIncome += pYearIncome;
 
     pEmployeeRrsp = Math.max(0, inputs.rrspAnnualContribution);
@@ -383,7 +391,8 @@ export function calculateContributionsForYear(
       }
     }
 
-    pTaxable = Math.max(0, pYearIncome - pEmployeeRrsp - pFhsaContrib);
+    const extraTaxable = lifeEventParams?.taxableInflowNominal ?? 0;
+    pTaxable = Math.max(0, pYearIncome + extraTaxable - pEmployeeRrsp - pFhsaContrib);
     pTaxPaid = calculateCanadianTax(pTaxable, inputs.province, age, 0).totalTax;
   }
 
@@ -405,7 +414,8 @@ export function calculateContributionsForYear(
       }
     }
 
-    sYearIncome = Math.max(0, state.sEmploymentIncome);
+    const sLifeMult = lifeEventParams ? Math.min(1, Math.max(0, lifeEventParams.sIncomeMultiplier)) : 1;
+    sYearIncome = Math.max(0, state.sEmploymentIncome * sLifeMult);
     state.lifetimeEmploymentIncome += sYearIncome;
 
     sEmployeeRrsp = Math.max(0, spouse.rrspAnnualContribution);
@@ -463,14 +473,16 @@ export function calculateContributionsForYear(
   }
 
   // Compute household active earned-income discretionary scaling ratio (0..1)
+  // Note: Temporary life-event pauses (sabbatical/layoff) preserve household living expenses
+  // so the simulation realistically tests emergency reserves rather than zeroing living costs.
   let actualActiveWorkingIncome = 0;
   let baselineActiveWorkingIncome = 0;
   if (!isPrimaryRetired) {
-    actualActiveWorkingIncome += pYearIncome;
+    actualActiveWorkingIncome += Math.max(0, state.pEmploymentIncome);
     baselineActiveWorkingIncome += Math.max(0, state.pBaselineIncome);
   }
   if (isCouple && spouse && !isSpouseRetired) {
-    actualActiveWorkingIncome += sYearIncome;
+    actualActiveWorkingIncome += Math.max(0, state.sEmploymentIncome);
     baselineActiveWorkingIncome += Math.max(0, state.sBaselineIncome);
   }
   const discretionaryScaleFactor = baselineActiveWorkingIncome > 0
@@ -524,24 +536,41 @@ export function reconcilePreRetirementOutflowsAndSurplus(
   state: ContributionYearState,
   balances: ContributionBalances,
   stopContributionsAge?: number,
-  disableAutoSurplusSweep?: boolean
-): { surplusSaved: number } {
-  if (isPrimaryRetired || disableAutoSurplusSweep) {
-    return { surplusSaved: 0 };
+  disableAutoSurplusSweep?: boolean,
+  extraCashInflow = 0,
+  extraTaxableInflow = 0
+): { surplusSaved: number; unfundedDeficit: number } {
+  if (isPrimaryRetired) {
+    return { surplusSaved: 0, unfundedDeficit: 0 };
   }
-  if (stopContributionsAge !== undefined && age >= stopContributionsAge) {
-    return { surplusSaved: 0 };
+
+  const workingInflow = res.pYearIncome + res.sYearIncome + extraCashInflow;
+  const currentPlannedOutOfPocket =
+    res.pEmployeeRrsp +
+    res.pTfsaContrib +
+    res.pFhsaContrib +
+    res.pNonRegContrib +
+    res.sEmployeeRrsp +
+    res.sTfsaContrib +
+    res.sFhsaContrib +
+    res.sNonRegContrib;
+
+  if (disableAutoSurplusSweep || (stopContributionsAge !== undefined && age >= stopContributionsAge)) {
+    const rawDeficit = Math.max(
+      0,
+      totalOutflows + (res.pTaxPaid + res.sTaxPaid) + currentPlannedOutOfPocket - workingInflow
+    );
+    return { surplusSaved: 0, unfundedDeficit: rawDeficit };
   }
 
   const spouseStopped = stopContributionsAge !== undefined &&
     (spouseAge !== undefined ? spouseAge >= stopContributionsAge : age >= stopContributionsAge);
   const canSpouseSave = Boolean(isCouple && spouse && !isSpouseRetired && !spouseStopped);
   const hasCustomNonReg = Boolean(balances.customAccountsState && balances.customAccountsState.length > 0);
-  const workingInflow = res.pYearIncome + res.sYearIncome;
   let surplusSaved = 0;
 
   const recomputeTaxes = () => {
-    res.pTaxable = Math.max(0, res.pYearIncome - res.pEmployeeRrsp - res.pFhsaContrib);
+    res.pTaxable = Math.max(0, res.pYearIncome + extraTaxableInflow - res.pEmployeeRrsp - res.pFhsaContrib);
     res.pTaxPaid = calculateCanadianTax(res.pTaxable, inputs.province, age, 0).totalTax;
     if (isCouple && spouse && !isSpouseRetired && spouseAge !== undefined) {
       res.sTaxable = Math.max(0, res.sYearIncome - res.sEmployeeRrsp - res.sFhsaContrib);
@@ -746,5 +775,19 @@ export function reconcilePreRetirementOutflowsAndSurplus(
     }
   }
 
-  return { surplusSaved };
+  const finalOutOfPocket =
+    res.pEmployeeRrsp +
+    res.pTfsaContrib +
+    res.pFhsaContrib +
+    res.pNonRegContrib +
+    res.sEmployeeRrsp +
+    res.sTfsaContrib +
+    res.sFhsaContrib +
+    res.sNonRegContrib;
+  const unfundedDeficit = Math.max(
+    0,
+    totalOutflows + (res.pTaxPaid + res.sTaxPaid) + finalOutOfPocket - workingInflow
+  );
+
+  return { surplusSaved, unfundedDeficit };
 }

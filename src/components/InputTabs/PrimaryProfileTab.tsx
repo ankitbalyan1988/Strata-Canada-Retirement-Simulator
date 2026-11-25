@@ -10,8 +10,7 @@ import {
   Home,
   Globe,
   Minus,
-  Plus,
-  Receipt
+  Plus
 } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { RetirementInputs } from '../../types/retirement';
@@ -1136,29 +1135,6 @@ export const PrimaryProfileTab: React.FC<InputTabProps> = React.memo(({ external
             </div>
           )}
         </div>
-      </div>
-
-      {/* Next Step Guidance to Living Expenses */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 flex items-center justify-center shrink-0">
-            <Receipt className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-900 dark:text-slate-50">Next Step: Estimate Living Expenses</div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              Enter your monthly household expenses in today's dollars (rent/mortgage, utilities, credit cards) and adjust post-retirement lifestyle needs.
-            </div>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setActiveTab('expenses')}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white dark:text-slate-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs shrink-0 self-stretch sm:self-auto justify-center cursor-pointer"
-        >
-          <span>Continue to Living Expenses</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
       </div>
     </div>
   );

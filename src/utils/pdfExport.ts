@@ -51,6 +51,8 @@ export interface PdfExportOptions {
   stressTest?: PdfStressTestConfig;
   savedScenarios?: SimulationSnapshot[];
   brandIconDataUrl?: string;
+  /** Optional open-password applied via native PDF encryption */
+  password?: string;
 }
 
 /**
@@ -1827,17 +1829,7 @@ export function buildRetirementPdfDocument(
   yearlyResults: YearSimulationResult[],
   narrativeOrOptions?: AiPlanNarrative | PdfExportOptions
 ): jsPDF {
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'pt',
-    format: 'letter'
-  });
-
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const provinceName = PROVINCIAL_BRACKETS[inputs.province]?.name || inputs.province;
-
-  // Extract PdfExportOptions or legacy bare AiPlanNarrative safely
+  // Extract PdfExportOptions or legacy bare AiPlanNarrative safely before instantiating jsPDF
   const isOptionsObj = Boolean(
     narrativeOrOptions &&
     (
@@ -1847,12 +1839,34 @@ export function buildRetirementPdfDocument(
       'whatIfSettings' in narrativeOrOptions ||
       'stressTest' in narrativeOrOptions ||
       'savedScenarios' in narrativeOrOptions ||
-      'brandIconDataUrl' in narrativeOrOptions
+      'brandIconDataUrl' in narrativeOrOptions ||
+      'password' in narrativeOrOptions
     )
   );
   const options: PdfExportOptions = isOptionsObj
     ? (narrativeOrOptions as PdfExportOptions)
     : { aiNarrative: (narrativeOrOptions as AiPlanNarrative | undefined) };
+
+  const encryptionPassword = options.password?.trim() ? options.password : undefined;
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'pt',
+    format: 'letter',
+    ...(encryptionPassword
+      ? {
+          encryption: {
+            userPassword: encryptionPassword,
+            ownerPassword: encryptionPassword,
+            userPermissions: ['print', 'modify', 'copy', 'annot-forms']
+          }
+        }
+      : {})
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const provinceName = PROVINCIAL_BRACKETS[inputs.province]?.name || inputs.province;
 
   activeBrandIconDataUrl = options.brandIconDataUrl;
 
@@ -3318,6 +3332,7 @@ export interface GeneratedPdfPreview {
   clientName: string;
   retirementAge: number;
   province: string;
+  isPasswordProtected: boolean;
 }
 
 function resolvePdfClientName(
@@ -3353,6 +3368,12 @@ export function createRetirementPdfPreview(
   const fileName = `Strata_Plan_${cleanClient}_Age${inputs.retirementAge}_${inputs.province}.pdf`;
   const blob = doc.output('blob');
   const blobUrl = URL.createObjectURL(blob);
+  const isPasswordProtected = Boolean(
+    narrativeOrOptions &&
+      'password' in narrativeOrOptions &&
+      typeof narrativeOrOptions.password === 'string' &&
+      narrativeOrOptions.password.trim().length > 0
+  );
 
   return {
     blob,
@@ -3363,7 +3384,8 @@ export function createRetirementPdfPreview(
     generatedAt: new Date().toISOString(),
     clientName,
     retirementAge: inputs.retirementAge,
-    province: inputs.province
+    province: inputs.province,
+    isPasswordProtected
   };
 }
 

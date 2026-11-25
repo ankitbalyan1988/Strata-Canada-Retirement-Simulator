@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, ThinkingLevel } from '@google/genai';
+import officeCrypto from 'officecrypto-tool';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -971,6 +972,46 @@ function generateRuleBasedWhatIfNarrative(
     customAnswer
   };
 }
+
+// API: Apply ECMA-376 Agile AES-256 open-password encryption to an exported .xlsx workbook
+app.post(
+  '/api/encrypt-excel',
+  express.raw({ type: 'application/octet-stream', limit: '50mb' }),
+  (req: Request, res: Response) => {
+    try {
+      const encodedPassword = req.header('x-export-password-b64');
+      if (!encodedPassword) {
+        return res.status(400).json({ error: 'A document password is required.' });
+      }
+
+      const password = Buffer.from(encodedPassword, 'base64').toString('utf8');
+      if (!password || password.length === 0) {
+        return res.status(400).json({ error: 'Password cannot be empty.' });
+      }
+      if (password.length > 255) {
+        return res.status(400).json({ error: 'Excel passwords cannot exceed 255 characters.' });
+      }
+
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'Valid Excel workbook binary data is required.' });
+      }
+
+      const encryptedBuffer = officeCrypto.encrypt(req.body, { password });
+      if (!officeCrypto.isEncrypted(encryptedBuffer)) {
+        return res.status(500).json({ error: 'Workbook encryption verification failed.' });
+      }
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).send(encryptedBuffer);
+    } catch {
+      return res.status(500).json({ error: 'Failed to encrypt Excel workbook.' });
+    }
+  }
+);
 
 async function startServer() {
   if (process.env.NODE_ENV === 'production') {
